@@ -1,0 +1,159 @@
+{
+  "models": {
+    "university": {
+      "stage": "university",
+      "model_name": "University CGPA Multi-Factor Predictor",
+      "algorithm": "Gradient Boosting Regressor",
+      "version": "v1.0.0",
+      "artifact_file": "university_gradient_boosting_v1.0.0.joblib",
+      "target": "Final_CGPA",
+      "features": {
+        "numeric": [
+          "Age",
+          "Attendance_Pct",
+          "Study_Hours_Per_Day",
+          "Previous_CGPA",
+          "Sleep_Hours",
+          "Social_Hours_Week"
+        ],
+        "categorical": [
+          "Gender",
+          "Major"
+        ]
+      },
+      "metrics": {
+        "r2": 0.9525,
+        "rmse": 0.1167,
+        "mae": 0.097,
+        "train_samples": 4000,
+        "test_samples": 1000
+      },
+      "trained_at": "2026-08-19T07:28:14.246397+00:00"
+    },
+    "matric_inter": {
+      "stage": "matric_inter",
+      "model_name": "Matric/Intermediate HSSC-II Marks Predictor",
+      "algorithm": "Ridge Regression",
+      "version": "v1.0.0",
+      "artifact_file": "matric_inter_ridge_v1.0.0.joblib",
+      "target": "HSSC_II_Marks",
+      "features": {
+        "numeric": [
+          "SSC_I_Marks",
+          "SSC_II_Marks",
+          "HSSC_I_Marks",
+          "Attendance_Rate",
+          "Study_Hours",
+          "Previous_Failures",
+          "Exam_Attempts"
+        ],
+        "categorical": [
+          "Region",
+          "Gender",
+          "Enrollment_Type",
+          "Subject_Group",
+          "Parent_Education_Level",
+          "Parent_Income",
+          "Extra_Tuition",
+          "School_Type",
+          "Co_Curricular_Activities"
+        ]
+      },
+      "metrics": {
+        "r2": -0.0006,
+        "rmse": 158.4689,
+        "mae": 137.1839,
+        "train_samples": 72000,
+        "test_samples": 18000
+      },
+      "trained_at": "2026-08-19T07:28:15.341877+00:00"
+    },
+    "secondary": {
+      "stage": "secondary",
+      "model_name": "Secondary School Final Grade (G3) Predictor",
+      "algorithm": "Gradient Boosting Regressor",
+      "version": "v1.0.0",
+      "artifact_file": "secondary_gradient_boosting_v1.0.0.joblib",
+      "target": "G3",
+      "features": {
+        "numeric": [
+          "age",
+          "Medu",
+          "Fedu",
+          "traveltime",
+          "studytime",
+          "failures",
+          "famrel",
+          "freetime",
+          "goout",
+          "Dalc",
+          "Walc",
+          "health",
+          "absences",
+          "G1",
+          "G2"
+        ],
+        "categorical": [
+          "school",
+          "sex",
+          "address",
+          "famsize",
+          "Pstatus",
+          "Mjob",
+          "Fjob",
+          "reason",
+          "guardian",
+          "schoolsup",
+          "famsup",
+          "paid",
+          "activities",
+          "nursery",
+          "higher",
+          "internet",
+          "romantic"
+        ]
+      },
+      "metrics": {
+        "r2": 0.8083,
+        "rmse": 1.9829,
+        "mae": 1.1526,
+        "train_samples": 316,
+        "test_samples": 79
+      },
+      "trained_at": "2026-08-19T07:28:15.654342+00:00"
+    },
+    "primary": {
+      "stage": "primary",
+      "model_name": "Primary Education Multi-Indicator Predictor",
+      "algorithm": "Linear Regression",
+      "version": "v1.0.0",
+      "artifact_file": "primary_linear_regression_v1.0.0.joblib",
+      "target": "Education score",
+      "features": {
+        "numeric": [
+          "Enrolment score",
+          "Learning score",
+          "Retention score",
+          "School infrastructure score",
+          "Gender parity score",
+          "Total number of schools",
+          "Drinking water",
+          "Electricity",
+          "Toilet"
+        ],
+        "categorical": [
+          "Province"
+        ]
+      },
+      "metrics": {
+        "r2": 0.9738,
+        "rmse": 2.1599,
+        "mae": 0.8251,
+        "train_samples": 464,
+        "test_samples": 116
+      },
+      "trained_at": "2026-08-19T07:28:15.734446+00:00"
+    }
+  },
+  "updated_at": "2026-08-19T07:28:15.734761+00:00"
+}

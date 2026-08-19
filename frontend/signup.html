@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account - Student Performance Analytics</title>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .auth-page-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-6);
+      background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.15), transparent 45%),
+                  radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.1), transparent 40%),
+                  var(--bg-body);
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 480px;
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-2xl);
+      padding: var(--space-8);
+      box-shadow: var(--shadow-xl);
+    }
+    .auth-header {
+      text-align: center;
+      margin-bottom: var(--space-6);
+    }
+    .auth-logo {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto var(--space-3);
+      background: linear-gradient(135deg, var(--primary-500), var(--accent-cyan));
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: var(--shadow-glow-indigo);
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-page-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">🎓</div>
+        <h1 style="font-size: var(--font-size-2xl); font-weight: 700; color: #FFFFFF; margin-bottom: var(--space-1);">Create Account</h1>
+        <p style="color: var(--text-muted); font-size: var(--font-size-sm);">Join the multi-stage academic intelligence system</p>
+      </div>
+
+      <form id="signup-form">
+        <div class="form-group">
+          <label class="form-label" for="full_name">Full Name</label>
+          <input type="text" id="full_name" class="form-input" placeholder="e.g. Muhammad Ali" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Student / Institutional Email</label>
+          <input type="email" id="email" class="form-input" placeholder="student@university.edu" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="stage">Education Stage</label>
+          <select id="stage" class="form-select">
+            <option value="university" selected>University / Undergraduate (CGPA 4.0)</option>
+            <option value="matric_inter">Matriculation / Intermediate (HSSC)</option>
+            <option value="secondary">Secondary School (G1 - G3)</option>
+            <option value="primary">Primary Education System</option>
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input type="password" id="password" class="form-input" placeholder="Min. 6 chars" required autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="confirm_password">Confirm Password</label>
+            <input type="password" id="confirm_password" class="form-input" placeholder="Repeat password" required autocomplete="new-password">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; margin-top: var(--space-3);">
+          Register & Launch Dashboard
+        </button>
+      </form>
+
+      <div style="text-align: center; margin-top: var(--space-6); font-size: var(--font-size-sm); color: var(--text-muted);">
+        Already have an account? 
+        <a href="login.html" style="font-weight: 600; color: var(--primary-400);">Sign In</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- CDN Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

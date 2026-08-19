@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard - Performance Analytics System</title>
+  
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js CDN & Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- ======================================================================
+         1. SIDEBAR NAVIGATION
+         ====================================================================== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo-icon">🎓</div>
+        <div>
+          <div class="brand-title">EduMetrics AI</div>
+          <div class="brand-subtitle">Analytics Engine</div>
+        </div>
+      </div>
+
+      <div class="sidebar-nav">
+        <div>
+          <div class="nav-section-title">Core Modules</div>
+          <ul class="nav-list">
+            <li class="nav-item active">
+              <a href="dashboard.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+                </svg>
+                <span>Student Dashboard</span>
+                <span class="nav-badge">P1</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#predictions-modal" id="quick-predict-sidebar-link" onclick="document.getElementById('predict-modal').classList.add('active');">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+                </svg>
+                <span>AI Forecasting</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="nav-section-title">Upcoming Pages</div>
+          <ul class="nav-list">
+            <li class="nav-item" style="opacity: 0.5;">
+              <a href="javascript:void(0)" title="Page 2 Slot for Team Member 2">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+                </svg>
+                <span>Detailed Analytics</span>
+                <span style="font-size: 10px; opacity: 0.6; margin-left: auto;">Page 2</span>
+              </a>
+            </li>
+            <li class="nav-item" style="opacity: 0.5;">
+              <a href="javascript:void(0)" title="Page 3 Slot for Team Member 3">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                </svg>
+                <span>Early Warning Hub</span>
+                <span style="font-size: 10px; opacity: 0.6; margin-left: auto;">Page 3</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-summary">
+          <img id="student-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar" class="user-avatar">
+          <div class="user-info">
+            <div class="user-name" id="student-name">Muhammad Ali</div>
+            <div class="user-role" id="student-id-code">SE-2023-049</div>
+          </div>
+          <button id="logout-btn" class="btn-icon" title="Sign Out" style="margin-left: auto;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ======================================================================
+         2. MAIN CONTENT WRAPPER & TOP NAVBAR
+         ====================================================================== -->
+    <div class="main-wrapper">
+      <header class="navbar">
+        <div class="navbar-left">
+          <button class="menu-toggle-btn" id="sidebar-toggle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>
+            </svg>
+          </button>
+          <div class="page-breadcrumb">
+            <span>Home</span>
+            <span>/</span>
+            <span class="current">Student Academic Dashboard</span>
+          </div>
+        </div>
+
+        <div class="navbar-right">
+          <!-- Stage Switcher Component -->
+          <div class="stage-select-container">
+            <span class="stage-select-label">Education Stage:</span>
+            <select id="stage-selector" class="form-select" style="padding: 4px 8px; font-size: 13px; background: transparent; border: none;">
+              <option value="university" selected>University (CGPA 4.0)</option>
+              <option value="matric_inter">Matric / Intermediate</option>
+              <option value="secondary">Secondary (G1-G3)</option>
+              <option value="primary">Primary Education</option>
+            </select>
+          </div>
+
+          <button id="quick-predict-btn" class="btn btn-primary btn-sm">
+            <span>⚡ Quick Forecast</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        
+        <!-- Welcome Hero Banner -->
+        <section class="dashboard-hero">
+          <div>
+            <h1 class="hero-welcome-title" id="hero-greeting">Welcome back, Muhammad 👋</h1>
+            <div class="hero-welcome-subtitle">
+              <div class="hero-meta-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                <span id="student-institution">Faculty of Computer Science & Engineering</span>
+              </div>
+              <span>•</span>
+              <div class="hero-meta-item">
+                <span id="student-major">Software Engineering</span> (<span id="student-grade-level">Year 3</span>)
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             3. TOP KPI CARDS (Current GPA, Cumulative CGPA, Predicted GPA, Calibrated Badge)
+             ================================================================== -->
+        <section class="kpi-grid">
+          <!-- KPI 1: Current Term GPA -->
+          <div class="kpi-card" style="--kpi-accent: var(--primary-500);">
+            <div class="kpi-card-header">
+              <span class="kpi-label">Current Term GPA</span>
+              <div class="kpi-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+            </div>
+            <div class="kpi-value-container">
+              <div class="kpi-value" id="kpi-current-gpa">3.65</div>
+              <span class="kpi-scale">/ 4.00</span>
+            </div>
+            <div class="kpi-delta up" id="kpi-current-term-tag">Current Active Term</div>
+          </div>
+
+          <!-- KPI 2: Cumulative CGPA -->
+          <div class="kpi-card" style="--kpi-accent: var(--accent-cyan);">
+            <div class="kpi-card-header">
+              <span class="kpi-label">Cumulative CGPA</span>
+              <div class="kpi-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
+              </div>
+            </div>
+            <div class="kpi-value-container">
+              <div class="kpi-value" id="kpi-cumulative-cgpa">3.48</div>
+              <span class="kpi-scale">/ 4.00</span>
+            </div>
+            <div class="kpi-delta up" id="kpi-delta-cgpa">▲ 0.10 vs prev</div>
+          </div>
+
+          <!-- KPI 3: AI Predicted GPA -->
+          <div class="kpi-card" style="--kpi-accent: var(--accent-emerald);">
+            <div class="kpi-card-header">
+              <span class="kpi-label">AI Forecast (Next Term)</span>
+              <div class="kpi-icon-box" style="background-color: rgba(16, 185, 129, 0.1); color: var(--accent-emerald);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+              </div>
+            </div>
+            <div class="kpi-value-container">
+              <div class="kpi-value" id="kpi-predicted-gpa" style="color: var(--accent-emerald);">3.72</div>
+              <span class="kpi-scale">Target</span>
+            </div>
+            <div class="kpi-delta up">High Confidence (R²=0.95)</div>
+          </div>
+
+          <!-- KPI 4: Calibrated Performance Status Badge -->
+          <div class="kpi-card" style="--kpi-accent: var(--accent-purple);">
+            <div class="kpi-card-header">
+              <span class="kpi-label">Performance Status</span>
+              <div class="kpi-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              </div>
+            </div>
+            <div style="margin: var(--space-2) 0;">
+              <span id="kpi-status-badge" class="badge badge-success" style="font-size: 14px; padding: 6px 14px;">
+                <span class="badge-dot"></span>
+                <span id="kpi-status-text">Exemplary</span>
+              </span>
+            </div>
+            <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: var(--space-2);">
+              Calibrated across academic metrics
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             4. MAIN ANALYTICS SPLIT (GPA Progression Trend Chart + AI Advisory)
+             ================================================================== -->
+        <div id="dashboard-analytics-content">
+          <section class="analytics-main-grid">
+            <!-- GPA Progression Trend Chart (Chart.js) -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                    <span>GPA Progression & AI Projection Trend</span>
+                  </h2>
+                  <div class="card-subtitle">Chronological academic GPA history bridged with machine learning target</div>
+                </div>
+              </div>
+
+              <div class="chart-canvas-wrapper">
+                <canvas id="gpaProgressionChart"></canvas>
+              </div>
+
+              <div class="chart-legend-custom">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background-color: #6366F1;"></div>
+                  <span>Past Term GPA</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background-color: #F59E0B;"></div>
+                  <span>Current Semester</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background-color: #10B981; border: 1px dashed white;"></div>
+                  <span>AI Predicted Milestone</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Performance Advisory & Growth Levers -->
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                  <span>Calibrated Evaluation</span>
+                </h2>
+              </div>
+
+              <div class="status-card-content">
+                <div id="advisory-badge-hero" class="status-badge-hero badge-success">
+                  <div class="status-title" id="advisory-title">Performance Status: Exemplary</div>
+                  <div class="status-desc" id="advisory-desc">
+                    Outstanding academic trajectory. Eligible for Dean's Honor Roll and scholarship opportunities.
+                  </div>
+                </div>
+
+                <div style="font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-transform: uppercase; color: var(--text-muted); margin-top: var(--space-2);">
+                  Key Academic Growth Levers
+                </div>
+
+                <ul class="ai-recommendations-list" id="ai-tips-list">
+                  <li class="ai-rec-item">
+                    <span class="ai-rec-icon">⚡</span>
+                    <span>Attendance above 85% strongly correlates with achieving Dean's honor list.</span>
+                  </li>
+                  <li class="ai-rec-item">
+                    <span class="ai-rec-icon">⚡</span>
+                    <span>Consistently spending 4+ hours on active self-study improves retention by 28%.</span>
+                  </li>
+                  <li class="ai-rec-item">
+                    <span class="ai-rec-icon">⚡</span>
+                    <span>Balancing 7+ hours of sleep stabilizes cognitive test performance.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================================================================
+               5. RECENT PREDICTIONS HISTORY TABLE
+               ================================================================ -->
+          <section class="card" style="margin-top: var(--space-6);">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Recent ML Model Predictions</span>
+              </h2>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('predict-modal').classList.add('active');">
+                + New Prediction Run
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Model Pipeline</th>
+                    <th>Stage</th>
+                    <th>Predicted Score</th>
+                    <th>Status Tier</th>
+                    <th>Executed At</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-body">
+                  <!-- Rendered dynamically by js/dashboard.js -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Empty State Container (If no student records exist) -->
+        <div id="empty-state-container" class="card empty-state-box" style="display: none;">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-title">No Academic Records Registered</div>
+          <div class="empty-state-desc">
+            You don't have past term records logged yet. Run your first AI forecast simulation to calibrate your academic trajectory.
+          </div>
+          <button class="btn btn-primary" onclick="document.getElementById('predict-modal').classList.add('active');">
+            ⚡ Run First Academic Forecast
+          </button>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       6. QUICK PREDICTION MODAL DRAWER
+       ====================================================================== -->
+  <div class="modal-backdrop" id="predict-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">⚡ AI Performance Simulator</h2>
+          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 4px;">
+            Simulate study habits and metrics to forecast your term performance
+          </div>
+        </div>
+        <button class="btn-icon" id="close-predict-modal" style="font-size: 20px;">&times;</button>
+      </div>
+
+      <form id="predict-form">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="modal_attendance">Class Attendance (%)</label>
+            <input type="number" step="0.1" min="0" max="100" id="modal_attendance" class="form-input" value="88.5" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="modal_study_hours">Daily Study (Hours)</label>
+            <input type="number" step="0.1" min="0" max="16" id="modal_study_hours" class="form-input" value="4.5" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="modal_prev_cgpa">Previous CGPA (0.0 - 4.0)</label>
+            <input type="number" step="0.01" min="0" max="4.0" id="modal_prev_cgpa" class="form-input" value="3.48" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="modal_sleep_hours">Average Sleep (Hours/Night)</label>
+            <input type="number" step="0.1" min="2" max="14" id="modal_sleep_hours" class="form-input" value="7.2" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="modal_social_hours">Social Hours / Week</label>
+            <input type="number" min="0" max="50" id="modal_social_hours" class="form-input" value="8" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="modal_gender">Gender</label>
+            <select id="modal_gender" class="form-select">
+              <option value="Male" selected>Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="modal_major">Academic Program / Major</label>
+          <select id="modal_major" class="form-select">
+            <option value="Engineering" selected>Engineering</option>
+            <option value="Computer Science">Computer Science</option>
+            <option value="Business">Business / Management</option>
+            <option value="Medicine">Medicine / Health</option>
+            <option value="Arts">Arts & Humanities</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6);">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('predict-modal').classList.remove('active');">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Run AI Forecast
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Application Logic Scripts -->
+  <script src="js/supabase-client.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
