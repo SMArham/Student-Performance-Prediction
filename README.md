@@ -71,5 +71,7 @@ All 12 unit & integration tests validate ML pipelines, API endpoints, schema val
 | Contributor | GitHub Profile | Role / Responsibility |
 |---|---|---|
 | **Syed Muhammad Arham** | [@SMArham](https://github.com/SMArham) | Project Lead & Page 1 (Foundation, Auth & Student Dashboard) |
+| **Muhammad Yahya Siddiqui** | [@muhammadyahyasiddiqui](https://github.com/muhammadyahyasiddiqui) | Core Contributor & Full-Stack Developer |
 | **Fatima Hasnain** | [@fatimahasnain518](https://github.com/fatimahasnain518) | Core Contributor & Analytics Team Member |
+
 
