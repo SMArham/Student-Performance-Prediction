@@ -63,3 +63,13 @@ All 12 unit & integration tests validate ML pipelines, API endpoints, schema val
 - [Deployment Guide](docs/DEPLOYMENT.md)
 - [Database Schema (SQL)](database/schema.sql)
 - [Row Level Security Policies (SQL)](database/rls_policies.sql)
+
+---
+
+## 👥 Team & Contributors
+
+| Contributor | GitHub Profile | Role / Responsibility |
+|---|---|---|
+| **Syed Muhammad Arham** | [@SMArham](https://github.com/SMArham) | Project Lead & Page 1 (Foundation, Auth & Student Dashboard) |
+| **Fatima Hasnain** | [@fatimahasnain518](https://github.com/fatimahasnain518) | Core Contributor & Analytics Team Member |
+
