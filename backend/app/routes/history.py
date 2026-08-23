@@ -3,7 +3,7 @@ Prediction & Academic Records History Route
 Student Performance Prediction & Analytics System
 """
 
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from backend.app.core.security import get_current_user_id
 from backend.app.services.supabase_service import supabase_service
@@ -16,12 +16,14 @@ router = APIRouter(prefix="/api/v1/history", tags=["History"])
 @router.get("", response_model=List[HistoryItem], summary="Get Student Prediction History")
 async def get_history(
     limit: int = Query(20, ge=1, le=100, description="Max history records to return"),
-    user_id: str = Depends(get_current_user_id),
+    user_id: Optional[str] = Query(None, description="Optional User ID override"),
+    auth_user_id: str = Depends(get_current_user_id),
 ):
     """
     Returns chronological history of all ML predictions made for the authenticated student.
     """
-    raw_history = supabase_service.get_prediction_history(user_id=user_id, limit=limit)
+    effective_user_id = user_id or auth_user_id
+    raw_history = supabase_service.get_prediction_history(user_id=effective_user_id, limit=limit)
     items: List[HistoryItem] = []
     for h in raw_history:
         stage = h.get("stage", "university")
