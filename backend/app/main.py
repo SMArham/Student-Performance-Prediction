@@ -121,6 +121,22 @@ if os.path.exists(FRONTEND_DIR):
             return FileResponse(dash_file, media_type="text/html")
         return RedirectResponse(url="/")
 
+    @app.get("/prediction", include_in_schema=False)
+    @app.get("/prediction.html", include_in_schema=False)
+    async def serve_prediction():
+        pred_file = os.path.join(FRONTEND_DIR, "prediction.html")
+        if os.path.exists(pred_file):
+            return FileResponse(pred_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
+    @app.get("/analytics", include_in_schema=False)
+    @app.get("/analytics.html", include_in_schema=False)
+    async def serve_analytics():
+        ana_file = os.path.join(FRONTEND_DIR, "analytics.html")
+        if os.path.exists(ana_file):
+            return FileResponse(ana_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
     @app.get("/index.html", include_in_schema=False)
     async def serve_index_html():
         idx_file = os.path.join(FRONTEND_DIR, "index.html")

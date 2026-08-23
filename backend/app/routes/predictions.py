@@ -3,8 +3,8 @@ Multi-Stage Machine Learning Prediction Route
 Student Performance Prediction & Analytics System
 """
 
-from typing import Dict, Any, Union
-from fastapi import APIRouter, Depends, Path, Body, status
+from typing import Dict, Any, Union, Optional
+from fastapi import APIRouter, Depends, Path, Body, Query, status
 from backend.app.core.security import get_current_user_id
 from backend.app.core.exceptions import ValidationError
 from backend.app.services.ml_service import ml_service
@@ -24,7 +24,8 @@ router = APIRouter(prefix="/api/v1/predictions", tags=["Predictions"])
 async def run_stage_prediction(
     stage: str = Path(..., description="Educational Stage: university, matric_inter, secondary, primary"),
     payload: Dict[str, Any] = Body(..., description="Stage-specific input features JSON"),
-    user_id: str = Depends(get_current_user_id),
+    user_id: Optional[str] = Query(None, description="Optional User ID override"),
+    auth_user_id: str = Depends(get_current_user_id),
 ):
     """
     Executes trained ML pipeline inference for the specified educational stage:
@@ -35,6 +36,7 @@ async def run_stage_prediction(
     
     Returns calibrated prediction, confidence intervals, status badge, and explanations.
     """
+    effective_user_id = user_id or auth_user_id
     valid_stages = ["university", "matric_inter", "secondary", "primary"]
     stage_clean = stage.lower()
     if stage_clean not in valid_stages:
@@ -45,7 +47,7 @@ async def run_stage_prediction(
 
     # Save to history
     supabase_service.save_prediction(
-        user_id=user_id,
+        user_id=effective_user_id,
         pred_data={
             "stage": stage_clean,
             "model_name": result["model_name"],
