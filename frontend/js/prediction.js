@@ -1,6 +1,7 @@
 /**
  * PAGE 2: Academic Records & Prediction Input Form Controller
  * Student Performance Prediction & Analytics System
+ * Includes Multi-Subject & Course CRUD Engine with Live Aggregates & ML Model Sync
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -36,6 +37,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const logoutBtn = document.getElementById("logout-btn");
   const sidebarToggle = document.getElementById("sidebar-toggle");
   const sidebar = document.getElementById("sidebar");
+
+  // Subject CRUD DOM Elements
+  const subjectsTableBody = document.getElementById("subjects-table-body");
+  const btnOpenSubjectModal = document.getElementById("btn-open-subject-modal");
+  const subjectModal = document.getElementById("subject-modal");
+  const btnCloseSubjectModal = document.getElementById("btn-close-subject-modal");
+  const btnCancelSubjectModal = document.getElementById("btn-cancel-subject-modal");
+  const subjectEntryForm = document.getElementById("subject-entry-form");
+  const subjectModalTitle = document.getElementById("subject-modal-title");
+  const subjectEditIdInput = document.getElementById("subject-edit-id");
+  const subjectPresetSelect = document.getElementById("subject-preset-select");
+  const subjectNameInput = document.getElementById("subject-name-input");
+  const subjectCategorySelect = document.getElementById("subject-category-select");
+  const subjectTermSelect = document.getElementById("subject-term-select");
+  const subjectObtainedInput = document.getElementById("subject-obtained-input");
+  const subjectTotalInput = document.getElementById("subject-total-input");
+
+  // Summary KPI Elements
+  const kpiTotalSubjects = document.getElementById("kpi-total-subjects");
+  const kpiTotalMarks = document.getElementById("kpi-total-marks");
+  const kpiAggregatePct = document.getElementById("kpi-aggregate-pct");
+  const kpiCalcGpa = document.getElementById("kpi-calc-gpa");
 
   // Render User Profile
   renderUserProfile();
@@ -96,6 +119,396 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------------------------------
+  // MULTI-SUBJECT & COURSE CRUD STORE
+  // ----------------------------------------------------------------------------
+  const defaultSubjectsStore = {
+    university: [
+      { id: "sub-u1", name: "Data Structures & Algorithms", category: "Core Science", term: "Semester 5", obtained: 88, total: 100 },
+      { id: "sub-u2", name: "Database Management Systems", category: "Core Science", term: "Semester 5", obtained: 84, total: 100 },
+      { id: "sub-u3", name: "Software Engineering", category: "Core Science", term: "Semester 5", obtained: 90, total: 100 },
+      { id: "sub-u4", name: "Computer Networks Lab", category: "Lab / Practical", term: "Semester 5", obtained: 45, total: 50 }
+    ],
+    matric_inter: [
+      { id: "sub-m1", name: "Mathematics", category: "Core Science", term: "HSSC-I", obtained: 92, total: 100 },
+      { id: "sub-m2", name: "Physics Theory & Lab", category: "Core Science", term: "HSSC-I", obtained: 76, total: 85 },
+      { id: "sub-m3", name: "Chemistry", category: "Core Science", term: "HSSC-I", obtained: 74, total: 85 },
+      { id: "sub-m4", name: "Computer Science", category: "Core Science", term: "HSSC-I", obtained: 68, total: 75 },
+      { id: "sub-m5", name: "English Compulsory", category: "Humanities", term: "HSSC-I", obtained: 82, total: 100 }
+    ],
+    secondary: [
+      { id: "sub-s1", name: "Mathematics", category: "Core Science", term: "Period 1 (G1)", obtained: 16, total: 20 },
+      { id: "sub-s2", name: "Natural Sciences", category: "Core Science", term: "Period 1 (G1)", obtained: 15, total: 20 },
+      { id: "sub-s3", name: "English / Language", category: "Humanities", term: "Period 2 (G2)", obtained: 14, total: 20 },
+      { id: "sub-s4", name: "History & Geography", category: "General", term: "Period 2 (G2)", obtained: 15, total: 20 }
+    ],
+    primary: [
+      { id: "sub-p1", name: "Mathematics & Reasoning", category: "Core Science", term: "Final", obtained: 82, total: 100 },
+      { id: "sub-p2", name: "Reading & English Literacy", category: "Humanities", term: "Final", obtained: 76, total: 100 },
+      { id: "sub-p3", name: "Science & Environment", category: "General", term: "Final", obtained: 80, total: 100 }
+    ]
+  };
+
+  // Stage Preset Suggestions
+  const stagePresets = {
+    university: [
+      "Custom Subject...",
+      "Data Structures & Algorithms",
+      "Database Management Systems",
+      "Software Engineering",
+      "Operating Systems",
+      "Computer Networks",
+      "Linear Algebra & Calculus",
+      "Machine Learning & AI",
+      "Web Application Development",
+      "Microeconomics",
+      "Financial Accounting"
+    ],
+    matric_inter: [
+      "Custom Subject...",
+      "Mathematics",
+      "Physics Theory & Lab",
+      "Chemistry Theory & Lab",
+      "Computer Science",
+      "Biology",
+      "English Compulsory",
+      "Urdu Compulsory",
+      "Islamic Studies / Ethics",
+      "Pakistan Studies"
+    ],
+    secondary: [
+      "Custom Subject...",
+      "Mathematics",
+      "Natural Sciences",
+      "Physics-Chemistry",
+      "History & Geography",
+      "English / Foreign Language",
+      "Portuguese / Main Language",
+      "Physical Education",
+      "Art & Technology"
+    ],
+    primary: [
+      "Custom Subject...",
+      "Mathematics & Reasoning",
+      "Reading & English Literacy",
+      "Science & Environment",
+      "Social Studies",
+      "Art & Creative Expression"
+    ]
+  };
+
+  // Load state from localStorage or initialize with default store
+  let subjectsStore = loadSavedSubjects();
+
+  function loadSavedSubjects() {
+    try {
+      const saved = localStorage.getItem("sp_user_subjects_v1");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn("Failed to read subjects from localStorage", e);
+    }
+    return JSON.parse(JSON.stringify(defaultSubjectsStore));
+  }
+
+  function persistSubjects() {
+    try {
+      localStorage.setItem("sp_user_subjects_v1", JSON.stringify(subjectsStore));
+    } catch (e) {
+      console.warn("Failed to persist subjects", e);
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // Subject Table Renderer & Summary Aggregator
+  // ----------------------------------------------------------------------------
+  function renderSubjectsTable() {
+    if (!subjectsTableBody) return;
+
+    const list = subjectsStore[currentStage] || [];
+
+    if (list.length === 0) {
+      subjectsTableBody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: var(--space-6);">
+            No subjects logged for this stage yet. Click "+ Add New Subject" to add your academic courses!
+          </td>
+        </tr>
+      `;
+      updateSummaryKPIs(0, 0, 0, 0);
+      return;
+    }
+
+    let grandObtained = 0;
+    let grandTotal = 0;
+
+    subjectsTableBody.innerHTML = list.map((item) => {
+      const obtained = Number(item.obtained) || 0;
+      const total = Number(item.total) || 1;
+      const pct = (obtained / total) * 100;
+
+      grandObtained += obtained;
+      grandTotal += total;
+
+      // Grade text & color calculation
+      let gradeBadge = "badge-primary";
+      let gradeText = "Pass";
+
+      if (pct >= 85) { gradeBadge = "badge-success"; gradeText = "A+ (Exemplary)"; }
+      else if (pct >= 75) { gradeBadge = "badge-success"; gradeText = "A (Good)"; }
+      else if (pct >= 65) { gradeBadge = "badge-primary"; gradeText = "B (Average)"; }
+      else if (pct >= 50) { gradeBadge = "badge-warning"; gradeText = "C (Pass)"; }
+      else { gradeBadge = "badge-danger"; gradeText = "F (At Risk)"; }
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight: 600; color: var(--text-primary);">${item.name}</div>
+          </td>
+          <td><span class="badge badge-info">${item.category}</span></td>
+          <td><span style="font-size: 12px; color: var(--text-secondary);">${item.term}</span></td>
+          <td style="font-weight: 700; color: var(--text-primary);">${obtained}</td>
+          <td style="color: var(--text-muted);">${total}</td>
+          <td style="font-weight: 700; color: ${pct >= 75 ? 'var(--accent-emerald)' : (pct >= 50 ? 'var(--accent-amber)' : 'var(--accent-rose)')};">
+            ${pct.toFixed(1)}%
+          </td>
+          <td><span class="badge ${gradeBadge}">${gradeText}</span></td>
+          <td style="text-align: right;">
+            <button type="button" class="subject-action-btn edit" data-id="${item.id}" title="Edit Subject">
+              ✏️ Edit
+            </button>
+            <button type="button" class="subject-action-btn delete" data-id="${item.id}" title="Delete Subject">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Attach button click listeners
+    const editBtns = subjectsTableBody.querySelectorAll(".subject-action-btn.edit");
+    const deleteBtns = subjectsTableBody.querySelectorAll(".subject-action-btn.delete");
+
+    editBtns.forEach(btn => {
+      btn.addEventListener("click", () => openSubjectModal(btn.dataset.id));
+    });
+
+    deleteBtns.forEach(btn => {
+      btn.addEventListener("click", () => deleteSubject(btn.dataset.id));
+    });
+
+    const aggregatePct = grandTotal > 0 ? (grandObtained / grandTotal) * 100 : 0;
+    updateSummaryKPIs(list.length, grandObtained, grandTotal, aggregatePct);
+  }
+
+  function updateSummaryKPIs(count, obtained, total, pct) {
+    if (kpiTotalSubjects) kpiTotalSubjects.innerText = `${count}`;
+    if (kpiTotalMarks) kpiTotalMarks.innerText = `${obtained.toFixed(1)} / ${total.toFixed(0)}`;
+    if (kpiAggregatePct) kpiAggregatePct.innerText = `${pct.toFixed(1)}%`;
+
+    if (kpiCalcGpa) {
+      if (currentStage === "university") {
+        const gpa = (pct / 100) * 4.0;
+        kpiCalcGpa.innerText = `${gpa.toFixed(2)} CGPA`;
+      } else if (currentStage === "matric_inter") {
+        const boardMarks = (pct / 100) * 1100;
+        kpiCalcGpa.innerText = `${boardMarks.toFixed(0)} / 1100 Marks`;
+      } else if (currentStage === "secondary") {
+        const grade20 = (pct / 100) * 20;
+        kpiCalcGpa.innerText = `${grade20.toFixed(1)} / 20 Scale`;
+      } else if (currentStage === "primary") {
+        kpiCalcGpa.innerText = `${pct.toFixed(1)} / 100 Index`;
+      }
+    }
+
+    // Auto-sync calculated subject aggregates to main form input fields
+    autoSyncSubjectAggregatesToForm(pct, obtained, total);
+  }
+
+  function autoSyncSubjectAggregatesToForm(pct, obtained, total) {
+    if (currentStage === "university") {
+      const cgpaInput = document.getElementById("field_prev_cgpa");
+      if (cgpaInput && total > 0) {
+        const calcCgpa = (pct / 100) * 4.0;
+        cgpaInput.value = calcCgpa.toFixed(2);
+      }
+    } else if (currentStage === "matric_inter") {
+      const ssc1Input = document.getElementById("field_ssc_i");
+      const ssc2Input = document.getElementById("field_ssc_ii");
+      const hssc1Input = document.getElementById("field_hssc_i");
+
+      const list = subjectsStore[currentStage] || [];
+      let hssc1Sum = 0, hssc1Tot = 0;
+      list.filter(s => s.term === "HSSC-I").forEach(s => {
+        hssc1Sum += Number(s.obtained);
+        hssc1Tot += Number(s.total);
+      });
+
+      if (hssc1Input && hssc1Tot > 0) {
+        const scaledHssc1 = (hssc1Sum / hssc1Tot) * 550;
+        hssc1Input.value = Math.round(scaledHssc1);
+      }
+    } else if (currentStage === "secondary") {
+      const g1Input = document.getElementById("field_g1");
+      const g2Input = document.getElementById("field_g2");
+
+      const list = subjectsStore[currentStage] || [];
+      let g1Sum = 0, g1Tot = 0, g2Sum = 0, g2Tot = 0;
+      list.forEach(s => {
+        if (s.term.includes("G1") || s.term.includes("Period 1")) {
+          g1Sum += Number(s.obtained); g1Tot += Number(s.total);
+        } else {
+          g2Sum += Number(s.obtained); g2Tot += Number(s.total);
+        }
+      });
+
+      if (g1Input && g1Tot > 0) g1Input.value = Math.round((g1Sum / g1Tot) * 20);
+      if (g2Input && g2Tot > 0) g2Input.value = Math.round((g2Sum / g2Tot) * 20);
+    } else if (currentStage === "primary") {
+      const mathInput = document.getElementById("field_math_score");
+      const readingInput = document.getElementById("field_reading_score");
+
+      const list = subjectsStore[currentStage] || [];
+      const mathSub = list.find(s => s.name.toLowerCase().includes("math"));
+      const readSub = list.find(s => s.name.toLowerCase().includes("read") || s.name.toLowerCase().includes("english"));
+
+      if (mathInput && mathSub && mathSub.total > 0) {
+        mathInput.value = ((mathSub.obtained / mathSub.total) * 100).toFixed(1);
+      }
+      if (readingInput && readSub && readSub.total > 0) {
+        readingInput.value = ((readSub.obtained / readSub.total) * 100).toFixed(1);
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // Subject Modal Actions (Add, Edit, Delete, Save)
+  // ----------------------------------------------------------------------------
+  function populatePresets() {
+    if (!subjectPresetSelect) return;
+    const presets = stagePresets[currentStage] || stagePresets.university;
+    subjectPresetSelect.innerHTML = presets.map(p => `<option value="${p}">${p}</option>`).join("");
+  }
+
+  if (subjectPresetSelect) {
+    subjectPresetSelect.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val && val !== "Custom Subject...") {
+        if (subjectNameInput) subjectNameInput.value = val;
+      }
+    });
+  }
+
+  function openSubjectModal(editId = null) {
+    if (!subjectModal) return;
+
+    populatePresets();
+
+    if (editId) {
+      const list = subjectsStore[currentStage] || [];
+      const item = list.find(s => s.id === editId);
+      if (!item) return;
+
+      if (subjectModalTitle) subjectModalTitle.innerText = "✏️ Edit Academic Subject";
+      if (subjectEditIdInput) subjectEditIdInput.value = item.id;
+      if (subjectNameInput) subjectNameInput.value = item.name;
+      if (subjectCategorySelect) subjectCategorySelect.value = item.category;
+      if (subjectTermSelect) subjectTermSelect.value = item.term;
+      if (subjectObtainedInput) subjectObtainedInput.value = item.obtained;
+      if (subjectTotalInput) subjectTotalInput.value = item.total;
+    } else {
+      if (subjectModalTitle) subjectModalTitle.innerText = "➕ Add Academic Subject / Course";
+      if (subjectEditIdInput) subjectEditIdInput.value = "";
+      if (subjectEntryForm) subjectEntryForm.reset();
+      if (subjectObtainedInput) subjectObtainedInput.value = "85";
+      if (subjectTotalInput) subjectTotalInput.value = "100";
+    }
+
+    subjectModal.classList.add("active");
+  }
+
+  function closeSubjectModal() {
+    if (subjectModal) subjectModal.classList.remove("active");
+  }
+
+  if (btnOpenSubjectModal) btnOpenSubjectModal.addEventListener("click", () => openSubjectModal());
+  if (btnCloseSubjectModal) btnCloseSubjectModal.addEventListener("click", closeSubjectModal);
+  if (btnCancelSubjectModal) btnCancelSubjectModal.addEventListener("click", closeSubjectModal);
+
+  if (subjectModal) {
+    subjectModal.addEventListener("click", (e) => {
+      if (e.target === subjectModal) closeSubjectModal();
+    });
+  }
+
+  if (subjectEntryForm) {
+    subjectEntryForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const editId = subjectEditIdInput ? subjectEditIdInput.value : "";
+      const name = subjectNameInput ? subjectNameInput.value.trim() : "";
+      const category = subjectCategorySelect ? subjectCategorySelect.value : "Core Science";
+      const term = subjectTermSelect ? subjectTermSelect.value : "Current Active Term";
+      const obtained = parseFloat(subjectObtainedInput ? subjectObtainedInput.value : 0);
+      const total = parseFloat(subjectTotalInput ? subjectTotalInput.value : 100);
+
+      if (!name) {
+        showToast("Please enter a valid subject name.", "error");
+        return;
+      }
+
+      if (isNaN(obtained) || obtained < 0) {
+        showToast("Obtained marks must be a non-negative number.", "error");
+        return;
+      }
+
+      if (isNaN(total) || total <= 0 || obtained > total) {
+        showToast("Max total marks must be greater than obtained marks.", "error");
+        return;
+      }
+
+      const list = subjectsStore[currentStage] || [];
+
+      if (editId) {
+        // Edit existing subject
+        const idx = list.findIndex(s => s.id === editId);
+        if (idx !== -1) {
+          list[idx] = { id: editId, name, category, term, obtained, total };
+          showToast(`Updated subject: "${name}"`, "success");
+        }
+      } else {
+        // Add new subject
+        const newSubject = {
+          id: "sub-" + Math.random().toString(36).substring(2, 9),
+          name,
+          category,
+          term,
+          obtained,
+          total
+        };
+        list.push(newSubject);
+        showToast(`Added new subject: "${name}"`, "success");
+      }
+
+      subjectsStore[currentStage] = list;
+      persistSubjects();
+      renderSubjectsTable();
+      closeSubjectModal();
+    });
+  }
+
+  function deleteSubject(id) {
+    const list = subjectsStore[currentStage] || [];
+    const idx = list.findIndex(s => s.id === id);
+    if (idx !== -1) {
+      const removedName = list[idx].name;
+      list.splice(idx, 1);
+      subjectsStore[currentStage] = list;
+      persistSubjects();
+      renderSubjectsTable();
+      showToast(`Removed subject: "${removedName}"`, "info");
+    }
+  }
+
+  // ----------------------------------------------------------------------------
   // Stage Change Handler & Dynamic Form Generator
   // ----------------------------------------------------------------------------
   function onStageChange(stage) {
@@ -137,6 +550,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (formCardTitle) formCardTitle.innerText = `${meta.title} Inputs`;
 
     renderDynamicFormFields(stage);
+    renderSubjectsTable();
   }
 
   // ----------------------------------------------------------------------------
@@ -177,7 +591,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="form-group">
             <label class="form-label" for="field_prev_cgpa">Previous Cumulative CGPA <span style="color:var(--accent-rose)">*</span></label>
             <input type="number" step="0.01" id="field_prev_cgpa" class="form-input" min="0.0" max="4.0" value="3.48" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0.00 to 4.00 CGPA</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated from subject records</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="field_attendance">Class Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
@@ -222,7 +636,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="form-group">
             <label class="form-label" for="field_hssc_i">HSSC-I Marks (11th Grade)</label>
             <input type="number" id="field_hssc_i" class="form-input" min="0" max="550" value="420" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0 to 550 marks</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated from subject records</span>
           </div>
         </div>
 
@@ -272,12 +686,12 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="form-group">
             <label class="form-label" for="field_g1">Period 1 Grade (G1)</label>
             <input type="number" id="field_g1" class="form-input" min="0" max="20" value="14" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Scale: 0 to 20 points</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated from Period 1 subjects</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="field_g2">Period 2 Grade (G2)</label>
             <input type="number" id="field_g2" class="form-input" min="0" max="20" value="15" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Scale: 0 to 20 points</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated from Period 2 subjects</span>
           </div>
         </div>
 
@@ -306,12 +720,12 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="form-group">
             <label class="form-label" for="field_math_score">Mathematics Score (0 - 100)</label>
             <input type="number" step="0.1" id="field_math_score" class="form-input" min="0.0" max="100.0" value="78.5" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0.0 to 100.0</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Auto-synced from Math subject</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="field_reading_score">Reading / Literacy Score (0 - 100)</label>
             <input type="number" step="0.1" id="field_reading_score" class="form-input" min="0.0" max="100.0" value="74.0" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0.0 to 100.0</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Auto-synced from Reading subject</span>
           </div>
         </div>
 
@@ -336,8 +750,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Initial Form Build
-  renderDynamicFormFields(currentStage);
+  // Initial Form Build & Table Render
+  onStageChange(currentStage);
 
   // ----------------------------------------------------------------------------
   // Input Validation & Payload Builder
@@ -496,8 +910,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Reset Form Handler
   if (resetBtn) {
     resetBtn.addEventListener("click", () => {
+      subjectsStore[currentStage] = JSON.parse(JSON.stringify(defaultSubjectsStore[currentStage] || []));
+      persistSubjects();
       onStageChange(currentStage);
-      showToast("Form inputs reset to default parameters.", "info");
+      showToast("Form inputs & subject records reset to defaults.", "info");
     });
   }
 
@@ -518,8 +934,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         setSubmitLoading(true);
-        const currentUser = window.authClient ? window.authClient.getUser() : null;
-        const userId = currentUser ? currentUser.id : "demo-user-id-001";
 
         // Call FastAPI Inference endpoint: POST /api/v1/predictions/{stage}
         const result = await window.apiClient.runPrediction(currentStage, payload);
