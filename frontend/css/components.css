@@ -324,6 +324,18 @@
   color: var(--text-muted);
 }
 
+/* Fix dropdown option visibility across browsers (dark background & light text) */
+select option, option {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  padding: 8px 12px;
+}
+
+select option:hover, select option:focus, option:hover, option:focus {
+  background-color: #334155 !important;
+  color: #FFFFFF !important;
+}
+
 /* ------------------------------------------------------------------------------
    Modals & Drawers
    ------------------------------------------------------------------------------ */
