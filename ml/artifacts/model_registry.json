@@ -28,7 +28,7 @@
         "train_samples": 4000,
         "test_samples": 1000
       },
-      "trained_at": "2026-08-19T07:28:14.246397+00:00"
+      "trained_at": "2026-08-25T05:38:11.436895+00:00"
     },
     "matric_inter": {
       "stage": "matric_inter",
@@ -66,7 +66,7 @@
         "train_samples": 72000,
         "test_samples": 18000
       },
-      "trained_at": "2026-08-19T07:28:15.341877+00:00"
+      "trained_at": "2026-08-25T05:38:12.975651+00:00"
     },
     "secondary": {
       "stage": "secondary",
@@ -114,13 +114,13 @@
         ]
       },
       "metrics": {
-        "r2": 0.8083,
-        "rmse": 1.9829,
-        "mae": 1.1526,
+        "r2": 0.8084,
+        "rmse": 1.9819,
+        "mae": 1.1504,
         "train_samples": 316,
         "test_samples": 79
       },
-      "trained_at": "2026-08-19T07:28:15.654342+00:00"
+      "trained_at": "2026-08-25T05:38:13.528133+00:00"
     },
     "primary": {
       "stage": "primary",
@@ -152,8 +152,8 @@
         "train_samples": 464,
         "test_samples": 116
       },
-      "trained_at": "2026-08-19T07:28:15.734446+00:00"
+      "trained_at": "2026-08-25T05:38:13.676481+00:00"
     }
   },
-  "updated_at": "2026-08-19T07:28:15.734761+00:00"
+  "updated_at": "2026-08-25T05:38:13.676917+00:00"
 }

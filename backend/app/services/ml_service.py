@@ -145,21 +145,24 @@ class MLService:
             return pd.DataFrame(data)
 
         elif stage == "secondary":
-            # Map all 33 features
-            keys = [
-                "age", "Medu", "Fedu", "traveltime", "studytime", "failures",
-                "famrel", "freetime", "goout", "Dalc", "Walc", "health",
-                "absences", "G1", "G2", "school", "sex", "address", "famsize",
-                "Pstatus", "Mjob", "Fjob", "reason", "guardian", "schoolsup",
-                "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic"
-            ]
+            num_defaults = {
+                "age": 16, "Medu": 3, "Fedu": 3, "traveltime": 1, "studytime": 2,
+                "failures": 0, "famrel": 4, "freetime": 3, "goout": 3, "Dalc": 1,
+                "Walc": 1, "health": 4, "absences": 4, "G1": 14, "G2": 15
+            }
+            cat_defaults = {
+                "school": "GP", "sex": "F", "address": "U", "famsize": "GT3", "Pstatus": "T",
+                "Mjob": "teacher", "Fjob": "services", "reason": "course", "guardian": "mother",
+                "schoolsup": "no", "famsup": "yes", "paid": "no", "activities": "yes",
+                "nursery": "yes", "higher": "yes", "internet": "yes", "romantic": "no"
+            }
             row = {}
-            for k in keys:
+            for k, default_val in num_defaults.items():
                 val = input_dict.get(k, input_dict.get(k.lower()))
-                if val is None:
-                    # defaults
-                    val = 0 if k in ["failures", "absences"] else (15 if k in ["G1", "G2"] else "yes")
-                row[k] = [val]
+                row[k] = [int(val) if val is not None else default_val]
+            for k, default_val in cat_defaults.items():
+                val = input_dict.get(k, input_dict.get(k.lower()))
+                row[k] = [str(val) if val is not None else default_val]
             return pd.DataFrame(row)
 
         elif stage == "primary":
