@@ -110,13 +110,219 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderUserProfile() {
     const currentUser = window.authClient ? window.authClient.getUser() : null;
-    const displayName = currentUser?.user_metadata?.full_name || "Muhammad Ali";
-    const avatarUrl = currentUser?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`;
+    const meta = currentUser?.user_metadata || {};
+    const displayName = meta.full_name || "Muhammad Ali";
+    const avatarUrl = meta.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`;
+    const studentId = meta.student_id || "SE-2023-049";
 
     if (studentNameEl) studentNameEl.innerText = displayName;
     if (studentAvatarEl) studentAvatarEl.src = avatarUrl;
-    if (studentIdEl) studentIdEl.innerText = "SE-2023-049";
+    if (studentIdEl) studentIdEl.innerText = studentId;
+
+    // Also populate settings form inputs
+    const setNameInput = document.getElementById("setting-fullname");
+    const setIdInput = document.getElementById("setting-studentid");
+    const setInstInput = document.getElementById("setting-institution");
+    const setMajorInput = document.getElementById("setting-major");
+    const setStageSelect = document.getElementById("setting-stage");
+    const setBigAvatar = document.getElementById("avatar-preview-big");
+
+    if (setNameInput) setNameInput.value = displayName;
+    if (setIdInput) setIdInput.value = studentId;
+    if (setInstInput) setInstInput.value = meta.institution_name || "Faculty of Computer Science & Engineering";
+    if (setMajorInput) setMajorInput.value = meta.major || "Software Engineering";
+    if (setStageSelect) setStageSelect.value = meta.stage || currentStage;
+    if (setBigAvatar) setBigAvatar.src = avatarUrl;
   }
+
+  // ----------------------------------------------------------------------------
+  // Profile & Settings Modal Controller
+  // ----------------------------------------------------------------------------
+  function initProfileSettings() {
+    const profileBtn = document.getElementById("user-profile-btn");
+    const profileModal = document.getElementById("profile-settings-modal");
+    const closeBtn = document.getElementById("btn-close-profile-modal");
+    const cancelBtn = document.getElementById("btn-cancel-profile");
+    const tabBtns = document.querySelectorAll(".modal-tab-btn");
+    const tabContents = document.querySelectorAll(".profile-tab-content");
+
+    const profileForm = document.getElementById("profile-details-form");
+    const avatarFileInput = document.getElementById("avatar-file-input");
+    const btnGenAvatar = document.getElementById("btn-generate-avatar");
+    const btnApplyAvatar = document.getElementById("btn-apply-avatar");
+    const avatarUrlInput = document.getElementById("avatar-url-input");
+    const avatarBigPreview = document.getElementById("avatar-preview-big");
+
+    const passwordForm = document.getElementById("password-change-form");
+    const btnDeleteAcc = document.getElementById("btn-delete-account");
+
+    let pendingAvatarUrl = "";
+
+    if (profileBtn && profileModal) {
+      profileBtn.addEventListener("click", (e) => {
+        // Prevent opening if logout button was clicked directly
+        if (e.target.closest("#logout-btn")) return;
+        renderUserProfile();
+        profileModal.classList.add("active");
+      });
+    }
+
+    if (closeBtn && profileModal) {
+      closeBtn.addEventListener("click", () => profileModal.classList.remove("active"));
+    }
+    if (cancelBtn && profileModal) {
+      cancelBtn.addEventListener("click", () => profileModal.classList.remove("active"));
+    }
+
+    if (profileModal) {
+      profileModal.addEventListener("click", (e) => {
+        if (e.target === profileModal) profileModal.classList.remove("active");
+      });
+    }
+
+    // Modal Tabs Navigation
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        tabBtns.forEach(b => b.classList.remove("active"));
+        tabContents.forEach(c => c.classList.remove("active"));
+        btn.classList.add("active");
+        const target = document.getElementById(btn.dataset.tab);
+        if (target) target.classList.add("active");
+      });
+    });
+
+    // Custom Avatar File Upload
+    if (avatarFileInput) {
+      avatarFileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+          showToast("Image file size exceeds 2MB limit.", "error");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          pendingAvatarUrl = evt.target.result;
+          if (avatarBigPreview) avatarBigPreview.src = pendingAvatarUrl;
+          showToast("Photo loaded! Click 'Apply Photo' to save.", "info");
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Dicebear Randomizer
+    if (btnGenAvatar) {
+      btnGenAvatar.addEventListener("click", () => {
+        const seed = Math.random().toString(36).substring(2, 9);
+        pendingAvatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+        if (avatarBigPreview) avatarBigPreview.src = pendingAvatarUrl;
+      });
+    }
+
+    // Apply Avatar
+    if (btnApplyAvatar) {
+      btnApplyAvatar.addEventListener("click", async () => {
+        const customUrl = avatarUrlInput ? avatarUrlInput.value.trim() : "";
+        const finalUrl = customUrl || pendingAvatarUrl;
+
+        if (!finalUrl) {
+          showToast("Please choose an image file or paste an image URL first.", "error");
+          return;
+        }
+
+        try {
+          await window.authClient.updateUser({ avatar_url: finalUrl });
+          renderUserProfile();
+          showToast("Profile picture updated successfully!", "success");
+          profileModal.classList.remove("active");
+        } catch (err) {
+          showToast("Error updating avatar: " + err.message, "error");
+        }
+      });
+    }
+
+    // Save Profile Details
+    if (profileForm) {
+      profileForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fullName = document.getElementById("setting-fullname")?.value.trim();
+        const studentId = document.getElementById("setting-studentid")?.value.trim();
+        const inst = document.getElementById("setting-institution")?.value.trim();
+        const major = document.getElementById("setting-major")?.value.trim();
+        const stage = document.getElementById("setting-stage")?.value;
+
+        if (!fullName) {
+          showToast("Please provide your full name.", "error");
+          return;
+        }
+
+        try {
+          await window.authClient.updateUser({
+            full_name: fullName,
+            student_id: studentId,
+            institution_name: inst,
+            major: major,
+            stage: stage
+          });
+
+          renderUserProfile();
+          showToast("Profile details updated successfully!", "success");
+          profileModal.classList.remove("active");
+        } catch (err) {
+          showToast("Failed to update profile: " + err.message, "error");
+        }
+      });
+    }
+
+    // Password Update
+    if (passwordForm) {
+      passwordForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const newPass = document.getElementById("setting-new-password")?.value;
+        const confPass = document.getElementById("setting-confirm-password")?.value;
+
+        if (newPass.length < 6) {
+          showToast("Password must be at least 6 characters.", "error");
+          return;
+        }
+        if (newPass !== confPass) {
+          showToast("Passwords do not match.", "error");
+          return;
+        }
+
+        try {
+          await window.authClient.updatePassword(newPass);
+          showToast("Password updated successfully!", "success");
+          passwordForm.reset();
+          profileModal.classList.remove("active");
+        } catch (err) {
+          showToast("Password update failed: " + err.message, "error");
+        }
+      });
+    }
+
+    // Danger Zone: Account Deletion
+    if (btnDeleteAcc) {
+      btnDeleteAcc.addEventListener("click", async () => {
+        const confirm1 = confirm("⚠️ Are you sure you want to PERMANENTLY delete your student account?");
+        if (!confirm1) return;
+
+        const confirm2 = confirm("🚨 FINAL WARNING: All your academic records, course entries, and forecast histories will be irreversibly erased. Proceed?");
+        if (!confirm2) return;
+
+        try {
+          await window.authClient.deleteAccount();
+        } catch (err) {
+          showToast("Error deleting account: " + err.message, "error");
+        }
+      });
+    }
+  }
+
+  initProfileSettings();
+
 
   // ----------------------------------------------------------------------------
   // MULTI-SUBJECT & COURSE CRUD STORE

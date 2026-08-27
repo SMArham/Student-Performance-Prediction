@@ -85,8 +85,11 @@
       </div>
 
       <div class="sidebar-footer">
-        <div class="user-profile-summary">
-          <img id="student-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar" class="user-avatar">
+        <div class="user-profile-summary" id="user-profile-btn" title="Click to edit profile & settings">
+          <div class="user-avatar-container">
+            <img id="student-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar" class="user-avatar">
+            <span class="avatar-edit-badge">✏️</span>
+          </div>
           <div class="user-info">
             <div class="user-name" id="student-name">Muhammad Ali</div>
             <div class="user-role" id="student-id-code">SE-2023-049</div>
@@ -421,6 +424,146 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       STUDENT PROFILE & SETTINGS MODAL
+       ====================================================================== -->
+  <div class="modal-backdrop" id="profile-settings-modal">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">⚙️ Student Profile & Settings</h2>
+          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
+            Manage your personal profile, custom photo, security, and account preferences.
+          </div>
+        </div>
+        <button class="btn-icon" id="btn-close-profile-modal" style="font-size: 20px;">&times;</button>
+      </div>
+
+      <!-- Modal Tabs Header -->
+      <div class="modal-tabs-header">
+        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
+          👤 Profile Details
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-profile-avatar">
+          🖼️ Picture & Avatar
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
+          🔒 Security & Account
+        </button>
+      </div>
+
+      <!-- Tab 1: Profile Details -->
+      <div class="profile-tab-content active" id="tab-profile-general">
+        <form id="profile-details-form">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="setting-fullname">Full Name <span style="color:var(--accent-rose)">*</span></label>
+              <input type="text" id="setting-fullname" class="form-input" value="Muhammad Ali" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="setting-studentid">Student ID / Roll Code</label>
+              <input type="text" id="setting-studentid" class="form-input" value="SE-2023-049">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: var(--space-4);">
+            <label class="form-label" for="setting-institution">Institution / University Name</label>
+            <input type="text" id="setting-institution" class="form-input" value="Faculty of Computer Science & Engineering">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
+            <div class="form-group">
+              <label class="form-label" for="setting-major">Program / Major</label>
+              <input type="text" id="setting-major" class="form-input" value="Software Engineering">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="setting-stage">Default Education Level</label>
+              <select id="setting-stage" class="form-select">
+                <option value="university" selected>University</option>
+                <option value="matric_inter">Matric / Intermediate</option>
+                <option value="secondary">Secondary School</option>
+                <option value="primary">Primary Education</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-profile">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Profile Changes</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tab 2: Avatar & Custom Photo -->
+      <div class="profile-tab-content" id="tab-profile-avatar">
+        <div class="avatar-customizer-box">
+          <img id="avatar-preview-big" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar Preview" class="avatar-big-preview">
+          <div class="avatar-actions-col">
+            <div style="font-weight: 600; color: var(--text-primary); font-size: var(--font-size-sm);">Upload Your Custom Photo</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Supports PNG, JPG, JPEG or GIF (Max 2MB)</div>
+            
+            <div style="display: flex; gap: var(--space-2); margin-top: 4px;">
+              <input type="file" id="avatar-file-input" accept="image/*" style="display: none;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('avatar-file-input').click();">
+                📁 Choose Image File
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-generate-avatar">
+                🎲 Randomize Avatar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-6);">
+          <label class="form-label" for="avatar-url-input">Or Paste Custom Image / Web URL</label>
+          <input type="url" id="avatar-url-input" class="form-input" placeholder="https://example.com/your-photo.jpg">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('profile-settings-modal').classList.remove('active');">Close</button>
+          <button type="button" class="btn btn-primary" id="btn-apply-avatar">Apply Photo</button>
+        </div>
+      </div>
+
+      <!-- Tab 3: Security & Account Deletion -->
+      <div class="profile-tab-content" id="tab-profile-security">
+        <!-- Change Password -->
+        <form id="password-change-form" style="margin-bottom: var(--space-6);">
+          <div style="font-weight: 600; color: var(--text-primary); font-size: var(--font-size-sm); margin-bottom: var(--space-3);">
+            Update Password
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="setting-new-password">New Password</label>
+              <input type="password" id="setting-new-password" class="form-input" placeholder="Min 6 characters" minlength="6" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="setting-confirm-password">Confirm Password</label>
+              <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter password" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">Update Password</button>
+        </form>
+
+        <!-- Danger Zone: Account Deletion -->
+        <div class="danger-zone-card">
+          <div class="danger-zone-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Danger Zone - Permanent Account Deletion</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+            Deleting your account will permanently wipe your student academic records, subject logs, and AI forecast histories from the system. This action cannot be undone.
+          </div>
+          <div style="display: flex; gap: var(--space-3); margin-top: var(--space-2);">
+            <button type="button" class="btn btn-danger btn-sm" id="btn-delete-account">
+              🗑️ Permanently Delete My Account
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
