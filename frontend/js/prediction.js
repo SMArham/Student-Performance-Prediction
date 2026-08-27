@@ -760,44 +760,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------------------------------
-  // Render Dynamic Input Fields per Stage
+  // Render Dynamic Input Fields per Stage with Holistic Behavioral Assessment
   // ----------------------------------------------------------------------------
   function renderDynamicFormFields(stage) {
     if (!dynamicContainer) return;
 
-    if (stage === "university") {
-      dynamicContainer.innerHTML = `
-        <div class="form-section-title">Academic & Engagement Metrics</div>
-        <div class="form-grid-2col" style="margin-bottom: var(--space-6);">
-          <div class="form-group">
-            <label class="form-label" for="field_major">Academic Program / Major <span style="color:var(--accent-rose)">*</span></label>
-            <select id="field_major" class="form-select" required>
-              <option value="Engineering" selected>Engineering</option>
-              <option value="Computer Science">Computer Science</option>
-              <option value="Business">Business & Management</option>
-              <option value="Medicine">Medicine / Health Sciences</option>
-              <option value="Arts">Arts & Humanities</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="field_gender">Gender <span style="color:var(--accent-rose)">*</span></label>
-            <select id="field_gender" class="form-select" required>
-              <option value="Male" selected>Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-        </div>
+    let stageSpecificHTML = "";
 
+    if (stage === "university") {
+      stageSpecificHTML = `
+        <div class="form-section-title">Academic & Course Track</div>
         <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
           <div class="form-group">
-            <label class="form-label" for="field_age">Age (Years)</label>
-            <input type="number" id="field_age" class="form-input" min="16" max="60" value="21" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Allowed: 16 to 60 years</span>
+            <label class="form-label" for="field_major">Program / Major <span style="color:var(--accent-rose)">*</span></label>
+            <select id="field_major" class="form-select" required>
+              <option value="Computer Science" selected>Computer Science (BSCS / BSSE)</option>
+              <option value="Engineering">Engineering (Electrical / Mechanical / Civil)</option>
+              <option value="Business">Business & Management Sciences (BBA / MBA)</option>
+              <option value="Medicine">Medicine & Health Sciences (MBBS / Pharm-D)</option>
+              <option value="Arts">Social Sciences & Humanities</option>
+            </select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="field_prev_cgpa">Previous Cumulative CGPA <span style="color:var(--accent-rose)">*</span></label>
+            <label class="form-label" for="field_prev_cgpa">Previous CGPA <span style="color:var(--accent-rose)">*</span></label>
             <input type="number" step="0.01" id="field_prev_cgpa" class="form-input" min="0.0" max="4.0" value="3.48" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated from subject records</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Auto-synced from subject course list</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="field_attendance">Class Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
@@ -806,28 +793,29 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         </div>
 
-        <div class="form-section-title">Lifestyle & Study Discipline</div>
-        <div class="form-grid-3col">
+        <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
           <div class="form-group">
-            <label class="form-label" for="field_study_hours">Daily Study Time (Hours/Day)</label>
+            <label class="form-label" for="field_study_hours">Daily Study & Revision (Hours/Day)</label>
             <input type="number" step="0.1" id="field_study_hours" class="form-input" min="0.0" max="16.0" value="4.5" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0 to 16 hrs/day</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Self-study hours outside lecture</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="field_sleep_hours">Average Sleep (Hours/Night)</label>
             <input type="number" step="0.1" id="field_sleep_hours" class="form-input" min="2.0" max="14.0" value="7.2" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Allowed: 2 to 14 hrs/night</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Rest & recovery discipline</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="field_social_hours">Social Hours (Hours/Week)</label>
-            <input type="number" id="field_social_hours" class="form-input" min="0" max="50" value="8" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0 to 50 hrs/week</span>
+            <label class="form-label" for="field_gender">Gender</label>
+            <select id="field_gender" class="form-select" required>
+              <option value="Male" selected>Male</option>
+              <option value="Female">Female</option>
+            </select>
           </div>
         </div>
       `;
     } else if (stage === "matric_inter") {
-      dynamicContainer.innerHTML = `
-        <div class="form-section-title">Board Examination Milestone Marks</div>
+      stageSpecificHTML = `
+        <div class="form-section-title">Board Examination Academic Track</div>
         <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
           <div class="form-group">
             <label class="form-label" for="field_ssc_i">SSC-I Marks (9th Grade)</label>
@@ -842,107 +830,65 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="form-group">
             <label class="form-label" for="field_hssc_i">HSSC-I Marks (11th Grade)</label>
             <input type="number" id="field_hssc_i" class="form-input" min="0" max="550" value="420" required>
-            <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated from subject records</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Auto-synced from HSSC-I subjects</span>
           </div>
         </div>
 
-        <div class="form-section-title">Academic Environment & Attendance</div>
         <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
           <div class="form-group">
-            <label class="form-label" for="field_subject_group">Subject Group</label>
+            <label class="form-label" for="field_subject_group">Subject Group / Discipline</label>
             <select id="field_subject_group" class="form-select" required>
-              <option value="Science" selected>Pre-Engineering / Medical Science</option>
+              <option value="Science" selected>Pre-Engineering / Pre-Medical</option>
               <option value="Computer Science">Computer Science (ICS)</option>
-              <option value="Arts">Humanities / Arts</option>
+              <option value="Arts">General Science / Humanities</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="field_gender_mi">Gender</label>
-            <select id="field_gender_mi" class="form-select" required>
-              <option value="Male" selected>Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="field_school_type">School Type</label>
-            <select id="field_school_type" class="form-select" required>
-              <option value="Private" selected>Private Institution</option>
-              <option value="Public">Public / Government School</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-grid-2col">
-          <div class="form-group">
-            <label class="form-label" for="field_attendance_rate">Attendance Rate (%)</label>
-            <input type="number" step="0.1" id="field_attendance_rate" class="form-input" min="0.0" max="100.0" value="85.0" required>
+            <label class="form-label" for="field_attendance_rate">Class Attendance Rate (%)</label>
+            <input type="number" step="0.1" id="field_attendance_rate" class="form-input" min="0.0" max="100.0" value="86.0" required>
             <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0.0% to 100.0%</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="field_study_hours_mi">Daily Study Discipline (Hours)</label>
+            <label class="form-label" for="field_study_hours_mi">Daily Self-Study (Hours)</label>
             <input type="number" step="0.1" id="field_study_hours_mi" class="form-input" min="0.0" max="16.0" value="4.0" required>
             <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0.0 to 16.0 hrs</span>
           </div>
         </div>
       `;
     } else if (stage === "secondary") {
-      dynamicContainer.innerHTML = `
-        <div class="form-section-title">Assessment Period Grades (0 - 20 Scale)</div>
-        <div class="form-grid-2col" style="margin-bottom: var(--space-6);">
+      stageSpecificHTML = `
+        <div class="form-section-title">Assessment Period Grades & Attendance</div>
+        <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
           <div class="form-group">
-            <label class="form-label" for="field_g1">Period 1 Grade (G1)</label>
+            <label class="form-label" for="field_g1">Period 1 Grade (G1) [0 - 20]</label>
             <input type="number" id="field_g1" class="form-input" min="0" max="20" value="14" required>
             <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated from Period 1 subjects</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="field_g2">Period 2 Grade (G2)</label>
+            <label class="form-label" for="field_g2">Period 2 Grade (G2) [0 - 20]</label>
             <input type="number" id="field_g2" class="form-input" min="0" max="20" value="15" required>
             <span style="font-size: 11px; color: var(--text-muted);">Auto-calculated from Period 2 subjects</span>
           </div>
-        </div>
-
-        <div class="form-section-title">Study Habit & Attendance Metrics</div>
-        <div class="form-grid-2col">
           <div class="form-group">
-            <label class="form-label" for="field_studytime">Weekly Study Time Scale</label>
-            <select id="field_studytime" class="form-select" required>
-              <option value="1">1: Less than 2 hours / week</option>
-              <option value="2" selected>2: 2 to 5 hours / week</option>
-              <option value="3">3: 5 to 10 hours / week</option>
-              <option value="4">4: More than 10 hours / week</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="field_absences">Total School Absences</label>
+            <label class="form-label" for="field_absences">Total School Absences (Days)</label>
             <input type="number" id="field_absences" class="form-input" min="0" max="93" value="4" required>
             <span style="font-size: 11px; color: var(--text-muted);">Allowed: 0 to 93 days</span>
           </div>
         </div>
       `;
     } else if (stage === "primary") {
-      dynamicContainer.innerHTML = `
-        <div class="form-section-title">Primary Foundational Learning Scores</div>
-        <div class="form-grid-2col" style="margin-bottom: var(--space-6);">
+      stageSpecificHTML = `
+        <div class="form-section-title">Foundational Learning Milestones</div>
+        <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
           <div class="form-group">
-            <label class="form-label" for="field_math_score">Mathematics Score (0 - 100)</label>
+            <label class="form-label" for="field_math_score">Mathematics & Reasoning (0 - 100)</label>
             <input type="number" step="0.1" id="field_math_score" class="form-input" min="0.0" max="100.0" value="78.5" required>
             <span style="font-size: 11px; color: var(--text-muted);">Auto-synced from Math subject</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="field_reading_score">Reading / Literacy Score (0 - 100)</label>
+            <label class="form-label" for="field_reading_score">Reading & Language Literacy (0 - 100)</label>
             <input type="number" step="0.1" id="field_reading_score" class="form-input" min="0.0" max="100.0" value="74.0" required>
             <span style="font-size: 11px; color: var(--text-muted);">Auto-synced from Reading subject</span>
-          </div>
-        </div>
-
-        <div class="form-section-title">Support & Gender Context</div>
-        <div class="form-grid-2col">
-          <div class="form-group">
-            <label class="form-label" for="field_test_prep">Test Preparation Course Status</label>
-            <select id="field_test_prep" class="form-select" required>
-              <option value="Completed" selected>Completed Prep Course</option>
-              <option value="None">None / Not Enrolled</option>
-            </select>
           </div>
           <div class="form-group">
             <label class="form-label" for="field_gender_primary">Gender</label>
@@ -954,6 +900,88 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       `;
     }
+
+    // Common Holistic Behavioral & Soft-Skills Assessment Section (Applicable for Teachers & Students)
+    const behavioralHTML = `
+      <div class="form-section-title" style="margin-top: var(--space-8); display: flex; align-items: center; justify-content: space-between;">
+        <span>🎯 Holistic Soft-Skills & Classroom Attentiveness Evaluation</span>
+        <span class="badge badge-info" style="font-size: 11px;">Teacher & Behavioral Metrics</span>
+      </div>
+
+      <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
+        <div class="form-group">
+          <label class="form-label" for="field_evaluator_role">Evaluator Perspective</label>
+          <select id="field_evaluator_role" class="form-select">
+            <option value="Teacher" selected>👩‍🏫 Teacher / Course Instructor Evaluation</option>
+            <option value="Student">🧑‍🎓 Student Self-Evaluation</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="field_attentiveness">Classroom Attentiveness & Focus <span style="color:var(--accent-rose)">*</span></label>
+          <select id="field_attentiveness" class="form-select" required>
+            <option value="High" selected>High (Sharp focus, actively engages in lectures & labs)</option>
+            <option value="Moderate">Moderate (Attentive with occasional minor distraction)</option>
+            <option value="Low">Low (Easily distracted, requires frequent refocusing)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="field_communication">Communication & Presentation Skills <span style="color:var(--accent-rose)">*</span></label>
+          <select id="field_communication" class="form-select" required>
+            <option value="Excellent">Exceptional (Articulate, expressive, highly confident in Q&A)</option>
+            <option value="Good" selected>Good (Clear communicator, presents ideas effectively)</option>
+            <option value="Developing">Developing (Average verbal confidence, needs practice)</option>
+            <option value="Needs Support">Needs Support (Hesitant to speak up, requires encouragement)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
+        <div class="form-group">
+          <label class="form-label" for="field_assignments">Assignment & Project Discipline <span style="color:var(--accent-rose)">*</span></label>
+          <select id="field_assignments" class="form-select" required>
+            <option value="Always" selected>Consistently On-Time (100% submission rate)</option>
+            <option value="Mostly">Mostly On-Time (80-90% submission rate)</option>
+            <option value="Irregular">Frequent Delays / Missing Tasks (<70%)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="field_participation">Class Discussion & Teamwork <span style="color:var(--accent-rose)">*</span></label>
+          <select id="field_participation" class="form-select" required>
+            <option value="Leader">Team Leader / Highly Proactive Contributor</option>
+            <option value="Active" selected>Active Contributor & Regular Participant</option>
+            <option value="Passive">Passive Listener / Quiet in Group Tasks</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="field_pace">Conceptual Grasp & Problem Solving <span style="color:var(--accent-rose)">*</span></label>
+          <select id="field_pace" class="form-select" required>
+            <option value="Quick" selected>Quick (Absorbs new concepts fast, solves independently)</option>
+            <option value="Average">Average (Steady comprehension with guided practice)</option>
+            <option value="Remediation">Remediation (Requires step-by-step reinforcement)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid-2col" style="margin-bottom: var(--space-6);">
+        <div class="form-group">
+          <label class="form-label" for="field_teacher_rating">Overall Evaluator Performance Rating (1.0 to 5.0)</label>
+          <select id="field_teacher_rating" class="form-select">
+            <option value="5.0">⭐⭐⭐⭐⭐ 5.0 - Outstanding & Exemplary Trajectory</option>
+            <option value="4.5" selected>⭐⭐⭐⭐½ 4.5 - Highly Proficient & Consistent</option>
+            <option value="4.0">⭐⭐⭐⭐ 4.0 - Good Performance with Steady Output</option>
+            <option value="3.0">⭐⭐⭐ 3.0 - Capable with Growth Potential</option>
+            <option value="2.0">⭐⭐ 2.0 - Developing / Needs Close Guidance</option>
+            <option value="1.0">⭐ 1.0 - At Risk / Critical Support Required</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="field_teacher_notes">Instructor Behavioral Notes / Qualitative Remarks</label>
+          <input type="text" id="field_teacher_notes" class="form-input" placeholder="e.g. Demonstrates strong coding logic; active in practical lab sessions.">
+        </div>
+      </div>
+    `;
+
+    dynamicContainer.innerHTML = stageSpecificHTML + behavioralHTML;
   }
 
   // Initial Form Build & Table Render
@@ -967,40 +995,53 @@ document.addEventListener("DOMContentLoaded", () => {
     const payload = {};
     const errors = [];
 
+    // Extract Behavioral Attributes
+    const evaluatorRole = document.getElementById("field_evaluator_role")?.value || "Teacher";
+    const attentiveness = document.getElementById("field_attentiveness")?.value || "High";
+    const communication = document.getElementById("field_communication")?.value || "Good";
+    const assignments = document.getElementById("field_assignments")?.value || "Always";
+    const participation = document.getElementById("field_participation")?.value || "Active";
+    const pace = document.getElementById("field_pace")?.value || "Quick";
+    const teacherRating = parseFloat(document.getElementById("field_teacher_rating")?.value || 4.5);
+    const teacherNotes = document.getElementById("field_teacher_notes")?.value?.trim() || "";
+
+    payload.evaluator_role = evaluatorRole;
+    payload.attentiveness_level = attentiveness;
+    payload.communication_skill = communication;
+    payload.assignment_consistency = assignments;
+    payload.class_participation = participation;
+    payload.problem_solving_pace = pace;
+    payload.teacher_rating = teacherRating;
+    payload.teacher_notes = teacherNotes;
+
     if (stage === "university") {
       const major = document.getElementById("field_major")?.value;
-      const gender = document.getElementById("field_gender")?.value;
-      const age = parseInt(document.getElementById("field_age")?.value);
+      const gender = document.getElementById("field_gender")?.value || "Male";
       const prevCgpa = parseFloat(document.getElementById("field_prev_cgpa")?.value);
       const attendance = parseFloat(document.getElementById("field_attendance")?.value);
       const studyHours = parseFloat(document.getElementById("field_study_hours")?.value);
       const sleepHours = parseFloat(document.getElementById("field_sleep_hours")?.value);
-      const socialHours = parseInt(document.getElementById("field_social_hours")?.value);
 
-      if (isNaN(age) || age < 16 || age > 60) errors.push("Age must be an integer between 16 and 60.");
       if (isNaN(prevCgpa) || prevCgpa < 0.0 || prevCgpa > 4.0) errors.push("Previous CGPA must be between 0.00 and 4.00.");
       if (isNaN(attendance) || attendance < 0.0 || attendance > 100.0) errors.push("Attendance percentage must be between 0% and 100%.");
       if (isNaN(studyHours) || studyHours < 0.0 || studyHours > 16.0) errors.push("Study hours per day must be between 0 and 16 hours.");
       if (isNaN(sleepHours) || sleepHours < 2.0 || sleepHours > 14.0) errors.push("Sleep hours must be between 2 and 14 hours per night.");
-      if (isNaN(socialHours) || socialHours < 0 || socialHours > 50) errors.push("Social hours must be between 0 and 50 hours per week.");
 
       if (errors.length === 0) {
         payload.Major = major;
         payload.Gender = gender;
-        payload.Age = age;
+        payload.Age = 21;
         payload.Previous_CGPA = prevCgpa;
         payload.Attendance_Pct = attendance;
         payload.Study_Hours_Per_Day = studyHours;
         payload.Sleep_Hours = sleepHours;
-        payload.Social_Hours_Week = socialHours;
+        payload.Social_Hours_Week = 8;
       }
     } else if (stage === "matric_inter") {
       const sscI = parseInt(document.getElementById("field_ssc_i")?.value);
       const sscIi = parseInt(document.getElementById("field_ssc_ii")?.value);
       const hsscI = parseInt(document.getElementById("field_hssc_i")?.value);
       const subjectGroup = document.getElementById("field_subject_group")?.value;
-      const gender = document.getElementById("field_gender_mi")?.value;
-      const schoolType = document.getElementById("field_school_type")?.value;
       const attendanceRate = parseFloat(document.getElementById("field_attendance_rate")?.value);
       const studyHours = parseFloat(document.getElementById("field_study_hours_mi")?.value);
 
@@ -1015,8 +1056,8 @@ document.addEventListener("DOMContentLoaded", () => {
         payload.SSC_II_Marks = sscIi;
         payload.HSSC_I_Marks = hsscI;
         payload.Subject_Group = subjectGroup;
-        payload.Gender = gender;
-        payload.School_Type = schoolType;
+        payload.Gender = "Male";
+        payload.School_Type = "Private";
         payload.Attendance_Rate = attendanceRate;
         payload.Study_Hours = studyHours;
         payload.Previous_Failures = 0;
@@ -1031,18 +1072,16 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (stage === "secondary") {
       const g1 = parseInt(document.getElementById("field_g1")?.value);
       const g2 = parseInt(document.getElementById("field_g2")?.value);
-      const studytime = parseInt(document.getElementById("field_studytime")?.value);
       const absences = parseInt(document.getElementById("field_absences")?.value);
 
       if (isNaN(g1) || g1 < 0 || g1 > 20) errors.push("Period 1 Grade (G1) must be between 0 and 20.");
       if (isNaN(g2) || g2 < 0 || g2 > 20) errors.push("Period 2 Grade (G2) must be between 0 and 20.");
-      if (isNaN(studytime) || studytime < 1 || studytime > 4) errors.push("Study time scale must be between 1 and 4.");
       if (isNaN(absences) || absences < 0 || absences > 93) errors.push("Absences must be between 0 and 93 days.");
 
       if (errors.length === 0) {
         payload.G1 = g1;
         payload.G2 = g2;
-        payload.studytime = studytime;
+        payload.studytime = 2;
         payload.absences = absences;
         payload.age = 16;
         payload.Medu = 3;
@@ -1076,8 +1115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (stage === "primary") {
       const mathScore = parseFloat(document.getElementById("field_math_score")?.value);
       const readingScore = parseFloat(document.getElementById("field_reading_score")?.value);
-      const testPrep = document.getElementById("field_test_prep")?.value;
-      const gender = document.getElementById("field_gender_primary")?.value;
+      const gender = document.getElementById("field_gender_primary")?.value || "Female";
 
       if (isNaN(mathScore) || mathScore < 0.0 || mathScore > 100.0) errors.push("Math score must be between 0.0 and 100.0.");
       if (isNaN(readingScore) || readingScore < 0.0 || readingScore > 100.0) errors.push("Reading score must be between 0.0 and 100.0.");
@@ -1085,8 +1123,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (errors.length === 0) {
         payload.Enrolment_score = mathScore;
         payload.Learning_score = readingScore;
-        payload.Retention_score = testPrep === "Completed" ? 90.0 : 70.0;
-        payload.Gender_parity_score = gender === "Female" ? 90.0 : 85.0;
+        payload.Retention_score = 85.0;
+        payload.Gender_parity_score = 90.0;
         payload.School_infrastructure_score = 75.0;
         payload.Total_number_of_schools = 500;
         payload.Drinking_water = 85.0;

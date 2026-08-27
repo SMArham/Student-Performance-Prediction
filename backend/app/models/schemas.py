@@ -20,6 +20,15 @@ class UniversityPredictionRequest(BaseModel):
     Social_Hours_Week: int = Field(8, ge=0, le=50, description="Socializing/leisure hours per week")
     Gender: str = Field("Male", description="Gender (Male/Female)")
     Major: str = Field("Engineering", description="Academic Major (e.g. Engineering, Business, Computer Science)")
+    # Holistic Behavioral & Teacher Evaluation Fields
+    attentiveness_level: Optional[str] = Field("High", description="Classroom attentiveness (High/Moderate/Low)")
+    communication_skill: Optional[str] = Field("Good", description="Communication & presentation skill (Excellent/Good/Average/Needs Support)")
+    assignment_consistency: Optional[str] = Field("Always", description="Assignment consistency (Always/Mostly/Irregular)")
+    class_participation: Optional[str] = Field("Active", description="Class discussion participation (Leader/Active/Passive)")
+    problem_solving_pace: Optional[str] = Field("Quick", description="Conceptual grasp pace (Quick/Average/Remediation)")
+    teacher_rating: Optional[float] = Field(4.5, ge=1.0, le=5.0, description="Overall Teacher evaluation rating (1.0 to 5.0)")
+    evaluator_role: Optional[str] = Field("Teacher", description="Evaluator perspective (Teacher/Student)")
+    teacher_notes: Optional[str] = Field(None, description="Optional teacher observations and remarks")
 
 
 class MatricInterPredictionRequest(BaseModel):
@@ -39,6 +48,15 @@ class MatricInterPredictionRequest(BaseModel):
     Extra_Tuition: str = Field("No", description="Enrolled in extra tuition (Yes/No)")
     School_Type: str = Field("Private", description="School Type (Public/Private)")
     Co_Curricular_Activities: str = Field("Yes", description="Co-curricular participation (Yes/No)")
+    # Holistic Behavioral & Teacher Evaluation Fields
+    attentiveness_level: Optional[str] = Field("High", description="Classroom attentiveness (High/Moderate/Low)")
+    communication_skill: Optional[str] = Field("Good", description="Communication & presentation skill (Excellent/Good/Average/Needs Support)")
+    assignment_consistency: Optional[str] = Field("Always", description="Assignment consistency (Always/Mostly/Irregular)")
+    class_participation: Optional[str] = Field("Active", description="Class discussion participation (Leader/Active/Passive)")
+    problem_solving_pace: Optional[str] = Field("Quick", description="Conceptual grasp pace (Quick/Average/Remediation)")
+    teacher_rating: Optional[float] = Field(4.5, ge=1.0, le=5.0, description="Overall Teacher evaluation rating (1.0 to 5.0)")
+    evaluator_role: Optional[str] = Field("Teacher", description="Evaluator perspective (Teacher/Student)")
+    teacher_notes: Optional[str] = Field(None, description="Optional teacher observations and remarks")
 
 
 class SecondaryPredictionRequest(BaseModel):
@@ -74,6 +92,15 @@ class SecondaryPredictionRequest(BaseModel):
     higher: str = Field("yes", description="Wants to take higher education (yes/no)")
     internet: str = Field("yes", description="Internet access at home (yes/no)")
     romantic: str = Field("no", description="In a romantic relationship (yes/no)")
+    # Holistic Behavioral & Teacher Evaluation Fields
+    attentiveness_level: Optional[str] = Field("High", description="Classroom attentiveness (High/Moderate/Low)")
+    communication_skill: Optional[str] = Field("Good", description="Communication & presentation skill (Excellent/Good/Average/Needs Support)")
+    assignment_consistency: Optional[str] = Field("Always", description="Assignment consistency (Always/Mostly/Irregular)")
+    class_participation: Optional[str] = Field("Active", description="Class discussion participation (Leader/Active/Passive)")
+    problem_solving_pace: Optional[str] = Field("Quick", description="Conceptual grasp pace (Quick/Average/Remediation)")
+    teacher_rating: Optional[float] = Field(4.5, ge=1.0, le=5.0, description="Overall Teacher evaluation rating (1.0 to 5.0)")
+    evaluator_role: Optional[str] = Field("Teacher", description="Evaluator perspective (Teacher/Student)")
+    teacher_notes: Optional[str] = Field(None, description="Optional teacher observations and remarks")
 
 
 class PrimaryPredictionRequest(BaseModel):
@@ -87,6 +114,15 @@ class PrimaryPredictionRequest(BaseModel):
     Electricity: float = Field(80.0, ge=0.0, le=100.0, description="Electricity facility %")
     Toilet: float = Field(90.0, ge=0.0, le=100.0, description="Sanitation/toilet facility %")
     Province: str = Field("Punjab", description="Province / Administrative division")
+    # Holistic Behavioral & Teacher Evaluation Fields
+    attentiveness_level: Optional[str] = Field("High", description="Classroom attentiveness (High/Moderate/Low)")
+    communication_skill: Optional[str] = Field("Good", description="Communication & presentation skill (Excellent/Good/Average/Needs Support)")
+    assignment_consistency: Optional[str] = Field("Always", description="Assignment consistency (Always/Mostly/Irregular)")
+    class_participation: Optional[str] = Field("Active", description="Class discussion participation (Leader/Active/Passive)")
+    problem_solving_pace: Optional[str] = Field("Quick", description="Conceptual grasp pace (Quick/Average/Remediation)")
+    teacher_rating: Optional[float] = Field(4.5, ge=1.0, le=5.0, description="Overall Teacher evaluation rating (1.0 to 5.0)")
+    evaluator_role: Optional[str] = Field("Teacher", description="Evaluator perspective (Teacher/Student)")
+    teacher_notes: Optional[str] = Field(None, description="Optional teacher observations and remarks")
 
 
 # ------------------------------------------------------------------------------
