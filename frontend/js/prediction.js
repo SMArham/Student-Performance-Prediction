@@ -484,7 +484,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-grid-3col">
           <div class="form-group">
             <label class="form-label" for="f_uni_cgpa">Current / Baseline CGPA (0.00 - 4.00) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" step="0.01" min="0.0" max="4.0" id="f_uni_cgpa" class="form-input" value="3.55" required>
+            <input type="number" step="0.01" min="0.0" max="4.0" id="f_uni_cgpa" class="form-input" placeholder="e.g. 3.55" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_uni_semester">Current Semester</label>
@@ -501,21 +501,21 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
           <div class="form-group">
             <label class="form-label" for="f_uni_credits">Enrolled Credit Hours</label>
-            <input type="number" id="f_uni_credits" class="form-input" min="3" max="24" value="15">
+            <input type="number" id="f_uni_credits" class="form-input" min="3" max="24" placeholder="e.g. 15">
           </div>
         </div>
         <div class="form-grid-3col" style="margin-top: var(--space-4);">
           <div class="form-group">
             <label class="form-label" for="f_uni_att">Lecture Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_uni_att" class="form-input" min="0" max="100" value="88" required>
+            <input type="number" id="f_uni_att" class="form-input" min="0" max="100" placeholder="e.g. 85" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_uni_midterm">Midterm Exam Average (%)</label>
-            <input type="number" id="f_uni_midterm" class="form-input" min="0" max="100" value="82">
+            <input type="number" id="f_uni_midterm" class="form-input" min="0" max="100" placeholder="e.g. 80">
           </div>
           <div class="form-group">
             <label class="form-label" for="f_uni_backlogs">Past Backlogs / Failed Courses</label>
-            <input type="number" id="f_uni_backlogs" class="form-input" min="0" max="10" value="0">
+            <input type="number" id="f_uni_backlogs" class="form-input" min="0" max="10" placeholder="e.g. 0">
           </div>
         </div>
       `;
@@ -534,17 +534,17 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
           <div class="form-group">
             <label class="form-label" for="f_inter_ssc">Matric (10th) Overall Marks (out of 1100) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_inter_ssc" class="form-input" min="0" max="1100" value="940" required>
+            <input type="number" id="f_inter_ssc" class="form-input" min="0" max="1100" placeholder="e.g. 940" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_inter_hssc1">1st Year (11th) Marks (out of 550) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_inter_hssc1" class="form-input" min="0" max="550" value="440" required>
+            <input type="number" id="f_inter_hssc1" class="form-input" min="0" max="550" placeholder="e.g. 440" required>
           </div>
         </div>
         <div class="form-grid-3col" style="margin-top: var(--space-4);">
           <div class="form-group">
             <label class="form-label" for="f_inter_att">College Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_inter_att" class="form-input" min="0" max="100" value="85" required>
+            <input type="number" id="f_inter_att" class="form-input" min="0" max="100" placeholder="e.g. 85" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_inter_college_type">Institution Type</label>
@@ -568,15 +568,15 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-grid-3col">
           <div class="form-group">
             <label class="form-label" for="f_matric_ssc1">9th Class (SSC-I) Marks (out of 550) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_matric_ssc1" class="form-input" min="0" max="550" value="465" required>
+            <input type="number" id="f_matric_ssc1" class="form-input" min="0" max="550" placeholder="e.g. 465" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_matric_expected">Expected 10th (SSC-II) Target Marks</label>
-            <input type="number" id="f_matric_expected" class="form-input" min="0" max="550" value="480">
+            <input type="number" id="f_matric_expected" class="form-input" min="0" max="550" placeholder="e.g. 480">
           </div>
           <div class="form-group">
             <label class="form-label" for="f_matric_att">School Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_matric_att" class="form-input" min="0" max="100" value="90" required>
+            <input type="number" id="f_matric_att" class="form-input" min="0" max="100" placeholder="e.g. 90" required>
           </div>
         </div>
         <div class="form-grid-2col" style="margin-top: var(--space-4);">
@@ -604,15 +604,15 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-grid-3col">
           <div class="form-group">
             <label class="form-label" for="f_sec_g1">Period 1 Grade / Quiz Average (out of 20) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_sec_g1" class="form-input" min="0" max="20" value="16" required>
+            <input type="number" id="f_sec_g1" class="form-input" min="0" max="20" placeholder="e.g. 16" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_sec_g2">Period 2 Grade / Midterm (out of 20) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_sec_g2" class="form-input" min="0" max="20" value="17" required>
+            <input type="number" id="f_sec_g2" class="form-input" min="0" max="20" placeholder="e.g. 17" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_sec_absences">Class Absences (Days) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_sec_absences" class="form-input" min="0" max="50" value="3" required>
+            <input type="number" id="f_sec_absences" class="form-input" min="0" max="50" placeholder="e.g. 3" required>
           </div>
         </div>
       `;
@@ -621,15 +621,15 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-grid-3col">
           <div class="form-group">
             <label class="form-label" for="f_prim_math">Basic Mathematics Score (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_prim_math" class="form-input" min="0" max="100" value="86" required>
+            <input type="number" id="f_prim_math" class="form-input" min="0" max="100" placeholder="e.g. 86" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_prim_read">Reading & Literacy Score (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_prim_read" class="form-input" min="0" max="100" value="90" required>
+            <input type="number" id="f_prim_read" class="form-input" min="0" max="100" placeholder="e.g. 90" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_prim_att">Attendance Track (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_prim_att" class="form-input" min="0" max="100" value="94" required>
+            <input type="number" id="f_prim_att" class="form-input" min="0" max="100" placeholder="e.g. 94" required>
           </div>
         </div>
       `;
@@ -644,7 +644,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
         <div class="form-group">
           <label class="form-label" for="f_study_hours">Daily Independent Study Hours <span style="color:var(--accent-rose)">*</span></label>
-          <input type="number" step="0.5" id="f_study_hours" class="form-input" min="0" max="16" value="4.5" required>
+          <input type="number" step="0.5" id="f_study_hours" class="form-input" min="0" max="16" placeholder="e.g. 4.5" required>
         </div>
         <div class="form-group">
           <label class="form-label" for="f_revision_freq">Revision Frequency</label>
@@ -709,15 +709,15 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="form-grid-3col">
         <div class="form-group">
           <label class="form-label" for="f_self_motivation">Academic Motivation (1 - 10)</label>
-          <input type="number" id="f_self_motivation" class="form-input" min="1" max="10" value="9">
+          <input type="number" id="f_self_motivation" class="form-input" min="1" max="10" placeholder="e.g. 9">
         </div>
         <div class="form-group">
           <label class="form-label" for="f_self_confidence">Exam Confidence (1 - 10)</label>
-          <input type="number" id="f_self_confidence" class="form-input" min="1" max="10" value="8">
+          <input type="number" id="f_self_confidence" class="form-input" min="1" max="10" placeholder="e.g. 8">
         </div>
         <div class="form-group">
           <label class="form-label" for="f_self_consistency">Study Consistency (1 - 10)</label>
-          <input type="number" id="f_self_consistency" class="form-input" min="1" max="10" value="9">
+          <input type="number" id="f_self_consistency" class="form-input" min="1" max="10" placeholder="e.g. 9">
         </div>
       </div>
     `;
@@ -1377,12 +1377,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 11. TEACHER & INSTRUCTOR SUITE (3 MODES)
   // ============================================================================
   let teacherStudentStage = "university";
-  let teacherIndividualSubjects = [
-    { id: "tsub-1", name: "Data Structures & Algorithms", category: "Core Science", term: "Semester 4", obtained: 86, max: 100 },
-    { id: "tsub-2", name: "Computer Organization & Architecture", category: "Core Science", term: "Semester 4", obtained: 80, max: 100 },
-    { id: "tsub-3", name: "Operating Systems Lab", category: "Lab / Practical", term: "Semester 4", obtained: 92, max: 100 },
-    { id: "tsub-4", name: "Technical Writing & Presentation", category: "Humanities", term: "Semester 4", obtained: 84, max: 100 }
-  ];
+  let teacherIndividualSubjects = [];
 
   // Teacher Subject Table Elements
   const tSubjectsTableBody = document.getElementById("t-subjects-table-body");
