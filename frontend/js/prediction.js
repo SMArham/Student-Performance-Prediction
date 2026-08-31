@@ -1376,6 +1376,135 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================================
   // 11. TEACHER & INSTRUCTOR SUITE (3 MODES)
   // ============================================================================
+  let teacherStudentStage = "university";
+  let teacherIndividualSubjects = [
+    { id: "tsub-1", name: "Data Structures & Algorithms", category: "Core Science", term: "Semester 4", obtained: 86, max: 100 },
+    { id: "tsub-2", name: "Computer Organization & Architecture", category: "Core Science", term: "Semester 4", obtained: 80, max: 100 },
+    { id: "tsub-3", name: "Operating Systems Lab", category: "Lab / Practical", term: "Semester 4", obtained: 92, max: 100 },
+    { id: "tsub-4", name: "Technical Writing & Presentation", category: "Humanities", term: "Semester 4", obtained: 84, max: 100 }
+  ];
+
+  // Teacher Subject Table Elements
+  const tSubjectsTableBody = document.getElementById("t-subjects-table-body");
+  const tKpiTotalSubjects = document.getElementById("t-kpi-total-subjects");
+  const tKpiTotalMarks = document.getElementById("t-kpi-total-marks");
+  const tKpiAggregatePct = document.getElementById("t-kpi-aggregate-pct");
+  const tKpiCalcGpa = document.getElementById("t-kpi-calc-gpa");
+  const btnTAddSubject = document.getElementById("btn-t-add-subject");
+  const tStudentStageSelect = document.getElementById("t_student_stage");
+
+  // Teacher Student Class Modal Elements
+  const teacherStudentModal = document.getElementById("teacher-student-modal");
+  const tStudentEntryForm = document.getElementById("t-student-entry-form");
+  const tModalRoll = document.getElementById("t-modal-roll");
+  const tModalName = document.getElementById("t-modal-name");
+  const tModalAtt = document.getElementById("t-modal-att");
+  const tModalTest = document.getElementById("t-modal-test");
+  const tModalAssign = document.getElementById("t-modal-assign");
+  const tModalGrade = document.getElementById("t-modal-grade");
+  const tStudentEditIdx = document.getElementById("t-student-edit-idx");
+  const btnCloseTStudentModal = document.getElementById("btn-close-t-student-modal");
+  const btnCancelTStudentModal = document.getElementById("btn-cancel-t-student-modal");
+
+  function renderTeacherSubjectsTable() {
+    if (!tSubjectsTableBody) return;
+    if (teacherIndividualSubjects.length === 0) {
+      tSubjectsTableBody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: var(--space-4);">
+            No course entries logged yet. Click "+ Add Course" to register student marks.
+          </td>
+        </tr>
+      `;
+      updateTeacherSubjectKPIs([]);
+      return;
+    }
+
+    tSubjectsTableBody.innerHTML = teacherIndividualSubjects
+      .map((sub, idx) => {
+        const pct = sub.max > 0 ? ((sub.obtained / sub.max) * 100).toFixed(1) : "0.0";
+        const grade = calculateSubjectGrade(parseFloat(pct), teacherStudentStage);
+        return `
+        <tr>
+          <td style="font-weight: 600; color: var(--text-primary);">${sub.name}</td>
+          <td><span class="badge badge-info" style="font-size:11px;">${sub.category || "Core"}</span></td>
+          <td style="color: var(--text-secondary); font-size:12px;">${sub.term || "Current"}</td>
+          <td style="font-weight: 700; color: var(--text-primary);">${sub.obtained}</td>
+          <td style="color: var(--text-muted);">${sub.max}</td>
+          <td style="font-weight: 600; color: ${parseFloat(pct) >= 80 ? "var(--accent-emerald)" : "var(--accent-amber)"};">${pct}%</td>
+          <td><span class="badge ${parseFloat(pct) >= 80 ? "badge-success" : "badge-warning"}">${grade}</span></td>
+          <td style="text-align: right;">
+            <button type="button" class="subject-action-btn delete" onclick="window.deleteTeacherSubject(${idx})">🗑️</button>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+
+    updateTeacherSubjectKPIs(teacherIndividualSubjects);
+  }
+
+  function updateTeacherSubjectKPIs(subjects) {
+    if (tKpiTotalSubjects) tKpiTotalSubjects.innerText = `${subjects.length}`;
+    if (subjects.length === 0) {
+      if (tKpiTotalMarks) tKpiTotalMarks.innerText = "0 / 0";
+      if (tKpiAggregatePct) tKpiAggregatePct.innerText = "0.0%";
+      if (tKpiCalcGpa) tKpiCalcGpa.innerText = teacherStudentStage === "university" ? "0.00 GPA" : "0.0%";
+      return;
+    }
+
+    const totalObtained = subjects.reduce((sum, s) => sum + (parseFloat(s.obtained) || 0), 0);
+    const totalMax = subjects.reduce((sum, s) => sum + (parseFloat(s.max) || 0), 0);
+    const avgPct = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+
+    if (tKpiTotalMarks) tKpiTotalMarks.innerText = `${totalObtained.toFixed(1)} / ${totalMax}`;
+    if (tKpiAggregatePct) tKpiAggregatePct.innerText = `${avgPct.toFixed(1)}%`;
+
+    if (tKpiCalcGpa) {
+      if (teacherStudentStage === "university") {
+        const calcGpa = (avgPct / 100) * 4.0;
+        tKpiCalcGpa.innerText = `${calcGpa.toFixed(2)} GPA`;
+      } else {
+        tKpiCalcGpa.innerText = `${avgPct.toFixed(1)}% Avg`;
+      }
+    }
+  }
+
+  window.deleteTeacherSubject = (idx) => {
+    teacherIndividualSubjects.splice(idx, 1);
+    renderTeacherSubjectsTable();
+    showToast("Course record removed.", "info");
+  };
+
+  if (btnTAddSubject) {
+    btnTAddSubject.addEventListener("click", () => {
+      const name = prompt("Enter Course / Subject Name:", "Database Management Systems");
+      if (!name) return;
+      const obtained = parseFloat(prompt("Obtained Marks:", "85")) || 85;
+      const max = parseFloat(prompt("Total / Max Marks:", "100")) || 100;
+      teacherIndividualSubjects.push({
+        id: `tsub-${Date.now()}`,
+        name,
+        category: "Core Science",
+        term: "Current Term",
+        obtained,
+        max
+      });
+      renderTeacherSubjectsTable();
+      showToast("Course record added to student profile.", "success");
+    });
+  }
+
+  if (tStudentStageSelect) {
+    tStudentStageSelect.addEventListener("change", (e) => {
+      teacherStudentStage = e.target.value;
+      const stagePresets = defaultSubjectsStore[teacherStudentStage] || defaultSubjectsStore.university;
+      teacherIndividualSubjects = JSON.parse(JSON.stringify(stagePresets));
+      renderTeacherSubjectsTable();
+      showToast(`Adapted student courses for ${teacherStudentStage.toUpperCase()}`, "info");
+    });
+  }
+
   function switchTeacherTool(tool) {
     currentTeacherTool = tool;
     const tools = [
@@ -1393,6 +1522,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (t.view) t.view.style.display = "none";
       }
     });
+
+    if (tool === "individual") {
+      renderTeacherSubjectsTable();
+    }
   }
 
   if (toolBtnIndividual) toolBtnIndividual.addEventListener("click", () => switchTeacherTool("individual"));
@@ -1404,30 +1537,52 @@ document.addEventListener("DOMContentLoaded", () => {
     teacherIndividualForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const sName = document.getElementById("t_student_name")?.value || "Student";
-      const att = parseFloat(document.getElementById("t_attendance")?.value || 84);
-      const testAvg = parseFloat(document.getElementById("t_test_avg")?.value || 78);
+      const sId = document.getElementById("t_student_id")?.value || "ST-01";
+      const att = parseFloat(document.getElementById("t_attendance")?.value || 88);
+      const testAvg = parseFloat(document.getElementById("t_test_avg")?.value || 82);
+      const assignAvg = parseFloat(document.getElementById("t_assign_avg")?.value || 90);
       const rating = parseFloat(document.getElementById("t_rating")?.value || 4.0);
-      const stage = document.getElementById("t_student_stage")?.value || "university";
+      const attentive = document.getElementById("t_attentive")?.value || "High";
+      const notes = document.getElementById("t_notes")?.value || "";
 
-      const predictedAvg = +(att * 0.3 + testAvg * 0.5 + rating * 4).toFixed(1);
-      const isRisk = predictedAvg < 65;
+      // Calculate aggregate from courses
+      const totalObtained = teacherIndividualSubjects.reduce((sum, s) => sum + (s.obtained || 0), 0);
+      const totalMax = teacherIndividualSubjects.reduce((sum, s) => sum + (s.max || 100), 0);
+      const courseAvg = totalMax > 0 ? (totalObtained / totalMax) * 100 : testAvg;
+
+      const compositeScore = +(courseAvg * 0.4 + testAvg * 0.3 + att * 0.2 + (rating / 5) * 10).toFixed(1);
+      const isRisk = compositeScore < 65 || att < 70;
+      const isHighAchiever = compositeScore >= 80 && att >= 85;
+
+      let formattedScore = `${compositeScore}%`;
+      if (teacherStudentStage === "university") {
+        const calcGpa = Math.min(4.0, Math.max(1.0, +((compositeScore / 100) * 4.0).toFixed(2)));
+        formattedScore = `${calcGpa.toFixed(2)} CGPA (${compositeScore}%)`;
+      }
 
       renderTeacherResults({
-        title: `Diagnostic: ${sName}`,
-        classAvg: `${predictedAvg}%`,
-        passRate: isRisk ? "60% (At Risk)" : "95% (On Track)",
+        title: `Comprehensive Diagnostic: ${sName} (${sId}) — ${teacherStudentStage.toUpperCase()}`,
+        classAvg: formattedScore,
+        passRate: isRisk ? "65% (Intervention Required)" : "98% (High Pass Probability)",
         highRisk: isRisk ? 1 : 0,
-        medRisk: !isRisk && predictedAvg < 75 ? 1 : 0,
-        lowRisk: predictedAvg >= 75 ? 1 : 0,
-        atRiskList: isRisk ? [`${sName} — Predicted Score: ${predictedAvg}% (Requires assignment review)`] : [],
-        topList: predictedAvg >= 80 ? [`${sName} — Exceptional ${predictedAvg}% diagnostic score`] : [],
-        recommendations: `Provide targeted problem-solving worksheets and reinforce regular attendance.`
+        medRisk: !isRisk && compositeScore < 75 ? 1 : 0,
+        lowRisk: isRisk ? 0 : 1,
+        atRiskList: isRisk
+          ? [`${sName} (${sId}) — Score: ${compositeScore}%, Attendance: ${att}% | Flag: Quizzes & homework require immediate supervision.`]
+          : [],
+        topList: isHighAchiever
+          ? [`${sName} (${sId}) — Gradebook Avg: ${courseAvg.toFixed(1)}%, Attendance: ${att}% | Demonstrated strong ${attentive.toLowerCase()} focus.`]
+          : [],
+        recommendations: notes
+          ? `Instructor Note: "${notes}" — AI Recommendation: Provide guided practice problem sheets and maintain weekly office-hour check-ins.`
+          : `Maintain current academic trajectory; encourage leadership in group projects and technical presentations.`
       });
-      showToast(`AI diagnostic completed for ${sName}`, "success");
+
+      showToast(`AI Diagnostic Generated for ${sName}`, "success");
     });
   }
 
-  // Teacher Tool 2: Class Roster CRUD
+  // Teacher Tool 2: Class Roster CRUD (Modal-based)
   function renderClassRoster() {
     if (!classRosterBody) return;
     classRosterBody.innerHTML = classRoster
@@ -1441,6 +1596,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${st.assignment}%</td>
         <td><span class="badge ${st.midterm.startsWith("A") ? "badge-success" : "badge-info"}">${st.midterm}</span></td>
         <td style="text-align: right;">
+          <button type="button" class="subject-action-btn" onclick="window.editClassStudent(${idx})">✏️ Edit</button>
           <button type="button" class="subject-action-btn delete" onclick="window.deleteClassStudent(${idx})">🗑️</button>
         </td>
       </tr>
@@ -1450,26 +1606,65 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   window.deleteClassStudent = (idx) => {
+    if (!confirm("Remove student from class roster?")) return;
     classRoster.splice(idx, 1);
     renderClassRoster();
+    showToast("Student removed from roster.", "info");
+  };
+
+  window.editClassStudent = (idx) => {
+    const st = classRoster[idx];
+    if (!st) return;
+    if (tStudentEditIdx) tStudentEditIdx.value = idx;
+    if (tModalRoll) tModalRoll.value = st.roll;
+    if (tModalName) tModalName.value = st.name;
+    if (tModalAtt) tModalAtt.value = st.attendance;
+    if (tModalTest) tModalTest.value = st.test;
+    if (tModalAssign) tModalAssign.value = st.assignment;
+    if (tModalGrade) tModalGrade.value = st.midterm;
+
+    const modalTitle = document.getElementById("t-student-modal-title");
+    if (modalTitle) modalTitle.innerText = "✏️ Edit Class Student";
+    teacherStudentModal?.classList.add("active");
   };
 
   if (btnAddClassStudent) {
     btnAddClassStudent.addEventListener("click", () => {
-      const name = prompt("Enter Student Name:", "New Student");
-      if (!name) return;
-      const att = parseInt(prompt("Attendance % (0-100):", "85")) || 85;
-      const test = parseInt(prompt("Quiz/Test % (0-100):", "80")) || 80;
-      classRoster.push({
-        roll: `0${classRoster.length + 1}`,
-        name,
-        attendance: att,
-        test: test,
-        assignment: 85,
-        midterm: test >= 80 ? "A" : "B"
-      });
+      if (tStudentEntryForm) tStudentEntryForm.reset();
+      if (tStudentEditIdx) tStudentEditIdx.value = "";
+      if (tModalRoll) tModalRoll.value = `0${classRoster.length + 1}`;
+      const modalTitle = document.getElementById("t-student-modal-title");
+      if (modalTitle) modalTitle.innerText = "➕ Add Student to Class Roster";
+      teacherStudentModal?.classList.add("active");
+    });
+  }
+
+  if (btnCloseTStudentModal) btnCloseTStudentModal.addEventListener("click", () => teacherStudentModal?.classList.remove("active"));
+  if (btnCancelTStudentModal) btnCancelTStudentModal.addEventListener("click", () => teacherStudentModal?.classList.remove("active"));
+
+  if (tStudentEntryForm) {
+    tStudentEntryForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const roll = tModalRoll?.value.trim() || "01";
+      const name = tModalName?.value.trim();
+      const attendance = parseInt(tModalAtt?.value || 85);
+      const test = parseInt(tModalTest?.value || 80);
+      const assignment = parseInt(tModalAssign?.value || 85);
+      const midterm = tModalGrade?.value || "A";
+      const editIdx = tStudentEditIdx?.value;
+
+      if (!name) return showToast("Please specify student name.", "error");
+
+      if (editIdx !== "" && editIdx !== null && !isNaN(parseInt(editIdx))) {
+        classRoster[parseInt(editIdx)] = { roll, name, attendance, test, assignment, midterm };
+        showToast("Student roster entry updated.", "success");
+      } else {
+        classRoster.push({ roll, name, attendance, test, assignment, midterm });
+        showToast("Student added to class roster.", "success");
+      }
+
       renderClassRoster();
-      showToast("Student added to class roster.", "success");
+      teacherStudentModal?.classList.remove("active");
     });
   }
 
