@@ -1573,6 +1573,28 @@ document.addEventListener("DOMContentLoaded", () => {
           : `Maintain current academic trajectory; encourage leadership in group projects and technical presentations.`
       });
 
+      // Save Teacher Diagnostic into History Ledger
+      savePredictionToHistory(
+        {
+          score: formattedScore,
+          formatted_score: formattedScore,
+          grade: isHighAchiever ? "Grade A+" : isRisk ? "Grade D" : "Grade B",
+          risk_level: isRisk ? "high" : "low",
+          status_badge: isRisk ? "Intervention Needed" : "Exemplary",
+          status_color: isRisk ? "badge-danger" : "badge-success",
+          recommendations: notes || "Maintain steady academic momentum and weekly revision routine."
+        },
+        {
+          Student_Name: sName,
+          Student_ID: sId,
+          Attendance_Pct: att,
+          Quizzes_Avg: testAvg,
+          Coursework_Avg: `${courseAvg.toFixed(1)}%`,
+          Attentiveness: attentive,
+          Teacher_Rating: `${rating} / 5.0`
+        }
+      );
+
       showToast(`AI Diagnostic Generated for ${sName}`, "success");
     });
   }
@@ -1858,24 +1880,29 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================================
   function savePredictionToHistory(result, payload) {
     try {
+      const isLowRisk = result.risk_level === "LOW" || result.risk_level === "low";
+      const isMedRisk = result.risk_level === "MEDIUM" || result.risk_level === "medium";
+
       const historyItem = {
-        id: `pred-${Date.now()}`,
+        id: `pred-${Date.now().toString().slice(-6)}`,
         timestamp: new Date().toISOString(),
-        role: currentRole,
-        stage: currentStage,
-        score: result.score,
-        formatted_score: result.formatted_score,
-        grade: result.grade,
-        risk_level: result.risk_level,
-        attendance: payload.Attendance_Pct || payload.Attendance_Rate || 85,
-        study_hours: payload.study_hours || 4.5,
-        subjects_count: (subjectsStore[currentStage] || []).length
+        role: currentRole || "student",
+        stage: currentStage || "university",
+        score: result.formatted_score || `${result.score}`,
+        grade: result.grade || "Grade A",
+        status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Attention Needed"),
+        status_color: result.status_color || (isLowRisk ? "badge-success" : isMedRisk ? "badge-info" : "badge-danger"),
+        payload: payload || {},
+        recommendations: result.recommendation || (Array.isArray(result.recommendations) ? result.recommendations.join(" ") : result.recommendations) || "Maintain steady academic momentum and weekly revision routine."
       };
 
-      const existingHistory = JSON.parse(localStorage.getItem("edumetrics_prediction_history") || "[]");
+      const existingHistory = JSON.parse(localStorage.getItem("edumetrics_prediction_history_v2") || localStorage.getItem("edumetrics_prediction_history") || "[]");
       existingHistory.unshift(historyItem);
-      localStorage.setItem("edumetrics_prediction_history", JSON.stringify(existingHistory.slice(0, 50)));
-    } catch (e) {}
+      localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(existingHistory.slice(0, 100)));
+      localStorage.setItem("edumetrics_prediction_history", JSON.stringify(existingHistory.slice(0, 100)));
+    } catch (e) {
+      console.warn("History save error:", e);
+    }
   }
 
   // ============================================================================

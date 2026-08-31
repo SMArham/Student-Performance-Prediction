@@ -641,39 +641,53 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ----------------------------------------------------------------------------
   // 5. Prediction History Ledger & Diagnostics Detail
   // ----------------------------------------------------------------------------
-  function loadPredictionHistory() {
+  async function loadPredictionHistory() {
     try {
-      const stored = localStorage.getItem("edumetrics_prediction_history_v2");
-      if (stored) {
-        localPredictionHistory = JSON.parse(stored);
-      } else {
-        // Sample default entries
-        localPredictionHistory = [
-          {
-            id: "pred-sample-1",
-            timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
-            role: "student",
-            stage: "university",
-            score: "3.75 CGPA",
-            status_badge: "Exemplary",
-            status_color: "badge-success",
-            payload: { Previous_CGPA: 3.55, Attendance_Pct: 88, Study_Hours: 4.5, Attentiveness: "High" },
-            recommendations: "Consistently high performance. Eligible for honors recognition."
-          },
-          {
-            id: "pred-sample-2",
-            timestamp: new Date(Date.now() - 3600000 * 72).toISOString(),
-            role: "teacher",
-            stage: "university",
-            score: "3.40 GPA",
-            status_badge: "Proficient",
-            status_color: "badge-info",
-            payload: { Attendance: 84, Test_Avg: 78, Teacher_Rating: "4.0" },
-            recommendations: "Strong conceptual understanding; reinforce weekly assignment submission."
+      const storedV2 = localStorage.getItem("edumetrics_prediction_history_v2");
+      const storedV1 = localStorage.getItem("edumetrics_prediction_history");
+      let list = [];
+
+      if (storedV2) {
+        list = JSON.parse(storedV2);
+      } else if (storedV1) {
+        list = JSON.parse(storedV1);
+      }
+
+      // Also merge any remote recent predictions if available from dashboard data
+      if (dashboardData?.recent_predictions && Array.isArray(dashboardData.recent_predictions)) {
+        dashboardData.recent_predictions.forEach((remote) => {
+          const exists = list.some((l) => l.id === remote.id);
+          if (!exists) {
+            list.push({
+              id: remote.id || `pred-${Date.now()}`,
+              timestamp: remote.created_at || new Date().toISOString(),
+              role: "student",
+              stage: remote.stage || currentStage,
+              score: remote.formatted_score || `${remote.predicted_score}`,
+              status_badge: remote.status_badge || "Evaluated",
+              status_color: remote.status_color || "badge-success",
+              payload: remote.features || {},
+              recommendations: remote.recommendation || "Model forecast evaluated."
+            });
           }
-        ];
+        });
+      }
+
+      localPredictionHistory = list;
+
+      // Update Latest AI Prediction KPI if history exists
+      if (localPredictionHistory.length > 0) {
+        const latest = localPredictionHistory[0];
+        if (kpiPredictedGpa && latest.score) {
+          kpiPredictedGpa.innerText = latest.score.split(" ")[0];
+        }
+        if (kpiStatusBadge && latest.status_color) {
+          kpiStatusBadge.className = `badge ${latest.status_color}`;
+          if (kpiStatusText) kpiStatusText.innerText = latest.status_badge || "Evaluated";
+        }
       }
     } catch (e) {
+      console.warn("Error loading history:", e);
       localPredictionHistory = [];
     }
 
