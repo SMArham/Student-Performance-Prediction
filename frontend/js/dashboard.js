@@ -750,6 +750,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="window.viewDiagnosticSnapshot('${item.id}')">
               👁️ View
             </button>
+            <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="window.editDiagnosticRecord('${item.id}')">
+              ✏️ Edit
+            </button>
             <button type="button" class="btn btn-danger btn-sm" style="padding: 3px 8px; font-size: 11px;" onclick="window.deleteHistoryRecord('${item.id}')">
               🗑️
             </button>
@@ -789,10 +792,65 @@ document.addEventListener("DOMContentLoaded", async () => {
     historyDetailModal.classList.add("active");
   };
 
+  // Edit History Record Flow
+  const editHistoryModal = document.getElementById("edit-history-modal");
+  const editHistoryForm = document.getElementById("edit-history-form");
+  const editHistoryId = document.getElementById("edit-history-id");
+  const editHistoryScore = document.getElementById("edit-history-score");
+  const editHistoryStatus = document.getElementById("edit-history-status");
+  const editHistoryNotes = document.getElementById("edit-history-notes");
+  const btnCloseEditModal = document.getElementById("btn-close-edit-history-modal");
+  const btnCancelEditModal = document.getElementById("btn-cancel-edit-history");
+
+  window.editDiagnosticRecord = (id) => {
+    const item = localPredictionHistory.find((h) => h.id === id);
+    if (!item || !editHistoryModal) return;
+
+    if (editHistoryId) editHistoryId.value = item.id;
+    if (editHistoryScore) editHistoryScore.value = item.score || "";
+    if (editHistoryStatus) editHistoryStatus.value = item.status_badge || "Exemplary";
+    if (editHistoryNotes) editHistoryNotes.value = item.recommendations || "";
+
+    editHistoryModal.classList.add("active");
+  };
+
+  if (btnCloseEditModal) btnCloseEditModal.addEventListener("click", () => editHistoryModal?.classList.remove("active"));
+  if (btnCancelEditModal) btnCancelEditModal.addEventListener("click", () => editHistoryModal?.classList.remove("active"));
+  if (editHistoryModal) {
+    editHistoryModal.addEventListener("click", (e) => {
+      if (e.target === editHistoryModal) editHistoryModal.classList.remove("active");
+    });
+  }
+
+  if (editHistoryForm) {
+    editHistoryForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const id = editHistoryId?.value;
+      const score = editHistoryScore?.value.trim();
+      const status = editHistoryStatus?.value;
+      const notes = editHistoryNotes?.value.trim();
+
+      const itemIdx = localPredictionHistory.findIndex((h) => h.id === id);
+      if (itemIdx === -1) return;
+
+      localPredictionHistory[itemIdx].score = score;
+      localPredictionHistory[itemIdx].status_badge = status;
+      localPredictionHistory[itemIdx].status_color = status === "Exemplary" ? "badge-success" : status === "Proficient" ? "badge-info" : "badge-warning";
+      localPredictionHistory[itemIdx].recommendations = notes;
+
+      localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(localPredictionHistory));
+      localStorage.setItem("edumetrics_prediction_history", JSON.stringify(localPredictionHistory));
+      renderHistoryLedger();
+      editHistoryModal?.classList.remove("active");
+      showToast("Historical record updated successfully!", "success");
+    });
+  }
+
   window.deleteHistoryRecord = (id) => {
     if (!confirm("Are you sure you want to delete this historical prediction record?")) return;
     localPredictionHistory = localPredictionHistory.filter((h) => h.id !== id);
     localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(localPredictionHistory));
+    localStorage.setItem("edumetrics_prediction_history", JSON.stringify(localPredictionHistory));
     renderHistoryLedger();
     showToast("Record removed from history ledger.", "info");
   };
@@ -802,6 +860,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (historyDetailModal) {
     historyDetailModal.addEventListener("click", (e) => {
       if (e.target === historyDetailModal) historyDetailModal.classList.remove("active");
+    });
+  }
+
+  // Chart Image Exporter (PNG)
+  const btnDownloadProgressionPng = document.getElementById("btn-download-progression-png");
+  if (btnDownloadProgressionPng) {
+    btnDownloadProgressionPng.addEventListener("click", () => {
+      const canvas = document.getElementById("gpaProgressionChart");
+      if (!canvas) return showToast("Chart not loaded yet.", "error");
+
+      const imageURI = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `academic_progression_trend_${Date.now()}.png`;
+      link.href = imageURI;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast("Academic Progression Chart saved as PNG image!", "success");
     });
   }
 

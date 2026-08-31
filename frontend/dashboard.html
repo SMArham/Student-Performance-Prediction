@@ -27,13 +27,13 @@
          1. SIDEBAR NAVIGATION
          ====================================================================== -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
+      <a href="dashboard.html" class="sidebar-header" style="text-decoration: none; cursor: pointer;">
         <div class="brand-logo-icon">🎓</div>
         <div>
           <div class="brand-title">EduMetrics AI</div>
           <div class="brand-subtitle">Analytics Engine</div>
         </div>
-      </div>
+      </a>
 
       <div class="sidebar-nav">
         <div>
@@ -237,6 +237,9 @@
                   </h2>
                   <div class="card-subtitle">Chronological academic GPA history bridged with machine learning target</div>
                 </div>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-download-progression-png" title="Download chart as PNG image">
+                  <span>🖼️ Save Chart Image</span>
+                </button>
               </div>
 
               <div class="chart-canvas-wrapper">
@@ -476,6 +479,53 @@
           <button type="button" class="btn btn-secondary" id="btn-close-hd-modal-bottom">Close Snapshot</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       7. EDIT HISTORICAL RECORD MODAL
+       ====================================================================== -->
+  <div class="modal-backdrop" id="edit-history-modal">
+    <div class="modal-dialog" style="max-width: 540px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">✏️ Edit Prediction Record</h2>
+          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
+            Update actual observed grade, notes, or instructor remarks
+          </div>
+        </div>
+        <button class="btn-icon" id="btn-close-edit-history-modal" style="font-size: 20px;">&times;</button>
+      </div>
+
+      <form id="edit-history-form">
+        <input type="hidden" id="edit-history-id" value="">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="edit-history-score">Score / Grade Metric <span style="color:var(--accent-rose)">*</span></label>
+            <input type="text" id="edit-history-score" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-history-status">Status Tier</label>
+            <select id="edit-history-status" class="form-select">
+              <option value="Exemplary">Exemplary / Distinction</option>
+              <option value="Proficient">Proficient / On Track</option>
+              <option value="Standard">Standard / Capable</option>
+              <option value="Attention Needed">Attention Needed / At Risk</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-6);">
+          <label class="form-label" for="edit-history-notes">Actionable Remarks / Interventions</label>
+          <textarea id="edit-history-notes" class="form-input" rows="3" placeholder="Enter updated feedback or actual milestone observations..."></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-edit-history">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
     </div>
   </div>
 
