@@ -1058,6 +1058,61 @@ document.addEventListener("DOMContentLoaded", () => {
       resultRecommendationText.innerText = res.recommendation || "Maintain consistent daily study blocks and focus on continuous revision.";
     }
 
+    // Voice Speech Audio Guidance
+    const btnListenSpeech = document.getElementById("btn-listen-ai-speech");
+    if (btnListenSpeech) {
+      btnListenSpeech.onclick = () => {
+        if (!("speechSynthesis" in window)) {
+          return showToast("Text-to-speech not supported in this browser.", "info");
+        }
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          btnListenSpeech.classList.remove("speaking-pulse");
+          btnListenSpeech.innerHTML = `<span>🔊 Listen to AI Feedback</span>`;
+          return;
+        }
+
+        const textToSpeak = `Hello! Based on your academic record, your predicted performance is ${res.formatted_score || res.score}. ${res.recommendation || ""}`;
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.rate = 0.95;
+        utterance.pitch = 1.0;
+        utterance.onstart = () => {
+          btnListenSpeech.classList.add("speaking-pulse");
+          btnListenSpeech.innerHTML = `<span>⏹️ Stop Speaking</span>`;
+        };
+        utterance.onend = () => {
+          btnListenSpeech.classList.remove("speaking-pulse");
+          btnListenSpeech.innerHTML = `<span>🔊 Listen to AI Feedback</span>`;
+        };
+        utterance.onerror = () => {
+          btnListenSpeech.classList.remove("speaking-pulse");
+          btnListenSpeech.innerHTML = `<span>🔊 Listen to AI Feedback</span>`;
+        };
+        window.speechSynthesis.speak(utterance);
+      };
+    }
+
+    // Export PDF / Print Report
+    const btnExportPdf = document.getElementById("btn-export-pdf-report");
+    if (btnExportPdf) {
+      btnExportPdf.onclick = () => {
+        window.print();
+      };
+    }
+
+    // Copy Summary to Clipboard
+    const btnCopySummary = document.getElementById("btn-copy-summary");
+    if (btnCopySummary) {
+      btnCopySummary.onclick = () => {
+        const summaryText = `🎓 EduMetrics AI - Academic Prediction Report\nStage: ${currentStage.toUpperCase()}\nPredicted Score: ${res.formatted_score || res.score}\nGrade: ${res.grade}\nRisk Level: ${res.risk_level}\nAI Recommendation: ${res.recommendation}\nDate: ${new Date().toLocaleDateString()}`;
+        navigator.clipboard.writeText(summaryText).then(() => {
+          showToast("Summary copied to clipboard!", "success");
+        }).catch(() => {
+          showToast("Failed to copy summary.", "error");
+        });
+      };
+    }
+
     studentResultCard.style.display = "block";
     studentResultCard.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -1091,6 +1146,39 @@ document.addEventListener("DOMContentLoaded", () => {
         if (simScenarioSimulated) simScenarioSimulated.innerText = `${simScore}%`;
         if (simScenarioBest) simScenarioBest.innerText = `${Math.min(100, baseScore + 6)}%`;
       }
+    }
+
+    // Quick Preset Handlers
+    const btnPresetBalanced = document.getElementById("btn-sim-preset-balanced");
+    const btnPresetCram = document.getElementById("btn-sim-preset-cram");
+    const btnPresetHonors = document.getElementById("btn-sim-preset-honors");
+
+    if (btnPresetBalanced) {
+      btnPresetBalanced.onclick = () => {
+        simSliderStudy.value = 4.5;
+        simSliderAtt.value = 88;
+        simSliderAssign.value = 90;
+        updateSimulation();
+        showToast("Loaded Balanced Routine Preset", "info");
+      };
+    }
+    if (btnPresetCram) {
+      btnPresetCram.onclick = () => {
+        simSliderStudy.value = 6.5;
+        simSliderAtt.value = 95;
+        simSliderAssign.value = 95;
+        updateSimulation();
+        showToast("Loaded Exam Sprint Preset", "info");
+      };
+    }
+    if (btnPresetHonors) {
+      btnPresetHonors.onclick = () => {
+        simSliderStudy.value = 8.0;
+        simSliderAtt.value = 98;
+        simSliderAssign.value = 100;
+        updateSimulation();
+        showToast("Loaded Dean's List Honors Preset", "success");
+      };
     }
 
     simSliderStudy.oninput = updateSimulation;
@@ -1543,6 +1631,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (tRecommendationsText) {
       tRecommendationsText.innerText = data.recommendations;
+    }
+
+    // Export Teacher Risk Roster CSV
+    const btnExportTeacherCsv = document.getElementById("btn-export-teacher-csv");
+    if (btnExportTeacherCsv) {
+      btnExportTeacherCsv.onclick = () => {
+        let csv = "Student_Identifier,Performance_Metric,Status,Recommended_Action\n";
+        (data.atRiskList || []).forEach((item) => {
+          csv += `"${item.replace(/"/g, '""')}","Below Benchmark","High Risk","Mandatory Remediation & Tutoring"\n`;
+        });
+        (data.topList || []).forEach((item) => {
+          csv += `"${item.replace(/"/g, '""')}","Distinction","Low Risk","Advanced Enrichment Topics"\n`;
+        });
+        if (!data.atRiskList?.length && !data.topList?.length) {
+          csv += `"Class Roster Average","${data.classAvg}","${data.passRate} Pass Probability","Standard Curriculum Delivery"\n`;
+        }
+
+        const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `class_risk_analytics_report_${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        showToast("Class risk roster exported to CSV!", "success");
+      };
     }
 
     teacherResultCard.style.display = "block";

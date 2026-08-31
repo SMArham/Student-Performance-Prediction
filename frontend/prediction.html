@@ -512,7 +512,7 @@
 
               <!-- WHAT-IF SIMULATOR -->
               <div class="whatif-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);">
                   <div>
                     <h3 style="font-size: var(--font-size-base); font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 6px;">
                       <span>🔮 What-If Simulator (Estimated Scenario Modeling)</span>
@@ -521,6 +521,20 @@
                       Adjust habits to simulate estimated performance improvements in real time.
                     </div>
                   </div>
+                </div>
+
+                <!-- 1-Click Habit Presets -->
+                <div class="sim-presets-bar">
+                  <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">⚡ Quick Presets:</span>
+                  <button type="button" class="sim-preset-btn" id="btn-sim-preset-balanced">
+                    <span>⚖️ Balanced Routine (4.5h, 88% att)</span>
+                  </button>
+                  <button type="button" class="sim-preset-btn" id="btn-sim-preset-cram">
+                    <span>🔥 Exam Sprint (6.5h, 95% att)</span>
+                  </button>
+                  <button type="button" class="sim-preset-btn" id="btn-sim-preset-honors">
+                    <span>🏆 Dean's List Honors (8h, 98% att)</span>
+                  </button>
                 </div>
 
                 <div class="whatif-sliders-grid">
@@ -593,14 +607,29 @@
                 </div>
               </div>
 
-              <!-- Actionable AI Recommendations -->
+              <!-- Actionable AI Recommendations with Voice Synthesis -->
               <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-card); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-6);">
-                <div style="font-size: var(--font-size-sm); font-weight: 700; color: var(--primary-300); margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2);">
-                  <span>💡 Personalized AI Recommendations</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); flex-wrap: wrap; gap: var(--space-2);">
+                  <div style="font-size: var(--font-size-sm); font-weight: 700; color: var(--primary-300); display: flex; align-items: center; gap: var(--space-2);">
+                    <span>💡 Personalized AI Recommendations</span>
+                  </div>
+                  <button type="button" class="btn-utility" id="btn-listen-ai-speech" title="Listen to spoken audio feedback">
+                    <span>🔊 Listen to AI Feedback</span>
+                  </button>
                 </div>
                 <div id="result-recommendation-text" style="font-size: var(--font-size-sm); color: var(--text-primary); line-height: 1.6;">
                   Model suggests maintaining strong attendance and dedicating structured revision blocks to optimize final exam scores.
                 </div>
+              </div>
+
+              <!-- Utility Actions: Export Report & Copy Summary -->
+              <div class="result-action-bar">
+                <button type="button" class="btn-utility" id="btn-copy-summary">
+                  <span>📋 Copy Summary</span>
+                </button>
+                <button type="button" class="btn-utility" id="btn-export-pdf-report" style="background: var(--primary-600); border-color: var(--primary-500); color: #ffffff;">
+                  <span>📄 Export Official AI Report (PDF / Print)</span>
+                </button>
               </div>
 
               <!-- Direct CTA to Page 3 / History -->
@@ -924,6 +953,13 @@
                 <div id="t-recommendations-text" style="font-size: var(--font-size-sm); color: var(--text-primary); line-height: 1.6;">
                   Schedule peer mentoring sessions for struggling students; introduce weekly review problem sets for core calculation modules.
                 </div>
+              </div>
+
+              <!-- Teacher Action Bar -->
+              <div class="result-action-bar">
+                <button type="button" class="btn-utility" id="btn-export-teacher-csv" style="background: var(--primary-600); border-color: var(--primary-500); color: #ffffff;">
+                  <span>📥 Export Class Risk Roster (.CSV)</span>
+                </button>
               </div>
             </section>
           </div>
