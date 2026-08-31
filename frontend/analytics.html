@@ -194,7 +194,7 @@
           </div>
         </section>
 
-        <!-- Historical Trend Chart Section -->
+        <!-- Primary Historical Trend Chart Section -->
         <section class="card chart-card" id="analytics-chart-section">
           <div class="card-header">
             <div>
@@ -202,14 +202,47 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
                 </svg>
-                <span>Prediction Runs Comparison & Trend Analysis</span>
+                <span>Longitudinal Progression & 95% Confidence Interval Band</span>
               </h2>
-              <div class="card-subtitle">Comparison of forecasted performance across historical model executions</div>
+              <div class="card-subtitle">Smooth trajectory of predicted score milestones with upper & lower confidence boundaries</div>
             </div>
           </div>
 
-          <div class="chart-canvas-wrapper" style="height: 320px;">
+          <div class="chart-canvas-wrapper" style="height: 340px;">
             <canvas id="historicalComparisonChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Secondary Multi-Dimensional Visualizations Grid -->
+        <section class="analytics-grid-2" id="analytics-subcharts-section" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-6); margin-top: var(--space-6);">
+          <!-- Chart 2: Radar Competency Breakdown -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span>Academic Competency Radar</span>
+              </h2>
+            </div>
+            <div class="chart-canvas-wrapper" style="height: 280px;">
+              <canvas id="competencyRadarChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 3: Feature Impact Factor Bar Chart -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                <span>Key Feature Weight Impact</span>
+              </h2>
+            </div>
+            <div class="chart-canvas-wrapper" style="height: 280px;">
+              <canvas id="featureImpactChart"></canvas>
+            </div>
           </div>
         </section>
 

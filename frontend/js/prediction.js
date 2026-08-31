@@ -538,6 +538,51 @@ document.addEventListener("DOMContentLoaded", () => {
       resTimestamp.textContent = `Executed at: ${dt}`;
     }
 
+    let gaugeChart = null;
+
+    function renderScoreGauge(stageKey, score) {
+      const canvas = document.getElementById("scoreGaugeChart");
+      if (!canvas || !window.Chart) return;
+      if (gaugeChart) gaugeChart.destroy();
+
+      let maxVal = 4.0;
+      if (stageKey === "matric_inter") maxVal = 1100.0;
+      else if (stageKey === "secondary") maxVal = 20.0;
+      else if (stageKey === "primary") maxVal = 100.0;
+
+      const pct = Math.min(100, Math.max(0, (score / maxVal) * 100));
+      let color = "#10b981";
+      if (pct < 60) color = "#ef4444";
+      else if (pct < 75) color = "#f59e0b";
+
+      const ctx = canvas.getContext("2d");
+      gaugeChart = new window.Chart(ctx, {
+        type: "doughnut",
+        data: {
+          datasets: [
+            {
+              data: [pct, 100 - pct],
+              backgroundColor: [color, "rgba(255, 255, 255, 0.08)"],
+              borderWidth: 0,
+              circumference: 180,
+              rotation: 270
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "78%",
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          }
+        }
+      });
+    }
+
+    renderScoreGauge(stageKey, result.predicted_score);
+
     resultCard.style.display = "block";
     resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
   }

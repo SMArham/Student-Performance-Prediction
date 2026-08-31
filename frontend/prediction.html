@@ -16,7 +16,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Supabase JS CDN -->
+  <!-- Chart.js CDN & Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -297,13 +298,18 @@
             </div>
           </div>
 
-          <div class="score-display-box">
+          <div class="score-display-box" style="display: flex; flex-direction: column; align-items: center;">
             <div style="font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 4px;">
               Forecasted Academic Performance
             </div>
             <div id="res-predicted-score" class="score-big">3.72 CGPA</div>
             <div id="res-grade-text" style="font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-top: 4px;">
               Letter Grade: A (Excellent)
+            </div>
+
+            <!-- Semi-Circle Gauge Visualizer -->
+            <div style="width: 220px; height: 120px; margin: 12px 0 4px 0; position: relative;">
+              <canvas id="scoreGaugeChart"></canvas>
             </div>
             
             <div class="ci-range-box">
