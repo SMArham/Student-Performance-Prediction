@@ -374,25 +374,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  // Chart Instances
+  let progressionChart = null;
+  let subjectMasteryChart = null;
+  let habitsCorrelationChart = null;
+  let gradeDistributionChart = null;
+  let localPredictionHistory = [];
+
+  // Filter elements
+  const filterHistoryStage = document.getElementById("filter-history-stage");
+  const filterHistoryRole = document.getElementById("filter-history-role");
+  const btnExportLedgerCsv = document.getElementById("btn-export-ledger-csv");
+  const btnExportAnalyticsCsv = document.getElementById("btn-export-analytics-csv");
+  const btnClearHistoryAll = document.getElementById("btn-clear-history-all");
+
+  // History Detail Modal Elements
+  const historyDetailModal = document.getElementById("history-detail-modal");
+  const btnCloseHdModal = document.getElementById("btn-close-hd-modal");
+  const btnCloseHdModalBottom = document.getElementById("btn-close-hd-modal-bottom");
+  const hdScore = document.getElementById("hd-score");
+  const hdScale = document.getElementById("hd-scale");
+  const hdBadge = document.getElementById("hd-badge");
+  const hdConfidence = document.getElementById("hd-confidence");
+  const hdInputsGrid = document.getElementById("hd-inputs-grid");
+  const hdRecommendations = document.getElementById("hd-recommendations");
+
   // ----------------------------------------------------------------------------
-  // Chart.js GPA Progression Trend Visualization
+  // Chart.js 1: GPA Progression Trend Visualization
   // ----------------------------------------------------------------------------
   function renderProgressionChart(trendData, stage) {
     const canvas = document.getElementById("gpaProgressionChart");
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
 
-    if (progressionChart) {
-      progressionChart.destroy();
-    }
+    if (progressionChart) progressionChart.destroy();
 
-    const labels = trendData.labels || [];
-    const pastGpa = trendData.past_gpa_series || [];
-    const currentGpa = trendData.current_gpa_series || [];
-    const predictedGpa = trendData.predicted_target_series || [];
+    const labels = trendData?.labels || ["Sem 1", "Sem 2", "Sem 3", "Sem 4 (Current)", "Sem 5 (Target)"];
+    const pastGpa = trendData?.past_gpa_series || [3.30, 3.42, 3.55, null, null];
+    const currentGpa = trendData?.current_gpa_series || [null, null, null, 3.65, null];
+    const predictedGpa = trendData?.predicted_target_series || [null, null, null, 3.65, 3.78];
 
-    // Create Indigo & Emerald Gradients
     const indigoGradient = ctx.createLinearGradient(0, 0, 0, 300);
     indigoGradient.addColorStop(0, "rgba(99, 102, 241, 0.35)");
     indigoGradient.addColorStop(1, "rgba(99, 102, 241, 0.0)");
@@ -401,7 +422,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     emeraldGradient.addColorStop(0, "rgba(16, 185, 129, 0.35)");
     emeraldGradient.addColorStop(1, "rgba(16, 185, 129, 0.0)");
 
-    const maxScale = stage === "university" ? 4.0 : (stage === "secondary" ? 20.0 : (stage === "matric_inter" ? 1100 : 100));
+    const maxScale = stage === "university" ? 4.0 : stage === "secondary" ? 20.0 : stage === "matric_inter" ? 1100 : 100;
 
     progressionChart = new Chart(ctx, {
       type: "line",
@@ -409,7 +430,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels: labels,
         datasets: [
           {
-            label: "Past Historical GPA",
+            label: "Past Term Performance",
             data: pastGpa,
             borderColor: "#6366F1",
             backgroundColor: indigoGradient,
@@ -419,21 +440,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             pointBackgroundColor: "#6366F1",
             pointBorderColor: "#FFFFFF",
             pointBorderWidth: 2,
-            pointRadius: 5,
-            pointHoverRadius: 7,
+            pointRadius: 5
           },
           {
-            label: "Current Term GPA",
+            label: "Current Term Standing",
             data: currentGpa,
             borderColor: "#F59E0B",
             backgroundColor: "rgba(245, 158, 11, 0.2)",
-            borderWidth: 0,
             pointBackgroundColor: "#F59E0B",
             pointBorderColor: "#FFFFFF",
             pointBorderWidth: 2,
             pointRadius: 7,
-            pointHoverRadius: 9,
-            showLine: false,
+            showLine: false
           },
           {
             label: "AI Predicted Target Trajectory",
@@ -447,105 +465,379 @@ document.addEventListener("DOMContentLoaded", async () => {
             pointBackgroundColor: "#10B981",
             pointBorderColor: "#FFFFFF",
             pointBorderWidth: 2,
-            pointRadius: 6,
-            pointHoverRadius: 8,
+            pointRadius: 6
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: {
-          mode: "index",
-          intersect: false,
-        },
+        interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: {
-            display: false, // Customized in HTML footer legend
-          },
+          legend: { display: false },
           tooltip: {
             backgroundColor: "rgba(15, 23, 42, 0.95)",
             titleColor: "#F8FAFC",
             bodyColor: "#94A3B8",
             borderColor: "rgba(255, 255, 255, 0.1)",
             borderWidth: 1,
-            padding: 12,
-            boxPadding: 6,
-            usePointStyle: true,
-            callbacks: {
-              label: function(context) {
-                if (context.raw === null || context.raw === undefined) return null;
-                const val = typeof context.raw === 'number' ? context.raw.toFixed(2) : context.raw;
-                return ` ${context.dataset.label}: ${val}`;
-              }
-            }
+            padding: 12
           }
         },
         scales: {
-          x: {
-            grid: {
-              color: "rgba(255, 255, 255, 0.05)",
-            },
-            ticks: {
-              color: "#94A3B8",
-              font: { family: "Inter", size: 12 }
-            }
-          },
+          x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { family: "Inter", size: 12 } } },
           y: {
             min: stage === "university" ? 2.0 : 0,
             max: maxScale,
-            grid: {
-              color: "rgba(255, 255, 255, 0.06)",
-            },
-            ticks: {
-              color: "#94A3B8",
-              font: { family: "Inter", size: 12 },
-              callback: function(value) {
-                return stage === "university" ? value.toFixed(1) : value;
-              }
-            }
+            grid: { color: "rgba(255, 255, 255, 0.06)" },
+            ticks: { color: "#94A3B8", font: { family: "Inter", size: 12 } }
           }
         }
       }
     });
   }
 
-  function renderHistoryTable(items = []) {
+  // ----------------------------------------------------------------------------
+  // Chart.js 2: Subject Domain Mastery (Bar Chart)
+  // ----------------------------------------------------------------------------
+  function renderSubjectMasteryChart() {
+    const canvas = document.getElementById("subjectMasteryChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    if (subjectMasteryChart) subjectMasteryChart.destroy();
+
+    subjectMasteryChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: ["Core Theory", "Applied Labs", "Algorithms", "Humanities", "Electives"],
+        datasets: [
+          {
+            label: "Average Score %",
+            data: [86, 92, 80, 84, 88],
+            backgroundColor: [
+              "rgba(99, 102, 241, 0.75)",
+              "rgba(16, 185, 129, 0.75)",
+              "rgba(245, 158, 11, 0.75)",
+              "rgba(14, 165, 233, 0.75)",
+              "rgba(168, 85, 247, 0.75)"
+            ],
+            borderColor: [
+              "#6366F1",
+              "#10B981",
+              "#F59E0B",
+              "#0EA5E9",
+              "#A855F7"
+            ],
+            borderWidth: 1,
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: "y",
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "rgba(15, 23, 42, 0.95)",
+            padding: 10
+          }
+        },
+        scales: {
+          x: {
+            min: 0,
+            max: 100,
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { size: 10 } }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: "#F1F5F9", font: { size: 11, weight: "bold" } }
+          }
+        }
+      }
+    });
+  }
+
+  // ----------------------------------------------------------------------------
+  // Chart.js 3: Study Habits vs Performance Correlation
+  // ----------------------------------------------------------------------------
+  function renderHabitsCorrelationChart() {
+    const canvas = document.getElementById("habitsCorrelationChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    if (habitsCorrelationChart) habitsCorrelationChart.destroy();
+
+    habitsCorrelationChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: ["< 2 hrs/day", "2-4 hrs/day", "4-6 hrs/day", "6+ hrs/day"],
+        datasets: [
+          {
+            label: "Expected Avg %",
+            data: [62, 74, 86, 94],
+            backgroundColor: "rgba(99, 102, 241, 0.7)",
+            borderColor: "#6366F1",
+            borderWidth: 1,
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { backgroundColor: "rgba(15, 23, 42, 0.95)" }
+        },
+        scales: {
+          x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { size: 10 } } },
+          y: { min: 50, max: 100, grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // ----------------------------------------------------------------------------
+  // Chart.js 4: Risk & Grade Distribution Donut
+  // ----------------------------------------------------------------------------
+  function renderGradeDistributionChart() {
+    const canvas = document.getElementById("gradeDistributionChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    if (gradeDistributionChart) gradeDistributionChart.destroy();
+
+    gradeDistributionChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: ["Honors (A/A+)", "Proficient (B)", "Standard (C)", "At Risk (D/F)"],
+        datasets: [
+          {
+            data: [55, 30, 10, 5],
+            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444"],
+            borderColor: "#1E293B",
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { color: "#94A3B8", font: { size: 10 }, boxWidth: 10 }
+          }
+        },
+        cutout: "68%"
+      }
+    });
+  }
+
+  // ----------------------------------------------------------------------------
+  // 5. Prediction History Ledger & Diagnostics Detail
+  // ----------------------------------------------------------------------------
+  function loadPredictionHistory() {
+    try {
+      const stored = localStorage.getItem("edumetrics_prediction_history_v2");
+      if (stored) {
+        localPredictionHistory = JSON.parse(stored);
+      } else {
+        // Sample default entries
+        localPredictionHistory = [
+          {
+            id: "pred-sample-1",
+            timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
+            role: "student",
+            stage: "university",
+            score: "3.75 CGPA",
+            status_badge: "Exemplary",
+            status_color: "badge-success",
+            payload: { Previous_CGPA: 3.55, Attendance_Pct: 88, Study_Hours: 4.5, Attentiveness: "High" },
+            recommendations: "Consistently high performance. Eligible for honors recognition."
+          },
+          {
+            id: "pred-sample-2",
+            timestamp: new Date(Date.now() - 3600000 * 72).toISOString(),
+            role: "teacher",
+            stage: "university",
+            score: "3.40 GPA",
+            status_badge: "Proficient",
+            status_color: "badge-info",
+            payload: { Attendance: 84, Test_Avg: 78, Teacher_Rating: "4.0" },
+            recommendations: "Strong conceptual understanding; reinforce weekly assignment submission."
+          }
+        ];
+      }
+    } catch (e) {
+      localPredictionHistory = [];
+    }
+
+    renderHistoryLedger();
+  }
+
+  function renderHistoryLedger() {
     if (!historyTableBody) return;
-    if (items.length === 0) {
+
+    const stageFilter = filterHistoryStage ? filterHistoryStage.value : "all";
+    const roleFilter = filterHistoryRole ? filterHistoryRole.value : "all";
+
+    const filtered = localPredictionHistory.filter((item) => {
+      const matchStage = stageFilter === "all" || item.stage === stageFilter;
+      const matchRole = roleFilter === "all" || item.role === roleFilter;
+      return matchStage && matchRole;
+    });
+
+    if (filtered.length === 0) {
       historyTableBody.innerHTML = `
         <tr>
-          <td colspan="5" style="text-align: center; color: var(--text-muted); padding: var(--space-6);">
-            No prediction runs recorded yet. Use the "Quick Forecast" button to test the AI models!
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: var(--space-6);">
+            No historical prediction records matching the selected filters.
           </td>
         </tr>
       `;
       return;
     }
 
-    historyTableBody.innerHTML = items.map(item => {
-      const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent";
-      return `
+    historyTableBody.innerHTML = filtered
+      .map((item, idx) => {
+        const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent";
+        const snapshotStr = Object.entries(item.payload || {})
+          .slice(0, 2)
+          .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
+          .join(" | ");
+
+        return `
         <tr>
           <td>
-            <div style="font-weight: 600;">${item.model_name}</div>
-            <div style="font-size: 11px; color: var(--text-muted);">${item.model_version}</div>
+            <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">${item.id}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${dateStr}</div>
           </td>
-          <td><span class="badge ${item.status_color}">${item.stage.toUpperCase()}</span></td>
-          <td style="font-weight: 700; font-size: 15px;">${item.predicted_score.toFixed(2)}</td>
-          <td><span class="badge ${item.status_color}">${item.status_badge}</span></td>
-          <td style="color: var(--text-muted); font-size: 12px;">${dateStr}</td>
+          <td>
+            <span class="badge ${item.role === "teacher" ? "badge-info" : "badge-primary"}" style="font-size: 11px; text-transform: uppercase;">
+              ${item.role === "teacher" ? "👨‍🏫 Teacher" : "🎓 Student"}
+            </span>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${(item.stage || "University").toUpperCase()}</div>
+          </td>
+          <td style="font-size: 12px; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            ${snapshotStr || "Standard Metric Profile"}
+          </td>
+          <td style="font-weight: 800; font-size: 15px; color: var(--text-primary);">
+            ${item.score || "N/A"}
+          </td>
+          <td>
+            <span class="badge ${item.status_color || "badge-success"}">${item.status_badge || "Evaluated"}</span>
+          </td>
+          <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="window.viewDiagnosticSnapshot('${item.id}')">
+              👁️ View
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" style="padding: 3px 8px; font-size: 11px;" onclick="window.deleteHistoryRecord('${item.id}')">
+              🗑️
+            </button>
+          </td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
   }
+
+  window.viewDiagnosticSnapshot = (id) => {
+    const item = localPredictionHistory.find((h) => h.id === id);
+    if (!item || !historyDetailModal) return;
+
+    if (hdScore) hdScore.innerText = item.score;
+    if (hdScale) hdScale.innerText = `Stage: ${(item.stage || "University").toUpperCase()}`;
+    if (hdBadge) {
+      hdBadge.innerText = item.status_badge || "Evaluated";
+      hdBadge.className = `badge ${item.status_color || "badge-success"}`;
+    }
+    if (hdRecommendations) {
+      hdRecommendations.innerText = item.recommendations || "High academic stability maintained. Continue regular revision and study habits.";
+    }
+
+    if (hdInputsGrid) {
+      hdInputsGrid.innerHTML = Object.entries(item.payload || {})
+        .map(
+          ([k, v]) => `
+        <div style="padding: 4px 8px; background: rgba(255,255,255,0.03); border-radius: 4px;">
+          <strong style="color: var(--text-primary);">${k.replace(/_/g, " ")}:</strong> ${v}
+        </div>
+      `
+        )
+        .join("");
+    }
+
+    historyDetailModal.classList.add("active");
+  };
+
+  window.deleteHistoryRecord = (id) => {
+    if (!confirm("Are you sure you want to delete this historical prediction record?")) return;
+    localPredictionHistory = localPredictionHistory.filter((h) => h.id !== id);
+    localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(localPredictionHistory));
+    renderHistoryLedger();
+    showToast("Record removed from history ledger.", "info");
+  };
+
+  if (btnCloseHdModal) btnCloseHdModal.addEventListener("click", () => historyDetailModal?.classList.remove("active"));
+  if (btnCloseHdModalBottom) btnCloseHdModalBottom.addEventListener("click", () => historyDetailModal?.classList.remove("active"));
+  if (historyDetailModal) {
+    historyDetailModal.addEventListener("click", (e) => {
+      if (e.target === historyDetailModal) historyDetailModal.classList.remove("active");
+    });
+  }
+
+  // Filter Listeners
+  if (filterHistoryStage) filterHistoryStage.addEventListener("change", renderHistoryLedger);
+  if (filterHistoryRole) filterHistoryRole.addEventListener("change", renderHistoryLedger);
+
+  // Clear History
+  if (btnClearHistoryAll) {
+    btnClearHistoryAll.addEventListener("click", () => {
+      if (!confirm("Wipe all locally stored prediction histories?")) return;
+      localPredictionHistory = [];
+      localStorage.removeItem("edumetrics_prediction_history_v2");
+      renderHistoryLedger();
+      showToast("Historical prediction ledger cleared.", "info");
+    });
+  }
+
+  // Export CSV
+  function exportLedgerToCsv() {
+    if (localPredictionHistory.length === 0) {
+      return showToast("No history records available to export.", "error");
+    }
+
+    let csv = "Record_ID,Timestamp,Role,Stage,Predicted_Score,Status_Badge,Input_Parameters,Recommendations\n";
+    localPredictionHistory.forEach((h) => {
+      const inputs = JSON.stringify(h.payload || {}).replace(/"/g, '""');
+      const rec = (h.recommendations || "").replace(/"/g, '""');
+      csv += `"${h.id}","${h.timestamp || ""}","${h.role || ""}","${h.stage || ""}","${h.score || ""}","${h.status_badge || ""}","${inputs}","${rec}"\n`;
+    });
+
+    const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `edumetrics_prediction_analytics_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showToast("Analytics Ledger exported to CSV!", "success");
+  }
+
+  if (btnExportLedgerCsv) btnExportLedgerCsv.addEventListener("click", exportLedgerToCsv);
+  if (btnExportAnalyticsCsv) btnExportAnalyticsCsv.addEventListener("click", exportLedgerToCsv);
 
   function showLoadingState(isLoading) {
     const loaders = document.querySelectorAll(".kpi-value");
     if (isLoading) {
-      loaders.forEach(el => el.classList.add("skeleton"));
+      loaders.forEach((el) => el.classList.add("skeleton"));
     } else {
-      loaders.forEach(el => el.classList.remove("skeleton"));
+      loaders.forEach((el) => el.classList.remove("skeleton"));
     }
   }
 
@@ -556,73 +848,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ----------------------------------------------------------------------------
-  // Quick Prediction Drawer Modal Interaction
-  // ----------------------------------------------------------------------------
-  if (quickPredictBtn && predictModal) {
-    quickPredictBtn.addEventListener("click", () => {
-      predictModal.classList.add("active");
-    });
-  }
-
-  if (closePredictModal && predictModal) {
-    closePredictModal.addEventListener("click", () => {
-      predictModal.classList.remove("active");
-    });
-  }
-
-  // Close modal when clicking outside dialog
-  if (predictModal) {
-    predictModal.addEventListener("click", (e) => {
-      if (e.target === predictModal) {
-        predictModal.classList.remove("active");
-      }
-    });
-  }
-
-  if (predictForm) {
-    predictForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const submitBtn = predictForm.querySelector("button[type='submit']");
-
-      const attendance = parseFloat(document.getElementById("modal_attendance").value);
-      const studyHours = parseFloat(document.getElementById("modal_study_hours").value);
-      const prevCgpa = parseFloat(document.getElementById("modal_prev_cgpa").value);
-      const sleepHours = parseFloat(document.getElementById("modal_sleep_hours").value);
-      const socialHours = parseInt(document.getElementById("modal_social_hours").value);
-      const major = document.getElementById("modal_major").value;
-      const gender = document.getElementById("modal_gender").value;
-
-      const payload = {
-        Age: 21,
-        Attendance_Pct: attendance,
-        Study_Hours_Per_Day: studyHours,
-        Previous_CGPA: prevCgpa,
-        Sleep_Hours: sleepHours,
-        Social_Hours_Week: socialHours,
-        Gender: gender,
-        Major: major
-      };
-
-      try {
-        submitBtn.disabled = true;
-        submitBtn.innerText = "Running ML Model...";
-        const result = await window.apiClient.runPrediction(currentStage, payload);
-
-        showToast(`Prediction generated: ${result.formatted_score} (${result.status_badge})`, "success");
-        predictModal.classList.remove("active");
-
-        // Dynamically update dashboard
-        loadDashboard(currentStage);
-      } catch (err) {
-        showToast("Prediction failed: " + err.message, "error");
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = "Run AI Forecast";
-      }
-    });
-  }
-
-  // Initial Load
+  // Load and Render All Visualizations
+  renderSubjectMasteryChart();
+  renderHabitsCorrelationChart();
+  renderGradeDistributionChart();
+  loadPredictionHistory();
   loadDashboard(currentStage);
 });

@@ -226,6 +226,9 @@
   .analytics-main-grid {
     grid-template-columns: 1fr;
   }
+  .analytics-deep-grid {
+    grid-template-columns: 1fr !important;
+  }
   .dashboard-hero {
     flex-direction: column;
     align-items: flex-start;

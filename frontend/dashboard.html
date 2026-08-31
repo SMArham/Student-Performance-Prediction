@@ -49,20 +49,6 @@
               </a>
             </li>
             <li class="nav-item">
-              <a href="#predictions-modal" id="quick-predict-sidebar-link" onclick="document.getElementById('predict-modal').classList.add('active');">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
-                </svg>
-                <span>AI Forecasting</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <div class="nav-section-title">Core Modules</div>
-          <ul class="nav-list">
-            <li class="nav-item">
               <a href="prediction.html" title="Academic Records & Prediction Form (Page 2)">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
@@ -71,13 +57,13 @@
                 <span class="nav-badge" style="background-color: var(--primary-600); color: white;">P2</span>
               </a>
             </li>
-            <li class="nav-item" style="opacity: 0.8;">
-              <a href="#history-table-body" title="Full Analytics & History (Page 3)">
+            <li class="nav-item">
+              <a href="#analytics-history-section" title="Full Analytics & History (Page 3)">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
                 </svg>
-                <span>Full Analytics & History</span>
-                <span style="font-size: 10px; opacity: 0.8; margin-left: auto;">Page 3</span>
+                <span>Analytics & History</span>
+                <span class="nav-badge" style="background-color: var(--accent-emerald); color: white;">P3</span>
               </a>
             </li>
           </ul>
@@ -117,7 +103,7 @@
           <div class="page-breadcrumb">
             <span>Home</span>
             <span>/</span>
-            <span class="current">Student Academic Dashboard</span>
+            <span class="current">Student Academic Dashboard & Analytics</span>
           </div>
         </div>
 
@@ -133,9 +119,9 @@
             </select>
           </div>
 
-          <button id="quick-predict-btn" class="btn btn-primary btn-sm">
-            <span>⚡ Quick Forecast</span>
-          </button>
+          <a href="prediction.html" class="btn btn-primary btn-sm">
+            <span>⚡ Run AI Prediction (P2)</span>
+          </a>
         </div>
       </header>
 
@@ -155,6 +141,15 @@
                 <span id="student-major">Software Engineering</span> (<span id="student-grade-level">Year 3</span>)
               </div>
             </div>
+          </div>
+
+          <div class="hero-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-analytics-csv">
+              <span>📥 Export Analytics CSV</span>
+            </button>
+            <a href="prediction.html" class="btn btn-primary btn-sm">
+              <span>➕ New Prediction Run</span>
+            </a>
           </div>
         </section>
 
@@ -304,28 +299,104 @@
           </section>
 
           <!-- ================================================================
-               5. RECENT PREDICTIONS HISTORY TABLE
+               5. DEEP DIVE ANALYTICS GRAPHS (Subject Mastery, Study Habits Correlation, Risk Donut)
                ================================================================ -->
-          <section class="card" style="margin-top: var(--space-6);">
-            <div class="card-header">
-              <h2 class="card-title">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span>Recent ML Model Predictions</span>
-              </h2>
-              <button class="btn btn-outline btn-sm" onclick="document.getElementById('predict-modal').classList.add('active');">
-                + New Prediction Run
-              </button>
+          <section class="analytics-deep-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-6); margin-bottom: var(--space-8);">
+            <!-- Graph 1: Subject Mastery & Competency Radar/Bar -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title" style="font-size: 15px;">
+                    <span>📊 Course Domain Mastery</span>
+                  </h3>
+                  <div class="card-subtitle" style="font-size: 11px;">Subject-wise average performance %</div>
+                </div>
+              </div>
+              <div class="chart-canvas-wrapper" style="min-height: 220px;">
+                <canvas id="subjectMasteryChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Graph 2: Study Habits vs Exam Performance Correlation -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title" style="font-size: 15px;">
+                    <span>🎯 Study Habits vs Score</span>
+                  </h3>
+                  <div class="card-subtitle" style="font-size: 11px;">Study hours & attendance correlation</div>
+                </div>
+              </div>
+              <div class="chart-canvas-wrapper" style="min-height: 220px;">
+                <canvas id="habitsCorrelationChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Graph 3: Risk & Grade Distribution Breakdown -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title" style="font-size: 15px;">
+                    <span>🥧 Grade Distribution</span>
+                  </h3>
+                  <div class="card-subtitle" style="font-size: 11px;">Historical performance tiers</div>
+                </div>
+              </div>
+              <div class="chart-canvas-wrapper" style="min-height: 220px;">
+                <canvas id="gradeDistributionChart"></canvas>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================================================================
+               6. COMPREHENSIVE PREDICTION LEDGER & HISTORY (PAGE 3 SUITE)
+               ================================================================ -->
+          <section class="card" id="analytics-history-section" style="margin-top: var(--space-6);">
+            <div class="card-header" style="flex-wrap: wrap; gap: var(--space-3);">
+              <div>
+                <h2 class="card-title">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span>Comprehensive Prediction & Analytics Ledger</span>
+                </h2>
+                <div class="card-subtitle">Complete historical record of all student and instructor AI forecasts</div>
+              </div>
+
+              <!-- History Ledger Filter Bar -->
+              <div style="display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center;">
+                <select id="filter-history-stage" class="form-select" style="padding: 5px 10px; font-size: 12px;">
+                  <option value="all" selected>All Education Stages</option>
+                  <option value="university">University</option>
+                  <option value="intermediate">Intermediate (HSSC)</option>
+                  <option value="matric">Matric (SSC)</option>
+                  <option value="secondary">Secondary</option>
+                  <option value="primary">Primary</option>
+                </select>
+
+                <select id="filter-history-role" class="form-select" style="padding: 5px 10px; font-size: 12px;">
+                  <option value="all" selected>All Roles (Student + Teacher)</option>
+                  <option value="student">Student Runs Only</option>
+                  <option value="teacher">Teacher Runs Only</option>
+                </select>
+
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-export-ledger-csv">
+                  <span>📥 Export CSV</span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-clear-history-all" title="Clear all local history">
+                  <span>🗑️ Clear</span>
+                </button>
+              </div>
             </div>
 
             <div class="table-responsive">
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Model Pipeline</th>
-                    <th>Stage</th>
+                    <th>Record ID & Date</th>
+                    <th>Role & Stage</th>
+                    <th>Input Snapshot</th>
                     <th>Predicted Score</th>
                     <th>Status Tier</th>
-                    <th>Executed At</th>
+                    <th style="text-align: right;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="history-table-body">
@@ -341,11 +412,11 @@
           <div class="empty-state-icon">📊</div>
           <div class="empty-state-title">No Academic Records Registered</div>
           <div class="empty-state-desc">
-            You don't have past term records logged yet. Run your first AI forecast simulation to calibrate your academic trajectory.
+            You don't have past term records logged yet. Run your first AI forecast simulation on Page 2 to calibrate your academic trajectory.
           </div>
-          <button class="btn btn-primary" onclick="document.getElementById('predict-modal').classList.add('active');">
-            ⚡ Run First Academic Forecast
-          </button>
+          <a href="prediction.html" class="btn btn-primary">
+            ⚡ Run First Academic Forecast (Page 2)
+          </a>
         </div>
 
       </main>
@@ -353,77 +424,58 @@
   </div>
 
   <!-- ======================================================================
-       6. QUICK PREDICTION MODAL DRAWER
+       6. HISTORICAL DIAGNOSTIC DETAIL MODAL
        ====================================================================== -->
-  <div class="modal-backdrop" id="predict-modal">
-    <div class="modal-dialog">
+  <div class="modal-backdrop" id="history-detail-modal">
+    <div class="modal-dialog" style="max-width: 650px;">
       <div class="modal-header">
         <div>
-          <h2 class="modal-title">⚡ AI Performance Simulator</h2>
-          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 4px;">
-            Simulate study habits and metrics to forecast your term performance
+          <h2 class="modal-title" id="hd-modal-title">🔍 Historical AI Diagnostic Snapshot</h2>
+          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;" id="hd-modal-subtitle">
+            Detailed performance record & ML evaluation metrics
           </div>
         </div>
-        <button class="btn-icon" id="close-predict-modal" style="font-size: 20px;">&times;</button>
+        <button class="btn-icon" id="btn-close-hd-modal" style="font-size: 20px;">&times;</button>
       </div>
 
-      <form id="predict-form">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
-          <div class="form-group">
-            <label class="form-label" for="modal_attendance">Class Attendance (%)</label>
-            <input type="number" step="0.1" min="0" max="100" id="modal_attendance" class="form-input" value="88.5" required>
+      <div style="padding: var(--space-2) 0;">
+        <!-- Score & Status Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
+          <div class="summary-kpi-card">
+            <div class="summary-kpi-title">Predicted Metric</div>
+            <div class="summary-kpi-value" id="hd-score" style="color: var(--accent-emerald);">3.82 CGPA</div>
+            <div class="summary-kpi-subtitle" id="hd-scale">Scale: 0.0 - 4.0 GPA</div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="modal_study_hours">Daily Study (Hours)</label>
-            <input type="number" step="0.1" min="0" max="16" id="modal_study_hours" class="form-input" value="4.5" required>
+
+          <div class="summary-kpi-card">
+            <div class="summary-kpi-title">Performance Status</div>
+            <div style="margin-top: 6px;">
+              <span class="badge badge-success" id="hd-badge" style="font-size: 14px; padding: 6px 12px;">Exemplary</span>
+            </div>
+            <div class="summary-kpi-subtitle" id="hd-confidence">High Confidence (R²=0.96)</div>
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
-          <div class="form-group">
-            <label class="form-label" for="modal_prev_cgpa">Previous CGPA (0.0 - 4.0)</label>
-            <input type="number" step="0.01" min="0" max="4.0" id="modal_prev_cgpa" class="form-input" value="3.48" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="modal_sleep_hours">Average Sleep (Hours/Night)</label>
-            <input type="number" step="0.1" min="2" max="14" id="modal_sleep_hours" class="form-input" value="7.2" required>
-          </div>
+        <!-- Inputs Snapshot Breakdown -->
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
+          📋 Registered Input Parameters:
+        </div>
+        <div id="hd-inputs-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: var(--text-secondary); background: var(--bg-input); padding: var(--space-4); border-radius: var(--radius-lg); margin-bottom: var(--space-5);">
+          <!-- Populated dynamically -->
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
-          <div class="form-group">
-            <label class="form-label" for="modal_social_hours">Social Hours / Week</label>
-            <input type="number" min="0" max="50" id="modal_social_hours" class="form-input" value="8" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="modal_gender">Gender</label>
-            <select id="modal_gender" class="form-select">
-              <option value="Male" selected>Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
+        <!-- AI Recommendation Notes -->
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
+          💡 Machine Learning Insights & Action Levers:
+        </div>
+        <div id="hd-recommendations" style="font-size: 13px; color: var(--text-secondary); background: rgba(99, 102, 241, 0.08); border-left: 3px solid var(--primary-500); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin-bottom: var(--space-6);">
+          Outstanding academic consistency. Maintain regular self-study hours and peer mentoring sessions.
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="modal_major">Academic Program / Major</label>
-          <select id="modal_major" class="form-select">
-            <option value="Engineering" selected>Engineering</option>
-            <option value="Computer Science">Computer Science</option>
-            <option value="Business">Business / Management</option>
-            <option value="Medicine">Medicine / Health</option>
-            <option value="Arts">Arts & Humanities</option>
-          </select>
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" id="btn-close-hd-modal-bottom">Close Snapshot</button>
         </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6);">
-          <button type="button" class="btn btn-secondary" onclick="document.getElementById('predict-modal').classList.remove('active');">
-            Cancel
-          </button>
-          <button type="submit" class="btn btn-primary">
-            Run AI Forecast
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 
