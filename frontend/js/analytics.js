@@ -199,8 +199,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ----------------------------------------------------------------------------
-  // 3. CHART 1: GPA PROGRESSION & TARGET TRAJECTORY
+  // 3. CHART 1: STAGE-AWARE GPA PROGRESSION & TARGET TRAJECTORY
   // ----------------------------------------------------------------------------
+  function getStageMetadata(stage) {
+    const s = (stage || "university").toLowerCase();
+    if (s === "university") {
+      return { title: "University CGPA Trajectory", scale: "0.00 – 4.00 CGPA", min: 2.0, max: 4.0, isUni: true, unit: " CGPA" };
+    } else if (s === "intermediate" || s === "matric") {
+      return { title: s === "intermediate" ? "Intermediate (HSSC) Board Trajectory" : "Matriculation (SSC) Board Trajectory", scale: "0 – 100% Scale", min: 40, max: 100, isUni: false, unit: "%" };
+    } else if (s === "secondary") {
+      return { title: "Middle / Secondary Academic Trajectory", scale: "0 – 20 Point Scale", min: 0, max: 20, isUni: false, unit: " / 20" };
+    } else {
+      return { title: "Primary School Foundation Trajectory", scale: "0 – 100% Mastery Scale", min: 50, max: 100, isUni: false, unit: "% Mastery" };
+    }
+  }
+
   function renderProgressionChart() {
     const canvas = document.getElementById("analyticsProgressionChart");
     if (!canvas) return;
@@ -208,31 +221,38 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (progressionChart) progressionChart.destroy();
 
-    let labels = ["Sem 1", "Sem 2", "Sem 3", "Current Standing", "AI Target Milestone"];
-    let pastGpa = [3.30, 3.42, 3.55, null, null];
-    let currentGpa = [null, null, null, 3.55, null];
-    let predictedGpa = [null, null, null, 3.55, 3.75];
+    // Filter by active stage if specified
+    const activeStage = currentStageFilter === "all" ? (predictionHistory[0]?.stage || "university") : currentStageFilter;
+    const stageMeta = getStageMetadata(activeStage);
 
-    if (predictionHistory.length > 0) {
-      const activeRecords = predictionHistory.slice().reverse();
+    const stageRecords = currentStageFilter === "all"
+      ? predictionHistory
+      : predictionHistory.filter((r) => r.stage === currentStageFilter);
 
-      if (activeRecords.length === 1) {
-        const item = activeRecords[0];
-        const rawScore = parseFloat(item.score) || 3.65;
-        const isUni = rawScore <= 4.0;
-        const baseline = isUni ? +(rawScore - 0.15).toFixed(2) : Math.max(40, Math.round(rawScore - 6));
+    let labels = ["Baseline Standing", "Evaluated Current Score", "Projected AI Target Milestone 🎯"];
+    let pastGpa = [3.40, null, null];
+    let currentGpa = [null, 3.65, null];
+    let predictedGpa = [null, 3.65, 3.82];
 
-        labels = ["Prior Term", "Current Baseline", "AI Forecast Result", "Next Target Milestone 🎯"];
-        pastGpa = [isUni ? +(baseline - 0.10).toFixed(2) : baseline - 4, baseline, null, null];
-        currentGpa = [null, null, rawScore, null];
-        predictedGpa = [null, null, rawScore, isUni ? Math.min(4.0, +(rawScore + 0.18).toFixed(2)) : Math.min(100, rawScore + 4)];
+    if (stageRecords.length > 0) {
+      const activeList = stageRecords.slice().reverse();
+
+      if (activeList.length === 1) {
+        const item = activeList[0];
+        const rawScore = parseFloat(item.score) || (stageMeta.isUni ? 3.65 : 85);
+        const baseline = stageMeta.isUni ? +(rawScore - 0.15).toFixed(2) : Math.max(stageMeta.min, Math.round(rawScore - 6));
+        const target = stageMeta.isUni ? Math.min(4.0, +(rawScore + 0.18).toFixed(2)) : Math.min(stageMeta.max, Math.round(rawScore + 5));
+
+        labels = ["1. Initial Baseline", "2. Current Evaluated Score", "3. Projected AI Target 🎯"];
+        pastGpa = [baseline, null, null];
+        currentGpa = [null, rawScore, null];
+        predictedGpa = [null, rawScore, target];
       } else {
-        labels = activeRecords.map((r, i) => `Run #${i + 1}`);
+        labels = activeList.map((r, i) => `Run #${i + 1} (${r.stage.toUpperCase()})`);
         labels.push("Projected Milestone 🎯");
 
-        const scores = activeRecords.map((r) => parseFloat(r.score) || 3.5);
+        const scores = activeList.map((r) => parseFloat(r.score) || 3.5);
         const lastScore = scores[scores.length - 1];
-        const isUni = lastScore <= 4.0;
 
         pastGpa = scores.map((s, idx) => (idx < scores.length - 1 ? s : null));
         pastGpa.push(null);
@@ -240,8 +260,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentGpa = scores.map((s, idx) => (idx === scores.length - 1 ? s : null));
         currentGpa.push(null);
 
+        const target = stageMeta.isUni ? Math.min(4.0, +(lastScore + 0.16).toFixed(2)) : Math.min(stageMeta.max, Math.round(lastScore + 5));
         predictedGpa = scores.map((s, idx) => (idx === scores.length - 1 ? s : null));
-        predictedGpa.push(isUni ? Math.min(4.0, +(lastScore + 0.15).toFixed(2)) : Math.min(100, Math.round(lastScore + 4)));
+        predictedGpa.push(target);
       }
     }
 
@@ -253,15 +274,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     emeraldGradient.addColorStop(0, "rgba(16, 185, 129, 0.35)");
     emeraldGradient.addColorStop(1, "rgba(16, 185, 129, 0.0)");
 
-    const isUniScale = (parseFloat(predictionHistory[0]?.score) || 3.55) <= 4.0;
-
     progressionChart = new Chart(ctx, {
       type: "line",
       data: {
         labels: labels,
         datasets: [
           {
-            label: "Past Performance History",
+            label: "Starting / Past Baseline",
             data: pastGpa,
             borderColor: "#6366F1",
             backgroundColor: indigoGradient,
@@ -271,21 +290,21 @@ document.addEventListener("DOMContentLoaded", async () => {
             pointBackgroundColor: "#6366F1",
             pointBorderColor: "#FFFFFF",
             pointBorderWidth: 2,
-            pointRadius: 5
+            pointRadius: 6
           },
           {
-            label: "Evaluated AI Forecast Point",
+            label: "Current Evaluated Standing",
             data: currentGpa,
             borderColor: "#F59E0B",
             backgroundColor: "rgba(245, 158, 11, 0.2)",
             pointBackgroundColor: "#F59E0B",
             pointBorderColor: "#FFFFFF",
             pointBorderWidth: 2,
-            pointRadius: 7,
+            pointRadius: 8,
             showLine: false
           },
           {
-            label: "Target Milestone Trajectory",
+            label: "AI Projected Target Milestone",
             data: predictedGpa,
             borderColor: "#10B981",
             borderDash: [6, 6],
@@ -296,7 +315,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             pointBackgroundColor: "#10B981",
             pointBorderColor: "#FFFFFF",
             pointBorderWidth: 2,
-            pointRadius: 6
+            pointRadius: 7
           }
         ]
       },
@@ -305,7 +324,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: false },
+          legend: { display: true, position: "top", labels: { color: "#94A3B8", font: { size: 11 }, boxWidth: 12 } },
           tooltip: {
             backgroundColor: "rgba(15, 23, 42, 0.95)",
             titleColor: "#F8FAFC",
@@ -316,10 +335,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
         },
         scales: {
-          x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { family: "Inter", size: 12 } } },
+          x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { family: "Inter", size: 11 } } },
           y: {
-            min: isUniScale ? 2.0 : 40,
-            max: isUniScale ? 4.0 : 100,
+            min: stageMeta.min,
+            max: stageMeta.max,
             grid: { color: "rgba(255, 255, 255, 0.06)" },
             ticks: { color: "#94A3B8", font: { family: "Inter", size: 12 } }
           }
@@ -327,6 +346,101 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
+
+  // ----------------------------------------------------------------------------
+  // DEDICATED INDIVIDUAL RUN TRAJECTORY GRAPH MODAL
+  // ----------------------------------------------------------------------------
+  let modalTrajChartInstance = null;
+  const trajModal = document.getElementById("analytics-trajectory-modal");
+  const trajModalTitle = document.getElementById("traj-modal-title");
+  const trajModalSubtitle = document.getElementById("traj-modal-subtitle");
+  const trajValBaseline = document.getElementById("traj-val-baseline");
+  const trajValCurrent = document.getElementById("traj-val-current");
+  const trajValTarget = document.getElementById("traj-val-target");
+  const trajExplanation = document.getElementById("traj-modal-explanation");
+  const btnCloseTrajModal = document.getElementById("btn-close-traj-modal");
+  const btnCloseTrajModalBtn = document.getElementById("btn-close-traj-modal-btn");
+
+  window.viewTrajectoryGraph = (id) => {
+    const item = predictionHistory.find((h) => h.id === id);
+    if (!item || !trajModal) return;
+
+    const meta = getStageMetadata(item.stage);
+    const scoreVal = parseFloat(item.score) || (meta.isUni ? 3.65 : 85);
+    const baselineVal = meta.isUni ? +(scoreVal - 0.16).toFixed(2) : Math.max(meta.min, Math.round(scoreVal - 7));
+    const targetVal = meta.isUni ? Math.min(4.0, +(scoreVal + 0.18).toFixed(2)) : Math.min(meta.max, Math.round(scoreVal + 6));
+
+    if (trajModalTitle) trajModalTitle.innerText = `📈 ${item.id} — ${meta.title}`;
+    if (trajModalSubtitle) trajModalSubtitle.innerText = `Stage: ${item.stage.toUpperCase()} | Evaluated on ${new Date(item.timestamp).toLocaleDateString()}`;
+
+    if (trajValBaseline) trajValBaseline.innerText = `${baselineVal}${meta.unit}`;
+    if (trajValCurrent) trajValCurrent.innerText = item.score;
+    if (trajValTarget) trajValTarget.innerText = `${targetVal}${meta.unit}`;
+
+    if (trajExplanation) {
+      trajExplanation.innerHTML = `
+        <strong>🎯 Trajectory Diagnostic:</strong> The model evaluates that you currently stand at <strong>${item.score}</strong> (${item.status_badge}).
+        By sustaining active classroom attentiveness, completing coursework assignments on time, and keeping attendance above 85%, your projected next milestone target is <strong>${targetVal}${meta.unit}</strong>.
+      `;
+    }
+
+    const canvas = document.getElementById("modalTrajectoryChart");
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      if (modalTrajChartInstance) modalTrajChartInstance.destroy();
+
+      modalTrajChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: ["1. Initial Baseline Standing", "2. Current Evaluated Standing", "3. Projected AI Target Milestone 🎯"],
+          datasets: [
+            {
+              label: "Standing Trajectory",
+              data: [baselineVal, scoreVal, null],
+              borderColor: "#6366F1",
+              backgroundColor: "rgba(99, 102, 241, 0.2)",
+              borderWidth: 3,
+              fill: true,
+              pointBackgroundColor: ["#6366F1", "#F59E0B"],
+              pointBorderColor: "#FFFFFF",
+              pointBorderWidth: 2,
+              pointRadius: [6, 8]
+            },
+            {
+              label: "Target Projection",
+              data: [null, scoreVal, targetVal],
+              borderColor: "#10B981",
+              borderDash: [6, 6],
+              backgroundColor: "rgba(16, 185, 129, 0.2)",
+              borderWidth: 3,
+              fill: true,
+              pointBackgroundColor: ["#F59E0B", "#10B981"],
+              pointBorderColor: "#FFFFFF",
+              pointBorderWidth: 2,
+              pointRadius: [0, 8]
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "top", labels: { color: "#94A3B8", font: { size: 10 } } }
+          },
+          scales: {
+            x: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#94A3B8" } },
+            y: { min: meta.min, max: meta.max, grid: { color: "rgba(255,255,255,0.06)" }, ticks: { color: "#94A3B8" } }
+          }
+        }
+      });
+    }
+
+    trajModal.classList.add("active");
+  };
+
+  if (btnCloseTrajModal) btnCloseTrajModal.onclick = () => trajModal?.classList.remove("active");
+  if (btnCloseTrajModalBtn) btnCloseTrajModalBtn.onclick = () => trajModal?.classList.remove("active");
+  if (trajModal) trajModal.onclick = (e) => { if (e.target === trajModal) trajModal.classList.remove("active"); };
 
   // ----------------------------------------------------------------------------
   // 4. CHART 2: RISK & GRADE DISTRIBUTION DONUT
@@ -617,7 +731,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span class="badge ${item.role === "teacher" ? "badge-info" : "badge-primary"}" style="font-size: 11px; text-transform: uppercase;">
               ${item.role === "teacher" ? "👨‍🏫 Teacher" : "🎓 Student"}
             </span>
-            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${(item.stage || "University").toUpperCase()}</div>
+            <div style="font-size: 11px; font-weight: 600; color: var(--primary-300); margin-top: 3px;">
+              ${item.stage === "university" ? "🎓 University (CGPA)" : item.stage === "intermediate" ? "🎒 Inter (HSSC)" : item.stage === "matric" ? "📘 Matric (SSC)" : item.stage === "secondary" ? "🏫 Middle (0-20)" : "🧒 Primary (Mastery)"}
+            </div>
           </td>
           <td style="font-size: 12px; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             ${snapshotStr || "Standard Input Profile"}
@@ -629,6 +745,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span class="badge ${item.status_color || "badge-success"}">${item.status_badge || "Evaluated"}</span>
           </td>
           <td style="text-align: right; white-space: nowrap;">
+            <button type="button" class="btn btn-outline btn-sm" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; border-color: var(--primary-500); color: var(--primary-300);" onclick="window.viewTrajectoryGraph('${item.id}')" title="Inspect Current vs AI Target Trajectory">
+              📈 Trajectory
+            </button>
             <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="window.viewDiagnostic('${item.id}')">
               👁️ View
             </button>
