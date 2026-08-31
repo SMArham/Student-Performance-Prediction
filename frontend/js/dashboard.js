@@ -448,7 +448,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const hdRecommendations = document.getElementById("hd-recommendations");
 
   // ----------------------------------------------------------------------------
-  // Chart.js 1: GPA Progression Trend Visualization
+  // Chart.js 1: GPA Progression Trend Visualization (History-Driven)
   // ----------------------------------------------------------------------------
   function renderProgressionChart(trendData, stage) {
     const canvas = document.getElementById("gpaProgressionChart");
@@ -457,10 +457,43 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (progressionChart) progressionChart.destroy();
 
-    const labels = trendData?.labels || ["Sem 1", "Sem 2", "Sem 3", "Sem 4 (Current)", "Sem 5 (Target)"];
-    const pastGpa = trendData?.past_gpa_series || [3.30, 3.42, 3.55, null, null];
-    const currentGpa = trendData?.current_gpa_series || [null, null, null, 3.65, null];
-    const predictedGpa = trendData?.predicted_target_series || [null, null, null, 3.65, 3.78];
+    let labels = ["Sem 1", "Sem 2", "Sem 3", "Current Term", "AI Target"];
+    let pastGpa = [3.30, 3.42, 3.55, null, null];
+    let currentGpa = [null, null, null, 3.55, null];
+    let predictedGpa = [null, null, null, 3.55, 3.75];
+
+    // If user has prediction records in history, dynamically construct progression line
+    if (localPredictionHistory && localPredictionHistory.length > 0) {
+      const activeRecords = localPredictionHistory.slice().reverse();
+
+      if (activeRecords.length === 1) {
+        const item = activeRecords[0];
+        const rawScore = parseFloat(item.score) || 3.65;
+        const isUni = rawScore <= 4.0;
+        const baseline = isUni ? +(rawScore - 0.15).toFixed(2) : Math.max(40, Math.round(rawScore - 6));
+
+        labels = ["Prior Term", "Current Baseline", "AI Forecast Result", "Next Target Milestone 🎯"];
+        pastGpa = [isUni ? +(baseline - 0.10).toFixed(2) : baseline - 4, baseline, null, null];
+        currentGpa = [null, null, rawScore, null];
+        predictedGpa = [null, null, rawScore, isUni ? Math.min(4.0, +(rawScore + 0.18).toFixed(2)) : Math.min(100, rawScore + 4)];
+      } else {
+        labels = activeRecords.map((r, i) => `Run #${i + 1}`);
+        labels.push("Projected Target 🎯");
+
+        const scores = activeRecords.map((r) => parseFloat(r.score) || 3.5);
+        const lastScore = scores[scores.length - 1];
+        const isUni = lastScore <= 4.0;
+
+        pastGpa = scores.map((s, idx) => (idx < scores.length - 1 ? s : null));
+        pastGpa.push(null);
+
+        currentGpa = scores.map((s, idx) => (idx === scores.length - 1 ? s : null));
+        currentGpa.push(null);
+
+        predictedGpa = scores.map((s, idx) => (idx === scores.length - 1 ? s : null));
+        predictedGpa.push(isUni ? Math.min(4.0, +(lastScore + 0.15).toFixed(2)) : Math.min(100, Math.round(lastScore + 4)));
+      }
+    }
 
     const indigoGradient = ctx.createLinearGradient(0, 0, 0, 300);
     indigoGradient.addColorStop(0, "rgba(99, 102, 241, 0.35)");
@@ -470,7 +503,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     emeraldGradient.addColorStop(0, "rgba(16, 185, 129, 0.35)");
     emeraldGradient.addColorStop(1, "rgba(16, 185, 129, 0.0)");
 
-    const maxScale = stage === "university" ? 4.0 : stage === "secondary" ? 20.0 : stage === "matric_inter" ? 1100 : 100;
+    const isUniScale = (parseFloat(localPredictionHistory[0]?.score) || 3.55) <= 4.0;
+    const maxScale = isUniScale ? 4.0 : 100;
 
     progressionChart = new Chart(ctx, {
       type: "line",
@@ -478,7 +512,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels: labels,
         datasets: [
           {
-            label: "Past Term Performance",
+            label: "Past Performance",
             data: pastGpa,
             borderColor: "#6366F1",
             backgroundColor: indigoGradient,
@@ -491,7 +525,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             pointRadius: 5
           },
           {
-            label: "Current Term Standing",
+            label: "Latest AI Forecast Point",
             data: currentGpa,
             borderColor: "#F59E0B",
             backgroundColor: "rgba(245, 158, 11, 0.2)",
@@ -502,7 +536,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             showLine: false
           },
           {
-            label: "AI Predicted Target Trajectory",
+            label: "AI Projected Milestone",
             data: predictedGpa,
             borderColor: "#10B981",
             borderDash: [6, 6],
@@ -535,7 +569,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         scales: {
           x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { family: "Inter", size: 12 } } },
           y: {
-            min: stage === "university" ? 2.0 : 0,
+            min: isUniScale ? 2.0 : 40,
             max: maxScale,
             grid: { color: "rgba(255, 255, 255, 0.06)" },
             ticks: { color: "#94A3B8", font: { family: "Inter", size: 12 } }
@@ -546,7 +580,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ----------------------------------------------------------------------------
-  // Chart.js 2: Subject Domain Mastery (Bar Chart)
+  // Chart.js 2: Subject Domain Mastery (Bar Chart - History-Driven)
   // ----------------------------------------------------------------------------
   function renderSubjectMasteryChart() {
     const canvas = document.getElementById("subjectMasteryChart");
@@ -555,14 +589,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (subjectMasteryChart) subjectMasteryChart.destroy();
 
+    const scores = { "Core Theory": [], "Applied Labs": [], "Algorithms": [], "Humanities": [], "Electives": [] };
+
+    if (localPredictionHistory && localPredictionHistory.length > 0) {
+      localPredictionHistory.forEach((h) => {
+        const subList = h.payload?.subjects || [];
+        subList.forEach((s) => {
+          const cat = s.category || "Core Science";
+          const pct = s.max > 0 ? (s.obtained / s.max) * 100 : parseFloat(s.obtained) || 85;
+          if (cat.includes("Lab") || cat.includes("Practical")) scores["Applied Labs"].push(pct);
+          else if (cat.includes("Elective")) scores["Electives"].push(pct);
+          else if (cat.includes("Humanities") || cat.includes("Language")) scores["Humanities"].push(pct);
+          else if (s.name && (s.name.includes("Algo") || s.name.includes("Data") || s.name.includes("Code"))) scores["Algorithms"].push(pct);
+          else scores["Core Theory"].push(pct);
+        });
+      });
+    }
+
+    const calcAvg = (arr, fallback) => (arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : fallback);
+
+    const dataSeries = [
+      calcAvg(scores["Core Theory"], 86),
+      calcAvg(scores["Applied Labs"], 92),
+      calcAvg(scores["Algorithms"], 82),
+      calcAvg(scores["Humanities"], 84),
+      calcAvg(scores["Electives"], 88)
+    ];
+
     subjectMasteryChart = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: ["Core Theory", "Applied Labs", "Algorithms", "Humanities", "Electives"],
+        labels: ["Core Theory", "Applied Labs", "Algorithms & Data", "Humanities", "Electives"],
         datasets: [
           {
-            label: "Average Score %",
-            data: [86, 92, 80, 84, 88],
+            label: "Mastery Level %",
+            data: dataSeries,
             backgroundColor: [
               "rgba(99, 102, 241, 0.75)",
               "rgba(16, 185, 129, 0.75)",
@@ -650,7 +711,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ----------------------------------------------------------------------------
-  // Chart.js 4: Risk & Grade Distribution Donut
+  // Chart.js 4: Risk & Grade Distribution Donut (History-Driven)
   // ----------------------------------------------------------------------------
   function renderGradeDistributionChart() {
     const canvas = document.getElementById("gradeDistributionChart");
@@ -659,13 +720,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (gradeDistributionChart) gradeDistributionChart.destroy();
 
+    let honors = 0, proficient = 0, standard = 0, atRisk = 0;
+
+    if (localPredictionHistory && localPredictionHistory.length > 0) {
+      localPredictionHistory.forEach((item) => {
+        const badge = (item.status_badge || "").toLowerCase();
+        const score = parseFloat(item.score) || 0;
+        if (badge.includes("exemplary") || badge.includes("honor") || (score <= 4 ? score >= 3.6 : score >= 80)) {
+          honors++;
+        } else if (badge.includes("proficient") || badge.includes("track") || (score <= 4 ? score >= 3.0 : score >= 70)) {
+          proficient++;
+        } else if (badge.includes("standard") || badge.includes("capable") || (score <= 4 ? score >= 2.5 : score >= 60)) {
+          standard++;
+        } else {
+          atRisk++;
+        }
+      });
+    }
+
+    if (honors + proficient + standard + atRisk === 0) {
+      honors = 1; proficient = 1; standard = 0; atRisk = 0;
+    }
+
     gradeDistributionChart = new Chart(ctx, {
       type: "doughnut",
       data: {
-        labels: ["Honors (A/A+)", "Proficient (B)", "Standard (C)", "At Risk (D/F)"],
+        labels: ["Honors / Exemplary", "Proficient / On Track", "Standard Competency", "Attention / At Risk"],
         datasets: [
           {
-            data: [55, 30, 10, 5],
+            data: [honors, proficient, standard, atRisk],
             backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444"],
             borderColor: "#1E293B",
             borderWidth: 2
@@ -740,10 +823,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     renderHistoryLedger();
+    renderProgressionChart(null, currentStage);
+    renderSubjectMasteryChart();
+    renderGradeDistributionChart();
   }
 
   function renderHistoryLedger() {
     if (!historyTableBody) return;
+
+    // Refresh charts with updated history
+    renderProgressionChart(null, currentStage);
+    renderSubjectMasteryChart();
+    renderGradeDistributionChart();
 
     const stageFilter = filterHistoryStage ? filterHistoryStage.value : "all";
     const roleFilter = filterHistoryRole ? filterHistoryRole.value : "all";
