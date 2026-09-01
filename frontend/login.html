@@ -85,7 +85,7 @@
         <div class="form-group" style="margin-bottom: var(--space-6);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-1);">
             <label class="form-label" for="password" style="margin-bottom:0;">Password</label>
-            <a href="#" style="font-size: var(--font-size-xs); color: var(--text-accent);">Forgot password?</a>
+            <a href="#" id="btn-forgot-password" style="font-size: var(--font-size-xs); color: var(--text-accent); cursor: pointer;">Forgot password?</a>
           </div>
           <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
         </div>
@@ -104,6 +104,106 @@
       <div style="text-align: center; margin-top: var(--space-6); font-size: var(--font-size-sm); color: var(--text-muted);">
         Don't have an account yet? 
         <a href="signup.html" style="font-weight: 600; color: var(--primary-400);">Create Student Account</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       FORGOT PASSWORD & 3-STEP RECOVERY MODAL
+       ====================================================================== -->
+  <div class="modal-backdrop" id="forgot-password-modal">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" style="font-size: 18px;">🔑 Password Recovery</h2>
+          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
+            Recover access using 6-digit email OTP verification
+          </div>
+        </div>
+        <button class="btn-icon" id="btn-close-forgot-modal" style="font-size: 20px;">&times;</button>
+      </div>
+
+      <div style="padding: var(--space-6);">
+        
+        <!-- STEP 1: Enter Email -->
+        <div id="forgot-step-1">
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-4);">
+            Enter your registered student email address. We will send a secure 6-digit verification code to reset your password.
+          </p>
+
+          <form id="form-forgot-email">
+            <div class="form-group" style="margin-bottom: var(--space-5);">
+              <label class="form-label" for="forgot-email">Registered Email Address</label>
+              <input type="email" id="forgot-email" class="form-input" placeholder="e.g. student@university.edu" required autocomplete="email">
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="btn-send-otp" style="width: 100%; padding: 0.75rem;">
+              <span>✉️ Send Verification Code</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- STEP 2: Enter 6-Digit OTP Code -->
+        <div id="forgot-step-2" style="display: none;">
+          <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-5); font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+            📧 We have sent a 6-digit verification code to: <strong id="forgot-display-email" style="color: var(--primary-300);">student@university.edu</strong>. Please check your inbox or spam folder and enter the code below.
+          </div>
+
+          <form id="form-forgot-verify">
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+              <label class="form-label" for="forgot-otp-input">Enter 6-Digit Verification Code</label>
+              <input type="text" id="forgot-otp-input" class="form-input" placeholder="••••••" maxlength="6" required style="font-size: 20px; font-weight: 700; letter-spacing: 6px; text-align: center;">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-5); font-size: 12px;">
+              <span style="color: var(--text-muted);">Didn't receive the email?</span>
+              <button type="button" id="btn-resend-otp" style="background: none; border: none; color: var(--primary-400); font-weight: 600; cursor: pointer; text-decoration: underline;">
+                Resend Code
+              </button>
+            </div>
+
+            <div style="display: flex; gap: var(--space-3);">
+              <button type="button" class="btn btn-secondary" id="btn-back-step-1" style="flex: 1;">Back</button>
+              <button type="submit" class="btn btn-primary" id="btn-verify-otp" style="flex: 2;">Verify Code ➔</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- STEP 3: Set New Password -->
+        <div id="forgot-step-3" style="display: none;">
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-4);">
+            OTP verified successfully! Create a new strong password for your account.
+          </p>
+
+          <form id="form-forgot-reset">
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+              <label class="form-label" for="forgot-new-pass">New Password (Min. 6 chars)</label>
+              <input type="password" id="forgot-new-pass" class="form-input" placeholder="New strong password" required autocomplete="new-password">
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-5);">
+              <label class="form-label" for="forgot-confirm-pass">Confirm New Password</label>
+              <input type="password" id="forgot-confirm-pass" class="form-input" placeholder="Repeat new password" required autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="btn-submit-reset" style="width: 100%; padding: 0.75rem;">
+              <span>💾 Save New Password</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- STEP 4: Success Confirmation -->
+        <div id="forgot-step-4" style="display: none; text-align: center; padding: var(--space-4) 0;">
+          <div style="font-size: 48px; margin-bottom: var(--space-2);">🎉</div>
+          <h3 style="font-size: 18px; font-weight: 700; color: #FFFFFF; margin-bottom: var(--space-2);">Password Reset Complete!</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-5);">
+            Your account password has been updated securely. You can now sign in with your new credentials.
+          </p>
+          <button type="button" class="btn btn-primary" id="btn-forgot-finish" style="width: 100%; padding: 0.75rem;">
+            <span>➔ Proceed to Sign In</span>
+          </button>
+        </div>
+
       </div>
     </div>
   </div>

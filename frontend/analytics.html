@@ -202,9 +202,14 @@
                   </h2>
                   <div class="card-subtitle">Chronological prediction evolution bridged with machine learning goal</div>
                 </div>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-save-progression-png" title="Download chart as PNG">
-                  <span>🖼️ Save PNG</span>
-                </button>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-progression" title="Expand Full Screen View">
+                    <span>⛶ Fullscreen</span>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-save-progression-png" title="Download chart as PNG">
+                    <span>🖼️ Save PNG</span>
+                  </button>
+                </div>
               </div>
               <div class="chart-canvas-wrapper">
                 <canvas id="analyticsProgressionChart"></canvas>
@@ -221,9 +226,14 @@
                   </h2>
                   <div class="card-subtitle">Cohort categorization across honors, standard, and intervention flags</div>
                 </div>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-save-distribution-png" title="Download chart as PNG">
-                  <span>🖼️ Save PNG</span>
-                </button>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-distribution" title="Expand Full Screen View">
+                    <span>⛶ Fullscreen</span>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-save-distribution-png" title="Download chart as PNG">
+                    <span>🖼️ Save PNG</span>
+                  </button>
+                </div>
               </div>
               <div class="chart-canvas-wrapper">
                 <canvas id="analyticsGradeDistributionChart"></canvas>
@@ -242,9 +252,14 @@
                   </h2>
                   <div class="card-subtitle">Evaluated competency across Core Science, Labs, Algorithms, & Humanities</div>
                 </div>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-save-mastery-png" title="Download chart as PNG">
-                  <span>🖼️ Save PNG</span>
-                </button>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-mastery" title="Expand Full Screen View">
+                    <span>⛶ Fullscreen</span>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-save-mastery-png" title="Download chart as PNG">
+                    <span>🖼️ Save PNG</span>
+                  </button>
+                </div>
               </div>
               <div class="chart-canvas-wrapper">
                 <canvas id="analyticsSubjectMasteryChart"></canvas>
@@ -261,9 +276,14 @@
                   </h2>
                   <div class="card-subtitle">Impact of daily self-study hours and revision discipline on scores</div>
                 </div>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-save-habits-png" title="Download chart as PNG">
-                  <span>🖼️ Save PNG</span>
-                </button>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-habits" title="Expand Full Screen View">
+                    <span>⛶ Fullscreen</span>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-save-habits-png" title="Download chart as PNG">
+                    <span>🖼️ Save PNG</span>
+                  </button>
+                </div>
               </div>
               <div class="chart-canvas-wrapper">
                 <canvas id="analyticsHabitsCorrelationChart"></canvas>
@@ -477,6 +497,43 @@
         <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
           <button type="button" class="btn btn-secondary" id="btn-close-traj-modal-btn">Close Trajectory</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       DEDICATED FULLSCREEN HIGH-RESOLUTION THEATER CHART MODAL
+       ====================================================================== -->
+  <div class="modal-backdrop" id="analytics-fullscreen-modal">
+    <div class="modal-dialog" style="max-width: 1200px; width: 95vw; height: 90vh; max-height: 90vh; display: flex; flex-direction: column; padding: 0;">
+      <div class="modal-header" style="padding: var(--space-5) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--border-subtle); background: var(--bg-card);">
+        <div>
+          <h2 class="modal-title" id="fs-modal-title" style="font-size: 18px; display: flex; align-items: center; gap: 8px;">
+            <span>📈 Full Screen Visualization</span>
+          </h2>
+          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;" id="fs-modal-subtitle">
+            High-definition interactive analytics view
+          </div>
+        </div>
+        <div style="display: flex; gap: var(--space-3); align-items: center;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-fs-download-png">
+            <span>🖼️ Download High-Res PNG</span>
+          </button>
+          <button class="btn-icon" id="btn-close-fs-modal" style="font-size: 20px;">&times;</button>
+        </div>
+      </div>
+
+      <div style="flex: 1; padding: var(--space-6); position: relative; min-height: 0; display: flex; flex-direction: column; background: radial-gradient(circle at center, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);">
+        <div style="flex: 1; width: 100%; position: relative; min-height: 380px;">
+          <canvas id="fullscreenChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <div style="padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--bg-card); display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 12px; color: var(--text-secondary);" id="fs-modal-note">
+          💡 Tip: You can hover or tap on individual data points for exact academic metrics and confidence weights.
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-close-fs-modal-btn">Exit Full Screen</button>
       </div>
     </div>
   </div>

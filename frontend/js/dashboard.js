@@ -299,6 +299,150 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // ----------------------------------------------------------------------------
+  // PROFILE MODAL: 4-TAB SWITCHING
+  // ----------------------------------------------------------------------------
+  const tabBtns = document.querySelectorAll(".modal-tab-btn");
+  const tabContents = document.querySelectorAll(".profile-tab-content");
+
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetTab = btn.getAttribute("data-tab");
+      tabBtns.forEach((b) => b.classList.remove("active"));
+      tabContents.forEach((c) => {
+        c.classList.remove("active");
+        c.style.display = "none";
+      });
+
+      btn.classList.add("active");
+      const activeContent = document.getElementById(targetTab);
+      if (activeContent) {
+        activeContent.classList.add("active");
+        activeContent.style.display = "block";
+      }
+    });
+  });
+
+  // ----------------------------------------------------------------------------
+  // TAB 2: AVATAR PRESET PICKER & CUSTOM URL
+  // ----------------------------------------------------------------------------
+  let selectedPresetAvatarUrl = "";
+  const avatarBigPreview = document.getElementById("avatar-big-preview");
+  const customAvatarInput = document.getElementById("setting-custom-avatar-url");
+  const btnSaveAvatarTab = document.getElementById("btn-save-avatar-tab");
+
+  document.querySelectorAll(".btn-avatar-preset").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const url = btn.getAttribute("data-avatar");
+      selectedPresetAvatarUrl = url;
+      if (avatarBigPreview) avatarBigPreview.src = url;
+      if (settingAvatarPreview) settingAvatarPreview.src = url;
+      if (customAvatarInput) customAvatarInput.value = "";
+      showToast("Avatar preset selected! Click Apply to save.", "info");
+    });
+  });
+
+  if (customAvatarInput) {
+    customAvatarInput.addEventListener("input", (e) => {
+      const customUrl = e.target.value.trim();
+      if (customUrl.length > 5 && (customUrl.startsWith("http://") || customUrl.startsWith("https://") || customUrl.startsWith("data:"))) {
+        selectedPresetAvatarUrl = customUrl;
+        if (avatarBigPreview) avatarBigPreview.src = customUrl;
+        if (settingAvatarPreview) settingAvatarPreview.src = customUrl;
+      }
+    });
+  }
+
+  if (btnSaveAvatarTab) {
+    btnSaveAvatarTab.addEventListener("click", () => {
+      const finalAvatar = customAvatarInput?.value.trim() || selectedPresetAvatarUrl || settingAvatarPreview?.src;
+      if (!finalAvatar) return showToast("Please select or enter an avatar first.", "error");
+
+      try {
+        const storedUser = localStorage.getItem("sp_auth_user");
+        let userObj = storedUser ? JSON.parse(storedUser) : { id: "local-user", user_metadata: {} };
+        userObj.user_metadata = {
+          ...userObj.user_metadata,
+          avatar_url: finalAvatar
+        };
+        localStorage.setItem("sp_auth_user", JSON.stringify(userObj));
+      } catch (err) {
+        console.warn("Could not save avatar:", err);
+      }
+
+      if (studentAvatarEl) studentAvatarEl.src = finalAvatar;
+      if (settingAvatarPreview) settingAvatarPreview.src = finalAvatar;
+      if (avatarBigPreview) avatarBigPreview.src = finalAvatar;
+
+      profileModal?.classList.remove("active");
+      showToast("Avatar updated successfully across your account!", "success");
+    });
+  }
+
+  // ----------------------------------------------------------------------------
+  // TAB 3: SECURITY & PASSWORD CHANGE
+  // ----------------------------------------------------------------------------
+  const securityForm = document.getElementById("profile-security-form");
+  if (securityForm) {
+    securityForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const currentPass = document.getElementById("security-current-pass")?.value;
+      const newPass = document.getElementById("security-new-pass")?.value;
+      const confirmPass = document.getElementById("security-confirm-pass")?.value;
+
+      if (!newPass || newPass.length < 6) {
+        return showToast("New password must be at least 6 characters.", "error");
+      }
+      if (newPass !== confirmPass) {
+        return showToast("New passwords do not match.", "error");
+      }
+
+      try {
+        const storedUser = localStorage.getItem("sp_auth_user");
+        if (storedUser) {
+          let userObj = JSON.parse(storedUser);
+          userObj.password = newPass;
+          localStorage.setItem("sp_auth_user", JSON.stringify(userObj));
+        }
+      } catch (err) {
+        console.warn("Error updating password:", err);
+      }
+
+      securityForm.reset();
+      profileModal?.classList.remove("active");
+      showToast("Password updated securely!", "success");
+    });
+  }
+
+  // ----------------------------------------------------------------------------
+  // TAB 4: DANGER ZONE / ACCOUNT DELETION
+  // ----------------------------------------------------------------------------
+  const deleteAccountForm = document.getElementById("delete-account-form");
+  if (deleteAccountForm) {
+    deleteAccountForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const confirmText = document.getElementById("delete-confirm-input")?.value.trim();
+
+      if (confirmText !== "DELETE") {
+        return showToast("Please type DELETE in capital letters to confirm erasure.", "error");
+      }
+
+      if (!confirm("FINAL CONFIRMATION: Are you completely sure you want to wipe this student account and all prediction records? This cannot be undone.")) {
+        return;
+      }
+
+      // Wipe all user data and prediction ledgers
+      localStorage.removeItem("sp_auth_user");
+      localStorage.removeItem("sp_auth_token");
+      localStorage.removeItem("edumetrics_prediction_history_v2");
+      localStorage.removeItem("edumetrics_prediction_history");
+
+      profileModal?.classList.remove("active");
+      alert("Account and all associated historical records have been permanently deleted.");
+      window.location.href = "login.html";
+    });
+  }
+
   // Initial Execution
   loadExecutiveDashboard(currentStage);
 });
