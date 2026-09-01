@@ -296,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
       activeRecoveryOtp = serverCode;
     }
 
-    // Channel 2: Real Direct Mail Delivery Service
+    // Channel 2: Real Direct Mail Delivery Service (Prominent 6-Digit Code)
     try {
       await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipientEmail)}`, {
         method: "POST",
@@ -305,16 +305,17 @@ document.addEventListener("DOMContentLoaded", () => {
           "Accept": "application/json"
         },
         body: JSON.stringify({
-          _subject: `EduMetrics AI - Password Reset Code: [${activeRecoveryOtp}]`,
-          _template: "box",
+          _subject: `🔑 YOUR PASSWORD RESET CODE IS: [ ${activeRecoveryOtp} ]`,
+          _template: "table",
           _captcha: "false",
+          "⭐ 6-DIGIT RESET CODE ⭐": activeRecoveryOtp,
           "Verification Code": activeRecoveryOtp,
-          "Purpose": "EduMetrics AI Student Portal Password Reset",
-          "Recipient": recipientEmail,
-          "Instructions": "Enter this 6-digit verification code to reset your account password."
+          "Action Required": `Enter code ${activeRecoveryOtp} on the verification screen to reset your password.`,
+          "Student Account": recipientEmail,
+          message: `Your EduMetrics AI Password Reset Code is: ${activeRecoveryOtp}\n\nPlease enter ${activeRecoveryOtp} to set your new password.`
         })
       });
-      console.log(`[Auth] Direct real email dispatched to ${recipientEmail}`);
+      console.log(`[Auth] Direct real email with code ${activeRecoveryOtp} dispatched to ${recipientEmail}`);
     } catch (err) {
       console.warn("[Auth] Direct mailer error:", err);
     }

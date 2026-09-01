@@ -44,7 +44,19 @@ def send_smtp_email(to_email: str, code: str) -> bool:
     smtp_user = os.getenv("SMTP_USER", "")
     smtp_pass = os.getenv("SMTP_PASS", "")
 
-    subject = f"Your EduMetrics AI Password Reset Code: {code}"
+    subject = f"🔑 [{code}] is your EduMetrics AI Password Reset Code"
+    plain_text = f"""
+EduMetrics AI - Student Performance Prediction Platform
+=========================================================
+
+YOUR 6-DIGIT VERIFICATION CODE IS:  {code}
+
+Please enter {code} on the verification screen to reset your password.
+This code will expire in 15 minutes.
+
+If you did not request this, you can safely ignore this email.
+"""
+
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -54,18 +66,18 @@ def send_smtp_email(to_email: str, code: str) -> bool:
         body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #F8FAFC; padding: 20px; }}
         .card {{ max-width: 500px; margin: 0 auto; background: #1E293B; border-radius: 12px; padding: 30px; border: 1px solid #334155; }}
         .logo {{ font-size: 24px; font-weight: bold; color: #6366F1; margin-bottom: 20px; }}
-        .code-box {{ font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #10B981; background: #0F172A; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0; }}
+        .code-box {{ font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #10B981; background: #0F172A; padding: 18px; text-align: center; border-radius: 8px; margin: 20px 0; border: 2px dashed #10B981; }}
         .footer {{ font-size: 12px; color: #94A3B8; margin-top: 25px; line-height: 1.5; }}
       </style>
     </head>
     <body>
       <div class="card">
         <div class="logo">🎓 EduMetrics AI</div>
-        <h2>Password Reset Verification</h2>
+        <h2>Password Reset Verification Code</h2>
         <p>Dear Student,</p>
-        <p>You recently requested to reset your password for your EduMetrics AI account. Use the 6-digit verification code below to complete your password reset:</p>
+        <p>Your 6-digit verification code to reset your account password is:</p>
         <div class="code-box">{code}</div>
-        <p>This code will expire in <strong>15 minutes</strong>. If you did not request this change, please ignore this email.</p>
+        <p>Enter this code in the password recovery window to set your new password. This code will expire in <strong>15 minutes</strong>.</p>
         <div class="footer">
           &copy; 2026 EduMetrics AI – Student Performance Prediction & Analytics Platform.
         </div>
@@ -83,6 +95,7 @@ def send_smtp_email(to_email: str, code: str) -> bool:
         msg["Subject"] = subject
         msg["From"] = f"EduMetrics AI <{smtp_user}>"
         msg["To"] = to_email
+        msg.attach(MIMEText(plain_text, "plain"))
         msg.attach(MIMEText(html_content, "html"))
 
         with smtplib.SMTP(smtp_host, smtp_port) as server:
