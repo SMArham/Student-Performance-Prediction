@@ -35,13 +35,15 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Student Performance API service...")
 
 
+# Initialize FastAPI app with Swagger and ReDoc documentation explicitly disabled
 app = FastAPI(
     title="Student Performance Prediction & Analytics API",
     description="Multi-stage AI-driven student academic forecasting, calibrated performance monitoring, and analytics engine.",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None,       # Swagger UI disabled as requested
+    redoc_url=None,      # ReDoc disabled as requested
+    openapi_url=None,    # OpenAPI JSON disabled
 )
 
 # ------------------------------------------------------------------------------
@@ -90,13 +92,12 @@ app.include_router(models_registry.router)
 # ------------------------------------------------------------------------------
 # 5. Robust Static Frontend & HTML Route Serving
 # ------------------------------------------------------------------------------
-# Calculate absolute frontend path robustly
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 if not os.path.exists(FRONTEND_DIR):
     FRONTEND_DIR = os.path.abspath("frontend")
 
 if os.path.exists(FRONTEND_DIR):
-    # Direct HTML file endpoints for seamless navigation
+    # Direct HTML file endpoints for seamless navigation across all 3 pages
     @app.get("/login", include_in_schema=False)
     @app.get("/login.html", include_in_schema=False)
     async def serve_login():
@@ -119,6 +120,22 @@ if os.path.exists(FRONTEND_DIR):
         dash_file = os.path.join(FRONTEND_DIR, "dashboard.html")
         if os.path.exists(dash_file):
             return FileResponse(dash_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
+    @app.get("/prediction", include_in_schema=False)
+    @app.get("/prediction.html", include_in_schema=False)
+    async def serve_prediction():
+        pred_file = os.path.join(FRONTEND_DIR, "prediction.html")
+        if os.path.exists(pred_file):
+            return FileResponse(pred_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
+    @app.get("/analytics", include_in_schema=False)
+    @app.get("/analytics.html", include_in_schema=False)
+    async def serve_analytics():
+        analytics_file = os.path.join(FRONTEND_DIR, "analytics.html")
+        if os.path.exists(analytics_file):
+            return FileResponse(analytics_file, media_type="text/html")
         return RedirectResponse(url="/")
 
     @app.get("/index.html", include_in_schema=False)
