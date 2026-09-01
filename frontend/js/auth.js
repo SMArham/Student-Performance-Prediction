@@ -264,6 +264,43 @@ document.addEventListener("DOMContentLoaded", () => {
     btnBackStep1.addEventListener("click", () => showForgotStep(1));
   }
 
+  // Helper: Dispatch Real Email to user's inbox
+  async function dispatchRealRecoveryEmail(recipientEmail, otpCode) {
+    // Channel 1: Real Direct Mail Delivery Service
+    try {
+      await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipientEmail)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          _subject: `Your EduMetrics AI Password Reset Code: [${otpCode}]`,
+          _template: "box",
+          _captcha: "false",
+          "Verification Code": otpCode,
+          "Purpose": "EduMetrics AI Student Portal Password Reset",
+          "Recipient": recipientEmail,
+          "Instructions": "Enter this 6-digit code in the verification screen to reset your password."
+        })
+      });
+      console.log(`[Auth] Direct real email dispatched to ${recipientEmail}`);
+    } catch (err) {
+      console.warn("[Auth] Direct mailer error:", err);
+    }
+
+    // Channel 2: Supabase Auth Recovery Dispatch
+    if (window.authClient && window.authClient.client) {
+      try {
+        await window.authClient.client.auth.resetPasswordForEmail(recipientEmail, {
+          redirectTo: window.location.href
+        });
+      } catch (supabaseErr) {
+        console.warn("[Auth] Supabase reset notice:", supabaseErr);
+      }
+    }
+  }
+
   // Step 1: Send OTP to Email
   if (formForgotEmail) {
     formForgotEmail.addEventListener("submit", async (e) => {
@@ -276,7 +313,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const sendBtn = document.getElementById("btn-send-otp");
       if (sendBtn) {
         sendBtn.disabled = true;
-        sendBtn.innerText = "Dispatching Code...";
+        sendBtn.innerText = "Dispatching Real Email...";
       }
 
       activeRecoveryEmail = email;
@@ -285,23 +322,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (forgotDisplayEmail) forgotDisplayEmail.innerText = email;
       if (forgotOtpInput) forgotOtpInput.value = "";
 
-      // Trigger live Supabase password reset / OTP dispatch
-      if (window.authClient && window.authClient.client) {
-        try {
-          await window.authClient.client.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.href
-          });
-        } catch (supabaseErr) {
-          console.warn("[Auth] Live Supabase reset notice:", supabaseErr);
-        }
-      }
+      // Dispatch via multi-channel real email pipeline
+      await dispatchRealRecoveryEmail(email, activeRecoveryOtp);
 
       if (sendBtn) {
         sendBtn.disabled = false;
         sendBtn.innerText = "✉️ Send Verification Code";
       }
 
-      showToast(`Verification code dispatched to ${email}. Please check your inbox.`, "success");
+      showToast(`Verification code sent to ${email}! Please check your Inbox / Spam folder.`, "success");
       showForgotStep(2);
       startResendCountdown();
     });
@@ -339,15 +368,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!activeRecoveryEmail) return;
       activeRecoveryOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-      if (window.authClient && window.authClient.client) {
-        try {
-          await window.authClient.client.auth.resetPasswordForEmail(activeRecoveryEmail, {
-            redirectTo: window.location.href
-          });
-        } catch (err) {
-          console.warn("[Auth] Resend notice:", err);
-        }
-      }
+      btnResendOtp.disabled = true;
+      btnResendOtp.innerText = "Dispatching...";
+      await dispatchRealRecoveryEmail(activeRecoveryEmail, activeRecoveryOtp);
 
       showToast(`A fresh verification code has been dispatched to ${activeRecoveryEmail}.`, "success");
       startResendCountdown();
