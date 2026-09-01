@@ -19,6 +19,20 @@ Built with **FastAPI**, **Scikit-learn**, **Vanilla JavaScript**, **Chart.js**, 
 - ⚡ **Interactive AI Performance Simulator**: Instant in-browser simulation modal to test how changes in study hours, attendance, sleep, and social habits impact forecasted GPA.
 - 🎨 **Modular Design System**: Standardized CSS tokens (`variables.css`, `layout.css`, `components.css`) ensuring seamless collaboration for Team Members 2 & 3.
 
+## 🌟 Key Features (PAGE 2: Academic Records & Prediction Input Form)
+
+- 🎛️ **Dynamic Stage Selector**: Switch between University, Matric / Intermediate, Secondary School, and Primary education stages.
+- 📝 **Stage-Calibrated Inputs**: Fields render automatically per stage (CGPA, attendance, study hours, marks, etc.) with real-time numerical bounds validation.
+- ⚠️ **Inline Validation & Loading States**: Clear error banners for invalid input or unreachable backend, plus a spinner inside the submit button during inference.
+- 🃏 **Prediction Result Card**: Prominent predicted GPA/Marks, **95% Confidence Interval Range** `[Lower — Upper]`, calibrated performance badge, key contributing factors, and AI study recommendations.
+
+## 🌟 Key Features (PAGE 3: Analytics & AI Insights)
+
+- 🔐 **Auth-Guarded Page**: `requireAuth()` redirects unauthenticated users to login.
+- 📊 **Chart.js Historical Trend**: Visualizes performance across all prediction runs.
+- 🗂️ **Prediction Logs Table**: Timestamp, stage, predicted value & unit, 95% CI range, and status badge.
+- 🫥 **Graceful Empty State**: Friendly CTA to Page 2 when no history exists.
+
 ---
 
 ## 🚀 Quick Start (Local Run)
@@ -40,6 +54,8 @@ python backend/app/main.py
 
 Open your browser at:
 - **Student Dashboard (Page 1)**: [http://localhost:8000/dashboard.html](http://localhost:8000/dashboard.html)
+- **Academic Records & Prediction (Page 2)**: [http://localhost:8000/prediction.html](http://localhost:8000/prediction.html)
+- **Analytics & AI Insights (Page 3)**: [http://localhost:8000/analytics.html](http://localhost:8000/analytics.html)
 - **Sign In / Demo Login**: [http://localhost:8000/login.html](http://localhost:8000/login.html)
 - **Registration**: [http://localhost:8000/signup.html](http://localhost:8000/signup.html)
 - **Interactive API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
