@@ -339,26 +339,46 @@
 
       <div class="profile-tab-content active" id="tab-profile-general">
         <form id="profile-details-form" style="padding: var(--space-6);">
+          <!-- Live Avatar Preview Box -->
+          <div style="display: flex; align-items: center; gap: var(--space-4); background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-5);">
+            <img id="setting-avatar-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar Preview" style="width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--primary-500); background: var(--bg-card);">
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Interactive Avatar Preview</div>
+              <div style="font-size: 11px; color: var(--text-muted);" id="setting-avatar-caption">Type your name or select gender below to automatically adapt your avatar.</div>
+            </div>
+          </div>
+
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
             <div class="form-group">
               <label class="form-label" for="setting-fullname">Full Name <span style="color:var(--accent-rose)">*</span></label>
-              <input type="text" id="setting-fullname" class="form-input" value="Muhammad Ali" required>
+              <input type="text" id="setting-fullname" class="form-input" value="Muhammad Ali" required placeholder="e.g. Fatima Zahra or Muhammad Ali">
             </div>
+            <div class="form-group">
+              <label class="form-label" for="setting-gender">Avatar Style & Gender</label>
+              <select id="setting-gender" class="form-select">
+                <option value="auto" selected>✨ Auto-Detect by Name</option>
+                <option value="female">👩 Female Avatar (Lorelei)</option>
+                <option value="male">👨 Male Avatar (Avataaars)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
             <div class="form-group">
               <label class="form-label" for="setting-studentid">Student ID / Code</label>
               <input type="text" id="setting-studentid" class="form-input" value="SE-2023-049">
             </div>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
             <div class="form-group">
               <label class="form-label" for="setting-major">Major / Program</label>
               <input type="text" id="setting-major" class="form-input" value="Software Engineering">
             </div>
-            <div class="form-group">
-              <label class="form-label" for="setting-institution">Institution Name</label>
-              <input type="text" id="setting-institution" class="form-input" value="Faculty of Computer Science & Engineering">
-            </div>
           </div>
+
+          <div class="form-group" style="margin-bottom: var(--space-6);">
+            <label class="form-label" for="setting-institution">Institution Name</label>
+            <input type="text" id="setting-institution" class="form-input" value="Faculty of Computer Science & Engineering">
+          </div>
+
           <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
             <button type="button" class="btn btn-secondary" id="btn-cancel-profile">Cancel</button>
             <button type="submit" class="btn btn-primary">Save Profile</button>
