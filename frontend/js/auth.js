@@ -24,6 +24,68 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 4500);
   };
 
+  // Smart Gender & Avatar Detection Helper (Automatic by name or gender)
+  window.getSmartAvatar = function(name = "Student", gender = "auto", customUrl = null) {
+    if (customUrl && customUrl.trim().length > 5) {
+      return customUrl.trim();
+    }
+
+    const cleanName = (name || "Student").trim();
+    const lower = cleanName.toLowerCase();
+    let isFemale = false;
+
+    if (gender === "female") {
+      isFemale = true;
+    } else if (gender === "male") {
+      isFemale = false;
+    } else {
+      // Smart name analysis for common female names & patterns
+      const femaleNames = [
+        "fatima", "ayesha", "ayeshah", "sara", "sarah", "sana", "maryam", "mariam", "zainab", 
+        "hira", "anum", "mahnoor", "noor", "alishba", "dua", "zoya", "kinza", "rabia", 
+        "sadia", "laiba", "eman", "iman", "emily", "jessica", "emma", "sophia", "olivia", 
+        "ava", "mia", "charlotte", "amna", "iqra", "nimra", "samreen", "bushra", "hafsa", 
+        "mehreen", "sidra", "sumera", "farhana", "nida", "ramsha", "komal", "mehwish", 
+        "bisma", "maliha", "shanzay", "shanza", "urooj", "kanwal", "fariha", "anaya", 
+        "hoorain", "hareem", "manahil", "erum", "nazia", "samina", "tahira", "uzma", 
+        "yasmeen", "shabana", "lubna", "shaista", "fozia", "rubina", "farah", "maria", 
+        "anita", "kiran", "rida", "javeria", "amina", "aleena", "alina", "ariba", "areeba",
+        "huma", "asma", "sumaiya", "sumayya", "zara", "maheen", "tuba", "tooba", "minahil",
+        "zahra", "khadija", "kulsoom", "faiza", "mehak", "sundus", "samra", "tehreem"
+      ];
+
+      const maleNames = [
+        "ali", "ahmed", "ahmad", "muhammad", "mohammad", "yahya", "arham", "bilal", "hamza", 
+        "usman", "hassan", "hussain", "omar", "umair", "saad", "zaid", "tariq", "shahid", 
+        "kashif", "asif", "waqas", "daniyal", "haris", "faisal", "mustafa", "ibrahim", 
+        "abdullah", "abdur", "rehman", "salman", "noman", "kamran", "shahzaib", "shehroz"
+      ];
+
+      const words = lower.split(/[\s._-]+/);
+      const hasFemaleWord = words.some(w => femaleNames.includes(w));
+      const hasMaleWord = words.some(w => maleNames.includes(w));
+
+      if (hasFemaleWord && !hasMaleWord) {
+        isFemale = true;
+      } else if (hasMaleWord) {
+        isFemale = false;
+      } else {
+        // Suffix heuristic for common female name endings
+        if (lower.endsWith("a") || lower.endsWith("ah") || lower.endsWith("een") || lower.endsWith("at") || lower.endsWith("ia")) {
+          isFemale = true;
+        }
+      }
+    }
+
+    if (isFemale) {
+      // Beautiful Female Avatar with DiceBear Lorelei
+      return `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    } else {
+      // Sharp Male Avatar with DiceBear Avataaars
+      return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanName)}&clothingColor=262e33,3c4f5c,5199e4,25557c,3c443c`;
+    }
+  };
+
   // If already authenticated and on login/signup page, redirect to dashboard
   if (window.authClient && window.authClient.isAuthenticated()) {
     const isAuthPage = window.location.pathname.includes("login.html") || window.location.pathname.includes("signup.html");
@@ -102,8 +164,13 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         submitBtn.disabled = true;
         submitBtn.innerText = "Creating Account...";
+        const gender = document.getElementById("gender")?.value || "auto";
+        const avatarUrl = window.getSmartAvatar(fullName, gender);
+        
         await window.authClient.signUp(email, password, {
           full_name: fullName,
+          gender: gender,
+          avatar_url: avatarUrl,
           role: "student",
           stage: stage
         });

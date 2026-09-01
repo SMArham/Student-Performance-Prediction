@@ -70,14 +70,25 @@
           <input type="email" id="email" class="form-input" placeholder="student@university.edu" required autocomplete="email">
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="stage">Education Stage</label>
-          <select id="stage" class="form-select">
-            <option value="university" selected>University / Undergraduate (CGPA 4.0)</option>
-            <option value="matric_inter">Matriculation / Intermediate (HSSC)</option>
-            <option value="secondary">Secondary School (G1 - G3)</option>
-            <option value="primary">Primary Education System</option>
-          </select>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+          <div class="form-group">
+            <label class="form-label" for="stage">Education Stage</label>
+            <select id="stage" class="form-select">
+              <option value="university" selected>University / Undergrad</option>
+              <option value="matric_inter">Matric / Inter (HSSC)</option>
+              <option value="secondary">Secondary School</option>
+              <option value="primary">Primary School</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="gender">Avatar Style</label>
+            <select id="gender" class="form-select">
+              <option value="auto" selected>✨ Auto-Detect by Name</option>
+              <option value="female">👩 Female Avatar</option>
+              <option value="male">👨 Male Avatar</option>
+            </select>
+          </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">

@@ -114,11 +114,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderRecentHistoryTable();
   }
 
+  function getAvatar(name, gender, customUrl) {
+    if (typeof window.getSmartAvatar === "function") {
+      return window.getSmartAvatar(name, gender, customUrl);
+    }
+    const cleanName = (name || "Student").trim();
+    const isFemale = gender === "female" || ["fatima", "ayesha", "sara", "sana", "maryam", "zainab", "hira", "anum", "mahnoor", "noor", "alishba", "dua", "zoya", "kinza", "rabia", "sadia", "laiba", "eman"].some(fn => cleanName.toLowerCase().includes(fn));
+    if (isFemale) {
+      return `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    }
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanName)}&clothingColor=262e33,3c4f5c,5199e4,25557c,3c443c`;
+  }
+
   function renderStudentProfile() {
     const currentUser = window.authClient ? window.authClient.getUser() : null;
     const meta = currentUser?.user_metadata || {};
     const displayName = meta.full_name || "Muhammad Ali";
-    const avatarUrl = meta.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`;
+    const gender = meta.gender || "auto";
+    const avatarUrl = meta.avatar_url || getAvatar(displayName, gender);
     const studentId = meta.student_id || "SE-2023-049";
     const major = meta.major || "Software Engineering";
     const institution = meta.institution_name || "Faculty of Computer Science & Engineering";
@@ -130,7 +143,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (studentIdEl) studentIdEl.innerText = studentId;
     if (institutionEl) institutionEl.innerText = institution;
     if (gradeLevelEl) gradeLevelEl.innerText = currentStage === "university" ? "Semester 4 (Undergraduate)" : "Active Term";
+
+    // Set values in Profile modal
+    const settingNameInput = document.getElementById("setting-fullname");
+    const settingGenderInput = document.getElementById("setting-gender");
+    const settingAvatarPreview = document.getElementById("setting-avatar-preview");
+    const settingStudentId = document.getElementById("setting-studentid");
+    const settingMajor = document.getElementById("setting-major");
+    const settingInstitution = document.getElementById("setting-institution");
+
+    if (settingNameInput) settingNameInput.value = displayName;
+    if (settingGenderInput) settingGenderInput.value = gender;
+    if (settingAvatarPreview) settingAvatarPreview.src = avatarUrl;
+    if (settingStudentId) settingStudentId.value = studentId;
+    if (settingMajor) settingMajor.value = major;
+    if (settingInstitution) settingInstitution.value = institution;
   }
+
+  // Live Avatar Preview as user types name or changes gender
+  const settingNameInput = document.getElementById("setting-fullname");
+  const settingGenderInput = document.getElementById("setting-gender");
+  const settingAvatarPreview = document.getElementById("setting-avatar-preview");
+  const settingAvatarCaption = document.getElementById("setting-avatar-caption");
+
+  function updateModalAvatarPreview() {
+    const name = settingNameInput?.value.trim() || "Student";
+    const gender = settingGenderInput?.value || "auto";
+    const url = getAvatar(name, gender);
+    if (settingAvatarPreview) settingAvatarPreview.src = url;
+    if (settingAvatarCaption) {
+      const isFemale = url.includes("lorelei");
+      settingAvatarCaption.innerText = isFemale ? `👩 Female Avatar active (${name})` : `👨 Male Avatar active (${name})`;
+      settingAvatarCaption.style.color = isFemale ? "var(--accent-rose)" : "var(--primary-400)";
+    }
+  }
+
+  if (settingNameInput) settingNameInput.addEventListener("input", updateModalAvatarPreview);
+  if (settingGenderInput) settingGenderInput.addEventListener("change", updateModalAvatarPreview);
 
   function renderKPIs(stage) {
     const isUni = stage === "university";
@@ -204,8 +253,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Profile Modal Event Handlers
-  if (userProfileBtn) userProfileBtn.onclick = () => profileModal?.classList.add("active");
-  if (btnEditProfileOverview) btnEditProfileOverview.onclick = () => profileModal?.classList.add("active");
+  if (userProfileBtn) userProfileBtn.onclick = () => { renderStudentProfile(); profileModal?.classList.add("active"); };
+  if (btnEditProfileOverview) btnEditProfileOverview.onclick = () => { renderStudentProfile(); profileModal?.classList.add("active"); };
   if (btnCloseProfile) btnCloseProfile.onclick = () => profileModal?.classList.remove("active");
   if (btnCancelProfile) btnCancelProfile.onclick = () => profileModal?.classList.remove("active");
   if (profileModal) profileModal.onclick = (e) => { if (e.target === profileModal) profileModal.classList.remove("active"); };
@@ -214,18 +263,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     profileForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const name = document.getElementById("setting-fullname")?.value.trim() || "Muhammad Ali";
+      const gender = document.getElementById("setting-gender")?.value || "auto";
       const studentId = document.getElementById("setting-studentid")?.value.trim() || "SE-2023-049";
       const major = document.getElementById("setting-major")?.value.trim() || "Software Engineering";
       const inst = document.getElementById("setting-institution")?.value.trim() || "Faculty of Computer Science & Engineering";
+      const newAvatarUrl = getAvatar(name, gender);
+
+      // Persist to user session
+      try {
+        const storedUser = localStorage.getItem("sp_auth_user");
+        let userObj = storedUser ? JSON.parse(storedUser) : { id: "local-user", user_metadata: {} };
+        userObj.user_metadata = {
+          ...userObj.user_metadata,
+          full_name: name,
+          gender: gender,
+          avatar_url: newAvatarUrl,
+          student_id: studentId,
+          major: major,
+          institution_name: inst
+        };
+        localStorage.setItem("sp_auth_user", JSON.stringify(userObj));
+      } catch (err) {
+        console.warn("Could not save profile to local session:", err);
+      }
 
       if (studentNameEl) studentNameEl.innerText = name;
       if (heroGreetingEl) heroGreetingEl.innerText = `Welcome back, ${name.split(" ")[0]} 👋`;
+      if (studentAvatarEl) studentAvatarEl.src = newAvatarUrl;
       if (studentIdEl) studentIdEl.innerText = studentId;
       if (studentMajorEl) studentMajorEl.innerText = major;
       if (institutionEl) institutionEl.innerText = inst;
 
       profileModal?.classList.remove("active");
-      showToast("Profile settings updated successfully!", "success");
+      showToast("Profile and Avatar updated successfully!", "success");
     });
   }
 

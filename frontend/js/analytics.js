@@ -83,17 +83,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
   }
 
-  // Sidebar Toggle for Mobile
-  if (sidebarToggle && sidebar) {
-    sidebarToggle.addEventListener("click", () => sidebar.classList.toggle("open"));
+  // Sync Profile & Smart Avatar
+  function syncUserProfile() {
+    const currentUser = window.authClient ? window.authClient.getUser() : null;
+    const meta = currentUser?.user_metadata || {};
+    const displayName = meta.full_name || "Muhammad Ali";
+    const gender = meta.gender || "auto";
+    const studentAvatarEl = document.getElementById("student-avatar");
+    const studentNameEl = document.getElementById("student-name");
+    const studentIdCodeEl = document.getElementById("student-id-code");
+
+    function getAvatar(name, gen) {
+      if (typeof window.getSmartAvatar === "function") return window.getSmartAvatar(name, gen);
+      const isFemale = gen === "female" || ["fatima", "ayesha", "sara", "sana", "maryam", "zainab", "hira", "anum", "mahnoor", "noor", "alishba", "dua", "zoya", "kinza", "rabia", "sadia", "laiba", "eman"].some(fn => (name || "").toLowerCase().includes(fn));
+      return isFemale 
+        ? `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&clothingColor=262e33,3c4f5c,5199e4,25557c,3c443c`;
+    }
+
+    if (studentNameEl) studentNameEl.innerText = displayName;
+    if (studentAvatarEl) studentAvatarEl.src = meta.avatar_url || getAvatar(displayName, gender);
+    if (studentIdCodeEl) studentIdCodeEl.innerText = meta.student_id || "SE-2023-049";
   }
 
-  // Logout Handler
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
-      await window.authClient.signOut();
-    });
-  }
+  syncUserProfile();
 
   // ----------------------------------------------------------------------------
   // 1. LOAD PREDICTION HISTORY (UNIFIED ENGINE)
