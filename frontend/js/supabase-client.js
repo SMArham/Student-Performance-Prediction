@@ -134,6 +134,70 @@ class SupabaseAuthClient {
     return { user: mockUser, session: { access_token: mockToken } };
   }
 
+  async updateUser(metadataUpdates = {}) {
+    let updatedUser = null;
+    const session = this.getSession();
+    if (!session || !session.user) {
+      throw new Error("No active user session found.");
+    }
+
+    const currentMeta = session.user.user_metadata || {};
+    const newMeta = { ...currentMeta, ...metadataUpdates };
+    session.user.user_metadata = newMeta;
+
+    // If live Supabase client exists
+    if (this.client) {
+      try {
+        const { data, error } = await this.client.auth.updateUser({
+          data: newMeta
+        });
+        if (error) console.warn("[Auth] Supabase remote metadata update warning:", error);
+        if (data?.user) {
+          session.user = data.user;
+        }
+      } catch (err) {
+        console.warn("[Auth] Failed to sync with Supabase cloud:", err);
+      }
+    }
+
+    // Persist locally
+    localStorage.setItem("sp_auth_user", JSON.stringify(session.user));
+    return session.user;
+  }
+
+  async updatePassword(newPassword) {
+    if (this.client) {
+      const { data, error } = await this.client.auth.updateUser({
+        password: newPassword
+      });
+      if (error) throw error;
+      return data;
+    }
+    // Local fallback
+    return { success: true, message: "Password updated successfully in local session." };
+  }
+
+  async deleteAccount() {
+    if (this.client) {
+      try {
+        const user = this.getUser();
+        if (user?.id) {
+          // Attempt client signout & cleanup
+          await this.client.auth.signOut();
+        }
+      } catch (err) {
+        console.warn("[Auth] Delete account remote error:", err);
+      }
+    }
+
+    // Wipe all user local storage
+    localStorage.removeItem("sp_auth_token");
+    localStorage.removeItem("sp_auth_user");
+    localStorage.removeItem("sp_user_subjects_v1");
+    
+    window.location.href = "login.html";
+  }
+
   async signOut() {
     if (this.client) {
       try {

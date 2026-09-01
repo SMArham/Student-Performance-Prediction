@@ -324,6 +324,18 @@
   color: var(--text-muted);
 }
 
+/* Fix dropdown option visibility across browsers (dark background & light text) */
+select option, option {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  padding: 8px 12px;
+}
+
+select option:hover, select option:focus, option:hover, option:focus {
+  background-color: #334155 !important;
+  color: #FFFFFF !important;
+}
+
 /* ------------------------------------------------------------------------------
    Modals & Drawers
    ------------------------------------------------------------------------------ */
@@ -501,3 +513,140 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ------------------------------------------------------------------------------
+   User Profile Summary & Settings Trigger
+   ------------------------------------------------------------------------------ */
+.user-profile-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  width: 100%;
+}
+
+.user-profile-summary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-subtle);
+}
+
+.user-avatar-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.user-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--border-card);
+  object-fit: cover;
+  background-color: var(--bg-card);
+}
+
+.avatar-edit-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  background-color: var(--primary-500);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--bg-sidebar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: white;
+}
+
+/* Profile Modal Tabs */
+.modal-tabs-header {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-card);
+  margin-bottom: var(--space-5);
+}
+
+.modal-tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.modal-tab-btn.active {
+  color: var(--primary-400);
+  border-bottom-color: var(--primary-500);
+}
+
+.modal-tab-btn:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+.profile-tab-content {
+  display: none;
+}
+
+.profile-tab-content.active {
+  display: block;
+}
+
+/* Avatar Picker Layout */
+.avatar-customizer-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  background-color: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-5);
+}
+
+.avatar-big-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-full);
+  border: 3px solid var(--primary-500);
+  object-fit: cover;
+  background-color: var(--bg-card);
+}
+
+.avatar-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+/* Danger Zone for Account Deletion */
+.danger-zone-card {
+  margin-top: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--status-danger-border);
+  background-color: var(--status-danger-bg);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.danger-zone-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--status-danger-text);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+}
+

@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Academic Performance Prediction Platform - EduMetrics AI</title>
+  
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/prediction.css">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- ======================================================================
+         1. SIDEBAR NAVIGATION (PRESERVED)
+         ====================================================================== -->
+    <aside class="sidebar" id="sidebar">
+      <a href="dashboard.html" class="sidebar-header" style="text-decoration: none; cursor: pointer;">
+        <div class="brand-logo-icon">🎓</div>
+        <div>
+          <div class="brand-title">EduMetrics AI</div>
+          <div class="brand-subtitle">Analytics Engine</div>
+        </div>
+      </a>
+
+      <div class="sidebar-nav">
+        <div>
+          <div class="nav-section-title">Core Modules</div>
+          <ul class="nav-list">
+            <li class="nav-item">
+              <a href="dashboard.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+                </svg>
+                <span>Student Dashboard</span>
+                <span class="nav-badge">P1</span>
+              </a>
+            </li>
+            <li class="nav-item active">
+              <a href="prediction.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <span id="sidebar-prediction-label">Academic Records & Form</span>
+                <span class="nav-badge" style="background-color: var(--primary-600); color: white;">P2</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="analytics.html" title="Analytics, Comparison & History Hub (Page 3)">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                </svg>
+                <span>Analytics & History</span>
+                <span class="nav-badge" style="background-color: var(--accent-emerald); color: white;">P3</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-summary" id="user-profile-btn" title="Click to edit profile & settings">
+          <div class="user-avatar-container">
+            <img id="student-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar" class="user-avatar">
+            <span class="avatar-edit-badge">✏️</span>
+          </div>
+          <div class="user-info">
+            <div class="user-name" id="student-name">Muhammad Ali</div>
+            <div class="user-role" id="student-id-code">SE-2023-049</div>
+          </div>
+          <button id="logout-btn" class="btn-icon" title="Sign Out" style="margin-left: auto;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ======================================================================
+         2. MAIN CONTENT WRAPPER & TOP NAVBAR
+         ====================================================================== -->
+    <div class="main-wrapper">
+      <header class="navbar">
+        <div class="navbar-left">
+          <button class="menu-toggle-btn" id="sidebar-toggle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>
+            </svg>
+          </button>
+          <div class="page-breadcrumb">
+            <a href="dashboard.html" style="color: inherit; text-decoration: none;">Home</a>
+            <span>/</span>
+            <span class="current" id="page-breadcrumb-title">Student Academic Prediction</span>
+          </div>
+        </div>
+
+        <div class="navbar-right">
+          <!-- Stage Selector Dropdown Header (Active only in Student Mode) -->
+          <div class="stage-select-container" id="header-stage-container">
+            <span class="stage-select-label">Stage:</span>
+            <select id="header-stage-selector" class="form-select" style="padding: 4px 8px; font-size: 13px; background: transparent; border: none;">
+              <option value="university" selected>University (CGPA 4.0)</option>
+              <option value="intermediate">Intermediate (HSSC)</option>
+              <option value="matric">Matric (SSC)</option>
+              <option value="secondary">Middle / Secondary</option>
+              <option value="primary">Primary School</option>
+            </select>
+          </div>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <div class="prediction-container">
+
+          <!-- ================================================================
+               ROLE SELECTION CARD (STUDENT VS TEACHER)
+               ================================================================ -->
+          <section class="role-selection-card">
+            <div class="role-selection-title">AI Academic Prediction Center</div>
+            <div class="role-selection-subtitle">Select your perspective to unlock specialized AI forecasting engines and analytics rubrics.</div>
+
+            <div class="role-cards-grid">
+              <!-- Student Role -->
+              <div class="role-card active" id="role-btn-student">
+                <div class="role-icon">🎓</div>
+                <div>
+                  <div class="role-title">Student Portal</div>
+                  <div class="role-desc">Predict my own performance, simulate what-if scenarios, and uncover personalized study habits.</div>
+                </div>
+              </div>
+
+              <!-- Teacher Role -->
+              <div class="role-card" id="role-btn-teacher">
+                <div class="role-icon">👨‍🏫</div>
+                <div>
+                  <div class="role-title">Teacher & Instructor Suite</div>
+                  <div class="role-desc">Analyze individual student milestones, class-wide risk distribution, and batch CSV imports.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Inline Error / Validation Banner -->
+          <div id="error-banner" class="error-alert-banner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <div style="flex:1;" id="error-banner-message">Please correct input validation errors before submitting.</div>
+            <button onclick="document.getElementById('error-banner').classList.remove('active')" style="background:none; border:none; color:inherit; cursor:pointer; font-size:16px;">&times;</button>
+          </div>
+
+          <!-- ================================================================
+               ================================================================
+               CONTAINER A: STUDENT PREDICTION SECTION
+               ================================================================
+               ================================================================ -->
+          <div id="student-prediction-section">
+
+            <!-- Multi-Step Stepper Header -->
+            <div class="stepper-container" id="student-stepper">
+              <div class="step-item active" data-step="1" id="step-nav-1">
+                <div class="step-circle">1</div>
+                <div class="step-text">
+                  <span class="step-num">Step 1</span>
+                  <span class="step-name">Education Level</span>
+                </div>
+              </div>
+              <div class="step-divider"></div>
+
+              <div class="step-item" data-step="2" id="step-nav-2">
+                <div class="step-circle">2</div>
+                <div class="step-text">
+                  <span class="step-num">Step 2</span>
+                  <span class="step-name">Academics & Courses</span>
+                </div>
+              </div>
+              <div class="step-divider"></div>
+
+              <div class="step-item" data-step="3" id="step-nav-3">
+                <div class="step-circle">3</div>
+                <div class="step-text">
+                  <span class="step-num">Step 3</span>
+                  <span class="step-name">Learning Habits</span>
+                </div>
+              </div>
+              <div class="step-divider"></div>
+
+              <div class="step-item" data-step="4" id="step-nav-4">
+                <div class="step-circle">4</div>
+                <div class="step-text">
+                  <span class="step-num">Step 4</span>
+                  <span class="step-name">Self-Assessment</span>
+                </div>
+              </div>
+              <div class="step-divider"></div>
+
+              <div class="step-item" data-step="5" id="step-nav-5">
+                <div class="step-circle">5</div>
+                <div class="step-text">
+                  <span class="step-num">Step 5</span>
+                  <span class="step-name">Review & Forecast</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 1: EDUCATION LEVEL SELECTION -->
+            <section class="card" id="student-step-1">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <span>🎓 Step 1: Select Your Current Education Level</span>
+                </h2>
+                <span class="badge badge-info">Stage Selection</span>
+              </div>
+
+              <p style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: var(--space-5);">
+                Choose your current educational stage. The platform will dynamically adapt subjects, grading rubrics, and machine learning models.
+              </p>
+
+              <div class="stage-cards-grid">
+                <!-- University -->
+                <div class="stage-select-card active" data-stage="university">
+                  <div class="stage-card-icon">🎓</div>
+                  <div class="stage-card-name">University</div>
+                  <div class="stage-card-detail">CGPA (0.00–4.00) & Semesters</div>
+                </div>
+
+                <!-- Intermediate -->
+                <div class="stage-select-card" data-stage="intermediate">
+                  <div class="stage-card-icon">🎒</div>
+                  <div class="stage-card-name">Intermediate (HSSC)</div>
+                  <div class="stage-card-detail">Pre-Eng, Pre-Med, ICS, I.Com</div>
+                </div>
+
+                <!-- Matric -->
+                <div class="stage-select-card" data-stage="matric">
+                  <div class="stage-card-icon">📘</div>
+                  <div class="stage-card-name">Matric (SSC)</div>
+                  <div class="stage-card-detail">9th & 10th Board Marks</div>
+                </div>
+
+                <!-- Middle / Secondary -->
+                <div class="stage-select-card" data-stage="secondary">
+                  <div class="stage-card-icon">🏫</div>
+                  <div class="stage-card-name">Middle / Secondary</div>
+                  <div class="stage-card-detail">Grade 6 to 8 / Continuous Assessment</div>
+                </div>
+
+                <!-- Primary -->
+                <div class="stage-select-card" data-stage="primary">
+                  <div class="stage-card-icon">🧒</div>
+                  <div class="stage-card-name">Primary School</div>
+                  <div class="stage-card-detail">Foundational Learning & Literacy</div>
+                </div>
+              </div>
+
+              <!-- Hidden native stage selector for syncing -->
+              <input type="hidden" id="stage-selector" value="university">
+
+              <div style="display: flex; justify-content: flex-end; margin-top: var(--space-6);">
+                <button type="button" class="btn btn-primary" id="btn-step1-next">
+                  <span>Continue to Academic Info ➔</span>
+                </button>
+              </div>
+            </section>
+
+            <!-- STEP 2: ACADEMIC INFO & SUBJECT CRUD -->
+            <section class="card" id="student-step-2" style="display: none;">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <span id="step2-title">📚 Step 2: Academic Record & Enrolled Courses</span>
+                </h2>
+                <span class="badge badge-info" id="student-stage-badge">Stage: University</span>
+              </div>
+
+              <!-- Dynamic Stage-Specific Academic Fields Container -->
+              <div id="dynamic-academic-fields" style="margin-bottom: var(--space-6);">
+                <!-- Populated dynamically by js/prediction.js -->
+              </div>
+
+              <!-- ACADEMIC SUBJECT & COURSE CRUD MANAGER (PRESERVED & STAGE-AWARE) -->
+              <div class="subjects-card">
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4);">
+                  <div>
+                    <h3 style="font-size: var(--font-size-md); font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                      <span>📑 Enrolled Subjects & Course Records</span>
+                    </h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                      Add your subjects to compute your weighted average. Aggregate marks automatically sync with the ML model.
+                    </div>
+                  </div>
+
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-open-subject-modal">
+                    <span>+ Add Subject / Course</span>
+                  </button>
+                </div>
+
+                <!-- Live Subject Aggregates KPI Bar -->
+                <div class="subjects-summary-grid">
+                  <div class="summary-kpi-card">
+                    <div class="summary-kpi-title">Total Subjects</div>
+                    <div class="summary-kpi-value" id="kpi-total-subjects">0</div>
+                    <div class="summary-kpi-subtitle">Enrolled Courses</div>
+                  </div>
+
+                  <div class="summary-kpi-card">
+                    <div class="summary-kpi-title">Total Marks</div>
+                    <div class="summary-kpi-value" id="kpi-total-marks">0 / 0</div>
+                    <div class="summary-kpi-subtitle">Obtained vs Max</div>
+                  </div>
+
+                  <div class="summary-kpi-card">
+                    <div class="summary-kpi-title">Aggregate Percentage</div>
+                    <div class="summary-kpi-value" id="kpi-aggregate-pct" style="color: var(--accent-emerald);">0.0%</div>
+                    <div class="summary-kpi-subtitle">Weighted Average</div>
+                  </div>
+
+                  <div class="summary-kpi-card">
+                    <div class="summary-kpi-title">Calculated Equivalent</div>
+                    <div class="summary-kpi-value" id="kpi-calc-gpa" style="color: var(--primary-400);">0.00 GPA</div>
+                    <div class="summary-kpi-subtitle">Stage Scale</div>
+                  </div>
+                </div>
+
+                <!-- Subjects Table -->
+                <div class="table-responsive">
+                  <table class="data-table" id="subjects-table">
+                    <thead>
+                      <tr>
+                        <th>Subject / Course Name</th>
+                        <th>Category</th>
+                        <th>Term / Period</th>
+                        <th>Obtained Marks</th>
+                        <th>Max Marks</th>
+                        <th>Score %</th>
+                        <th>Grade</th>
+                        <th style="text-align: right;">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="subjects-table-body">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; margin-top: var(--space-6);">
+                <button type="button" class="btn btn-secondary" id="btn-step2-back">
+                  <span>← Back</span>
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-step2-next">
+                  <span>Continue to Learning Habits ➔</span>
+                </button>
+              </div>
+            </section>
+
+            <!-- STEP 3: LEARNING HABITS & STUDY DISCIPLINE -->
+            <section class="card" id="student-step-3" style="display: none;">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <span>🧠 Step 3: Daily Learning Habits & Study Discipline</span>
+                </h2>
+                <span class="badge badge-info">Habits Track</span>
+              </div>
+
+              <div id="dynamic-habits-fields">
+                <!-- Populated dynamically by js/prediction.js -->
+              </div>
+
+              <div style="display: flex; justify-content: space-between; margin-top: var(--space-6);">
+                <button type="button" class="btn btn-secondary" id="btn-step3-back">
+                  <span>← Back</span>
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-step3-next">
+                  <span>Continue to Self-Assessment ➔</span>
+                </button>
+              </div>
+            </section>
+
+            <!-- STEP 4: SELF-ASSESSMENT & SOFT SKILLS -->
+            <section class="card" id="student-step-4" style="display: none;">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <span>🎯 Step 4: Motivation & Self-Assessment</span>
+                </h2>
+                <span class="badge badge-info">Self Perception</span>
+              </div>
+
+              <div id="dynamic-assessment-fields">
+                <!-- Populated dynamically by js/prediction.js -->
+              </div>
+
+              <div style="display: flex; justify-content: space-between; margin-top: var(--space-6);">
+                <button type="button" class="btn btn-secondary" id="btn-step4-back">
+                  <span>← Back</span>
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-step4-next">
+                  <span>Review Summary & Forecast ➔</span>
+                </button>
+              </div>
+            </section>
+
+            <!-- STEP 5: REVIEW SCREEN & PREDICTION LAUNCH -->
+            <section class="card" id="student-step-5" style="display: none;">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <span>📋 Step 5: Input Summary Review & Verification</span>
+                </h2>
+                <span class="badge badge-success">Ready for AI Forecast</span>
+              </div>
+
+              <p style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: var(--space-5);">
+                Please verify your profile summary below before triggering the Machine Learning inference engine.
+              </p>
+
+              <div id="student-review-container">
+                <!-- Consolidated review summary rendered by js/prediction.js -->
+              </div>
+
+              <form id="prediction-form">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border-subtle);">
+                  <button type="button" class="btn btn-secondary" id="btn-step5-back">
+                    <span>← Edit Input Data</span>
+                  </button>
+                  <button type="submit" class="btn btn-primary" id="submit-predict-btn">
+                    <span>⚡ Run AI Forecast Model</span>
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <!-- ================================================================
+                 STUDENT PREDICTION RESULT CARD & ANALYTICS
+                 ================================================================ -->
+            <section id="prediction-result-card" class="result-card-container">
+              <div class="result-card-header">
+                <div class="result-header-main">
+                  <span class="result-badge-icon">🎯</span>
+                  <div>
+                    <h2 style="font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary); margin: 0;">
+                      Student Academic Forecast & Analytics
+                    </h2>
+                    <div style="font-size: 13px; color: var(--text-muted);" id="result-model-meta">
+                      Model: Gradient Boosting Performance Predictor (v1.0.0)
+                    </div>
+                  </div>
+                </div>
+
+                <span id="result-status-badge" class="badge badge-success" style="font-size: 14px; padding: 6px 16px;">
+                  <span class="badge-dot"></span>
+                  <span id="result-status-text">Exemplary</span>
+                </span>
+              </div>
+
+              <!-- Prominent Score & Reliability Display -->
+              <div class="result-score-hero">
+                <div class="score-display-box">
+                  <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">
+                    Predicted Academic Score
+                  </div>
+                  <div class="score-main-val" id="result-predicted-val">3.74 CGPA</div>
+                  <div class="score-grade-text" id="result-grade-val">Grade: A (Excellent)</div>
+                </div>
+
+                <div class="confidence-box">
+                  <div class="confidence-header">
+                    <span class="confidence-title">Model Confidence / Expected Reliability</span>
+                    <span class="confidence-range-text" id="result-ci-range">[3.51 — 3.97]</span>
+                  </div>
+                  <div class="confidence-bar-wrapper">
+                    <div class="confidence-range-fill" id="result-ci-bar-fill" style="left: 65%; width: 25%;"></div>
+                    <div class="confidence-marker-dot" id="result-ci-marker" style="left: 77.5%;"></div>
+                  </div>
+                  <div class="confidence-labels">
+                    <span id="ci-min-label">0.00</span>
+                    <span>Calibrated Dispersion Interval (±1.96 RMSE)</span>
+                    <span id="ci-max-label">4.00</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- EXPLAINABLE AI (XAI) SECTION -->
+              <div class="xai-container">
+                <div class="xai-header">
+                  <div style="font-size: var(--font-size-sm); font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                    <span>📊 Why Did The Model Predict This? (Feature Influence Contribution)</span>
+                  </div>
+                  <span style="font-size: 11px; color: var(--text-muted);">Relative model predictive weight</span>
+                </div>
+                <div id="xai-bars-container">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- WHAT-IF SIMULATOR -->
+              <div class="whatif-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-2);">
+                  <div>
+                    <h3 style="font-size: var(--font-size-base); font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 6px;">
+                      <span>🔮 What-If Simulator (Estimated Scenario Modeling)</span>
+                    </h3>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                      Adjust habits to simulate estimated performance improvements in real time.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 1-Click Habit Presets -->
+                <div class="sim-presets-bar">
+                  <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">⚡ Quick Presets:</span>
+                  <button type="button" class="sim-preset-btn" id="btn-sim-preset-balanced">
+                    <span>⚖️ Balanced Routine (4.5h, 88% att)</span>
+                  </button>
+                  <button type="button" class="sim-preset-btn" id="btn-sim-preset-cram">
+                    <span>🔥 Exam Sprint (6.5h, 95% att)</span>
+                  </button>
+                  <button type="button" class="sim-preset-btn" id="btn-sim-preset-honors">
+                    <span>🏆 Dean's List Honors (8h, 98% att)</span>
+                  </button>
+                </div>
+
+                <div class="whatif-sliders-grid">
+                  <div class="whatif-slider-group">
+                    <div class="whatif-slider-header">
+                      <span>Study Hours (Hrs/Day)</span>
+                      <span id="sim-val-study">4.5h</span>
+                    </div>
+                    <input type="range" id="sim-slider-study" class="whatif-slider" min="1" max="12" step="0.5" value="4.5">
+                  </div>
+
+                  <div class="whatif-slider-group">
+                    <div class="whatif-slider-header">
+                      <span>Class Attendance (%)</span>
+                      <span id="sim-val-att">88%</span>
+                    </div>
+                    <input type="range" id="sim-slider-att" class="whatif-slider" min="50" max="100" step="1" value="88">
+                  </div>
+
+                  <div class="whatif-slider-group">
+                    <div class="whatif-slider-header">
+                      <span>Assignment Discipline (%)</span>
+                      <span id="sim-val-assign">90%</span>
+                    </div>
+                    <input type="range" id="sim-slider-assign" class="whatif-slider" min="50" max="100" step="5" value="90">
+                  </div>
+                </div>
+
+                <div class="whatif-scenarios-grid">
+                  <div class="scenario-box">
+                    <div class="scenario-title">Current Baseline</div>
+                    <div class="scenario-score" id="sim-scenario-current">3.48</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">As Evaluated</div>
+                  </div>
+
+                  <div class="scenario-box highlight">
+                    <div class="scenario-title" style="color: var(--accent-emerald);">Simulated Target</div>
+                    <div class="scenario-score" id="sim-scenario-simulated" style="color: var(--accent-emerald);">3.65</div>
+                    <div style="font-size: 11px; color: var(--accent-emerald);">+0.17 Potential Gain</div>
+                  </div>
+
+                  <div class="scenario-box">
+                    <div class="scenario-title">Optimal Best-Case</div>
+                    <div class="scenario-score" id="sim-scenario-best">3.88</div>
+                    <div style="font-size: 11px; color: var(--primary-400);">Max Effort Horizon</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Contributing Factors Section -->
+              <div class="factors-grid">
+                <div class="factor-card">
+                  <div class="factor-card-title positive">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                    <span>Top Positive Influence Factors</span>
+                  </div>
+                  <ul class="factor-list" id="positive-factors-list">
+                    <!-- Populated dynamically -->
+                  </ul>
+                </div>
+
+                <div class="factor-card">
+                  <div class="factor-card-title growth">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>Key Focus & Growth Areas</span>
+                  </div>
+                  <ul class="factor-list" id="growth-factors-list">
+                    <!-- Populated dynamically -->
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Actionable AI Recommendations with Voice Synthesis -->
+              <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-card); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-6);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); flex-wrap: wrap; gap: var(--space-2);">
+                  <div style="font-size: var(--font-size-sm); font-weight: 700; color: var(--primary-300); display: flex; align-items: center; gap: var(--space-2);">
+                    <span>💡 Personalized AI Recommendations</span>
+                  </div>
+                  <button type="button" class="btn-utility" id="btn-listen-ai-speech" title="Listen to spoken audio feedback">
+                    <span>🔊 Listen to AI Feedback</span>
+                  </button>
+                </div>
+                <div id="result-recommendation-text" style="font-size: var(--font-size-sm); color: var(--text-primary); line-height: 1.6;">
+                  Model suggests maintaining strong attendance and dedicating structured revision blocks to optimize final exam scores.
+                </div>
+              </div>
+
+              <!-- Utility Actions: Export Report & Copy Summary -->
+              <div class="result-action-bar">
+                <button type="button" class="btn-utility" id="btn-copy-summary">
+                  <span>📋 Copy Summary</span>
+                </button>
+                <button type="button" class="btn-utility" id="btn-export-pdf-report" style="background: var(--primary-600); border-color: var(--primary-500); color: #ffffff;">
+                  <span>📄 Export Official AI Report (PDF / Print)</span>
+                </button>
+              </div>
+
+              <!-- Direct CTA to Page 3 / History -->
+              <div class="result-cta-footer">
+                <div class="cta-info-text">
+                  Prediction saved to historical records. Track longitudinal trends over time.
+                </div>
+                <a href="analytics.html" class="cta-btn-primary">
+                  <span>View Full Analytics Hub (Page 3) ➔</span>
+                </a>
+              </div>
+            </section>
+          </div>
+
+          <!-- ================================================================
+               ================================================================
+               CONTAINER B: TEACHER & INSTRUCTOR ANALYTICS SECTION (HIDDEN BY DEFAULT)
+               ================================================================
+               ================================================================ -->
+          <div id="teacher-prediction-section" style="display: none;">
+
+            <!-- Teacher Tools Navigation Tabs -->
+            <div class="teacher-tools-nav">
+              <button type="button" class="teacher-tool-btn active" id="tool-btn-individual">
+                <span>👤 Individual Student Assessment</span>
+              </button>
+              <button type="button" class="teacher-tool-btn" id="tool-btn-class">
+                <span>👥 Entire Class Evaluation</span>
+              </button>
+              <button type="button" class="teacher-tool-btn" id="tool-btn-upload">
+                <span>📁 Upload Student Data (CSV / Excel)</span>
+              </button>
+            </div>
+
+            <!-- TOOL 1: INDIVIDUAL STUDENT ANALYZER -->
+            <section class="card" id="teacher-view-individual">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <span>👤 Individual Student Comprehensive Evaluation & Gradebook</span>
+                </h2>
+                <span class="badge badge-info">Instructor Diagnostic Suite</span>
+              </div>
+
+              <form id="teacher-individual-form">
+                <div class="form-section-title">1. Student Profile & Program Metadata</div>
+                <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
+                  <div class="form-group">
+                    <label class="form-label" for="t_student_name">Student Full Name <span style="color:var(--accent-rose)">*</span></label>
+                    <input type="text" id="t_student_name" class="form-input" placeholder="e.g. Ahmed Raza" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="t_student_id">Roll No / Student ID</label>
+                    <input type="text" id="t_student_id" class="form-input" placeholder="e.g. CS-2024-102">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="t_student_stage">Education Level <span style="color:var(--accent-rose)">*</span></label>
+                    <select id="t_student_stage" class="form-select">
+                      <option value="university" selected>University Level (CGPA & Credits)</option>
+                      <option value="intermediate">Intermediate (HSSC Board)</option>
+                      <option value="matric">Matriculation (SSC Board)</option>
+                      <option value="secondary">Middle / Secondary School</option>
+                      <option value="primary">Primary School</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- TEACHER COURSE / SUBJECT GRADEBOOK CRUD -->
+                <div class="subjects-card" style="margin-bottom: var(--space-6);">
+                  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4);">
+                    <div>
+                      <h3 style="font-size: var(--font-size-md); font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <span>📚 Student Enrolled Courses & Gradebook Entries</span>
+                      </h3>
+                      <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        Manage subject-wise marks and coursework for this student. Aggregates update model forecasts automatically.
+                      </div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-t-add-subject">
+                      <span>+ Add Course / Subject</span>
+                    </button>
+                  </div>
+
+                  <!-- Teacher Subject Aggregates KPI Bar -->
+                  <div class="subjects-summary-grid">
+                    <div class="summary-kpi-card">
+                      <div class="summary-kpi-title">Total Courses</div>
+                      <div class="summary-kpi-value" id="t-kpi-total-subjects">0</div>
+                      <div class="summary-kpi-subtitle">Course Enrolment</div>
+                    </div>
+
+                    <div class="summary-kpi-card">
+                      <div class="summary-kpi-title">Aggregate Marks</div>
+                      <div class="summary-kpi-value" id="t-kpi-total-marks">0 / 0</div>
+                      <div class="summary-kpi-subtitle">Obtained vs Max</div>
+                    </div>
+
+                    <div class="summary-kpi-card">
+                      <div class="summary-kpi-title">Gradebook Percentage</div>
+                      <div class="summary-kpi-value" id="t-kpi-aggregate-pct" style="color: var(--accent-emerald);">0.0%</div>
+                      <div class="summary-kpi-subtitle">Course Average</div>
+                    </div>
+
+                    <div class="summary-kpi-card">
+                      <div class="summary-kpi-title">Calculated Equivalent</div>
+                      <div class="summary-kpi-value" id="t-kpi-calc-gpa" style="color: var(--primary-400);">0.00 GPA</div>
+                      <div class="summary-kpi-subtitle">Gradebook Scale</div>
+                    </div>
+                  </div>
+
+                  <!-- Teacher Subjects Table -->
+                  <div class="table-responsive">
+                    <table class="data-table" id="t-subjects-table">
+                      <thead>
+                        <tr>
+                          <th>Subject / Course</th>
+                          <th>Category</th>
+                          <th>Term / Assessment</th>
+                          <th>Obtained</th>
+                          <th>Max Marks</th>
+                          <th>Score %</th>
+                          <th>Grade</th>
+                          <th style="text-align: right;">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="t-subjects-table-body">
+                        <!-- Populated dynamically by js/prediction.js -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="form-section-title">2. Continuous Assessment & Lecture Metrics</div>
+                <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
+                  <div class="form-group">
+                    <label class="form-label" for="t_attendance">Classroom Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
+                    <input type="number" id="t_attendance" class="form-input" min="0" max="100" placeholder="e.g. 85" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="t_test_avg">Quizzes & Test Average (%) <span style="color:var(--accent-rose)">*</span></label>
+                    <input type="number" id="t_test_avg" class="form-input" min="0" max="100" placeholder="e.g. 80" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="t_assign_avg">Assignment & Lab Completion (%) <span style="color:var(--accent-rose)">*</span></label>
+                    <input type="number" id="t_assign_avg" class="form-input" min="0" max="100" placeholder="e.g. 85" required>
+                  </div>
+                </div>
+
+                <div class="form-section-title">3. Behavioral Dynamics & Classroom Engagement</div>
+                <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
+                  <div class="form-group">
+                    <label class="form-label" for="t_attentive">Classroom Attentiveness & Focus</label>
+                    <select id="t_attentive" class="form-select">
+                      <option value="High" selected>High (Consistently focused & engaged)</option>
+                      <option value="Moderate">Moderate (Attentive with occasional lapses)</option>
+                      <option value="Low">Low (Easily distracted / needs guidance)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="t_participation">Discussion & Team Participation</label>
+                    <select id="t_participation" class="form-select">
+                      <option value="Leader">Active Contributor / Team Leader</option>
+                      <option value="Active" selected>Regular Participant</option>
+                      <option value="Passive">Passive Listener</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="t_rating">Overall Instructor Assessment Rating</label>
+                    <select id="t_rating" class="form-select">
+                      <option value="5.0">⭐⭐⭐⭐⭐ 5.0 (Outstanding / Exemplary)</option>
+                      <option value="4.0" selected>⭐⭐⭐⭐ 4.0 (Proficient / High Achiever)</option>
+                      <option value="3.0">⭐⭐⭐ 3.0 (Capable / Standard)</option>
+                      <option value="2.0">⭐⭐ 2.0 (Needs Support / Developing)</option>
+                      <option value="1.0">⭐ 1.0 (At Risk / Urgent Remediation)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-section-title">4. Instructor Diagnostic Observations & Action Plan</div>
+                <div class="form-group" style="margin-bottom: var(--space-4);">
+                  <label class="form-label" for="t_notes">Qualitative Observations & Remarks</label>
+                  <input type="text" id="t_notes" class="form-input" placeholder="e.g. Demonstrates strong conceptual grasp in practical exercises; needs review in theory topics.">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border-subtle);">
+                  <button type="submit" class="btn btn-primary" id="btn-t-individual-submit">
+                    <span>⚡ Run Comprehensive AI Diagnostic</span>
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <!-- TOOL 2: ENTIRE CLASS ROSTER EVALUATOR -->
+            <section class="card" id="teacher-view-class" style="display: none;">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <span>👥 Class-Wide Multi-Student Evaluation Roster</span>
+                </h2>
+                <span class="badge badge-info">Batch Class Evaluation</span>
+              </div>
+
+              <div class="form-grid-3col" style="margin-bottom: var(--space-6);">
+                <div class="form-group">
+                  <label class="form-label" for="t_class_name">Class / Grade / Semester</label>
+                  <input type="text" id="t_class_name" class="form-input" placeholder="e.g. Semester 5 - Section A">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_class_subject">Subject / Course</label>
+                  <input type="text" id="t_class_subject" class="form-input" placeholder="e.g. Data Structures & Algorithms">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_class_stage">Education Level</label>
+                  <select id="t_class_stage" class="form-select">
+                    <option value="university" selected>University</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="matric">Matric</option>
+                    <option value="secondary">Secondary</option>
+                    <option value="primary">Primary</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                <div style="font-weight: 700; color: var(--text-primary);">Student Gradebook Roster</div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-add-class-student">
+                  <span>+ Add Student Row</span>
+                </button>
+              </div>
+
+              <div class="table-responsive" style="margin-bottom: var(--space-6);">
+                <table class="data-table" id="class-roster-table">
+                  <thead>
+                    <tr>
+                      <th>Roll No</th>
+                      <th>Student Name</th>
+                      <th>Attendance %</th>
+                      <th>Quiz / Test %</th>
+                      <th>Assignment %</th>
+                      <th>Midterm Grade</th>
+                      <th style="text-align: right;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="class-roster-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+                <button type="button" class="btn btn-primary" id="btn-run-class-prediction">
+                  <span>📊 Generate Class Performance Forecast</span>
+                </button>
+              </div>
+            </section>
+
+            <!-- TOOL 3: CSV / EXCEL DRAG & DROP UPLOAD -->
+            <section class="card" id="teacher-view-upload" style="display: none;">
+              <div class="card-header">
+                <h2 class="card-title">
+                  <span>📁 Upload Student Gradebook (CSV / Excel Data)</span>
+                </h2>
+                <span class="badge badge-info">Bulk Import</span>
+              </div>
+
+              <div class="file-dropzone" id="file-dropzone">
+                <div class="dropzone-icon">📥</div>
+                <div style="font-size: var(--font-size-base); font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-1);">
+                  Drag & Drop Student CSV File Here
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: var(--space-4);">
+                  Supported format: .csv (Required columns: Student_Name, Attendance, Test_Avg, Assignment_Avg)
+                </div>
+                <input type="file" id="csv-file-input" accept=".csv, text/csv" style="display: none;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file-input').click();">
+                  <span>Browse File From Computer</span>
+                </button>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-download-sample-csv">
+                  <span>📥 Download Sample CSV Template</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-load-sample-csv">
+                  <span>Load Sample Demo Data</span>
+                </button>
+              </div>
+
+              <!-- Uploaded Data Table Preview Container -->
+              <div id="upload-preview-card" style="display: none; margin-bottom: var(--space-6);">
+                <div class="form-section-title" style="display: flex; justify-content: space-between;">
+                  <span>Imported Data Preview (<span id="preview-row-count">0</span> Records Found)</span>
+                  <span class="badge badge-success">Data Validated</span>
+                </div>
+                <div class="table-responsive">
+                  <table class="data-table" id="upload-preview-table">
+                    <thead>
+                      <tr id="upload-preview-header"></tr>
+                    </thead>
+                    <tbody id="upload-preview-body"></tbody>
+                  </table>
+                </div>
+                <div style="display: flex; justify-content: flex-end; margin-top: var(--space-4);">
+                  <button type="button" class="btn btn-primary" id="btn-confirm-upload-predict">
+                    <span>⚡ Confirm & Run Bulk AI Forecast</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <!-- TEACHER ANALYTICS & CLASS FORECAST RESULTS DASHBOARD -->
+            <section id="teacher-result-card" class="result-card-container" style="display: none;">
+              <div class="result-card-header">
+                <div class="result-header-main">
+                  <span class="result-badge-icon">📊</span>
+                  <div>
+                    <h2 style="font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary); margin: 0;">
+                      Class Performance Prediction & Risk Roster
+                    </h2>
+                    <div style="font-size: 13px; color: var(--text-muted);" id="t-result-meta">
+                      Class: Semester 5 - Section A (28 Students Analyzed)
+                    </div>
+                  </div>
+                </div>
+                <span class="badge badge-info" id="t-class-pass-rate">Pass Probability: 92%</span>
+              </div>
+
+              <!-- Risk Distribution KPI Grid -->
+              <div class="class-risk-grid">
+                <div class="risk-kpi-card high">
+                  <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--accent-rose);">
+                    🔴 High Academic Risk
+                  </div>
+                  <div style="font-size: 26px; font-weight: 800; color: var(--text-primary);" id="t-count-high-risk">3 Students</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">Requires urgent remediation</div>
+                </div>
+
+                <div class="risk-kpi-card medium">
+                  <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--accent-amber);">
+                    🟠 Medium Risk / Needs Attention
+                  </div>
+                  <div style="font-size: 26px; font-weight: 800; color: var(--text-primary);" id="t-count-med-risk">6 Students</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">Assignment & focus monitoring</div>
+                </div>
+
+                <div class="risk-kpi-card low">
+                  <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--accent-emerald);">
+                    🟢 Low Risk / On Track
+                  </div>
+                  <div style="font-size: 26px; font-weight: 800; color: var(--text-primary);" id="t-count-low-risk">19 Students</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">Expected passing grade</div>
+                </div>
+
+                <div class="risk-kpi-card">
+                  <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--primary-400);">
+                    📈 Expected Class Average
+                  </div>
+                  <div style="font-size: 26px; font-weight: 800; color: var(--text-primary);" id="t-class-avg-val">76.4%</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">Predicted term gradebook avg</div>
+                </div>
+              </div>
+
+              <!-- At-Risk Students & Pedagogical Action Roster -->
+              <div class="factors-grid" style="margin-bottom: var(--space-6);">
+                <div class="factor-card">
+                  <div class="factor-card-title growth">
+                    <span>⚠️ Priority Intervention Roster</span>
+                  </div>
+                  <ul class="factor-list" id="t-at-risk-list">
+                    <!-- Populated dynamically -->
+                  </ul>
+                </div>
+
+                <div class="factor-card">
+                  <div class="factor-card-title positive">
+                    <span>🏆 Top Performing Students</span>
+                  </div>
+                  <ul class="factor-list" id="t-top-performers-list">
+                    <!-- Populated dynamically -->
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Recommended Pedagogical Actions -->
+              <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-card); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-6);">
+                <div style="font-size: var(--font-size-sm); font-weight: 700; color: var(--primary-300); margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2);">
+                  <span>💡 Recommended Pedagogical & Teaching Interventions</span>
+                </div>
+                <div id="t-recommendations-text" style="font-size: var(--font-size-sm); color: var(--text-primary); line-height: 1.6;">
+                  Schedule peer mentoring sessions for struggling students; introduce weekly review problem sets for core calculation modules.
+                </div>
+              </div>
+
+              <!-- Teacher Action Bar -->
+              <div class="result-action-bar">
+                <button type="button" class="btn-utility" id="btn-export-teacher-csv" style="background: var(--primary-600); border-color: var(--primary-500); color: #ffffff;">
+                  <span>📥 Export Class Risk Roster (.CSV)</span>
+                </button>
+              </div>
+            </section>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       SUBJECT ADD / EDIT MODAL (PRESERVED)
+       ====================================================================== -->
+  <div class="subject-modal-backdrop" id="subject-modal">
+    <div class="subject-modal-dialog">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); margin-bottom: var(--space-4);">
+        <h3 style="font-size: var(--font-size-lg); font-weight: 700; color: var(--text-primary); margin: 0;" id="subject-modal-title">
+          ➕ Add Academic Subject / Course
+        </h3>
+        <button type="button" class="btn-icon" id="btn-close-subject-modal" style="font-size: 20px;">&times;</button>
+      </div>
+
+      <form id="subject-entry-form">
+        <input type="hidden" id="subject-edit-id" value="">
+
+        <div class="form-group" style="margin-bottom: var(--space-4);">
+          <label class="form-label" for="subject-preset-select">Preset Subject / Course Suggestions</label>
+          <select id="subject-preset-select" class="form-select"></select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-4);">
+          <label class="form-label" for="subject-name-input">Subject Name <span style="color:var(--accent-rose)">*</span></label>
+          <input type="text" id="subject-name-input" class="form-input" placeholder="e.g. Mathematics, Physics, Data Structures..." required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="subject-category-select">Subject Category</label>
+            <select id="subject-category-select" class="form-select">
+              <option value="Core Science" selected>Core Science / Theory</option>
+              <option value="Lab / Practical">Lab / Practical</option>
+              <option value="Elective">Elective Course</option>
+              <option value="Humanities">Humanities / Languages</option>
+              <option value="General">General Education</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="subject-term-select">Term / Assessment Period</label>
+            <select id="subject-term-select" class="form-select">
+              <option value="Current Term" selected>Current Active Term</option>
+              <option value="Midterm">Midterm Exam</option>
+              <option value="Final">Final Exam</option>
+              <option value="Semester 1">Semester 1</option>
+              <option value="Semester 2">Semester 2</option>
+              <option value="SSC-I">SSC-I (9th Grade)</option>
+              <option value="SSC-II">SSC-II (10th Grade)</option>
+              <option value="HSSC-I">HSSC-I (11th Grade)</option>
+              <option value="HSSC-II">HSSC-II (12th Grade)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
+          <div class="form-group">
+            <label class="form-label" for="subject-obtained-input">Obtained Marks / Score <span style="color:var(--accent-rose)">*</span></label>
+            <input type="number" step="0.5" id="subject-obtained-input" class="form-input" min="0" value="85" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="subject-total-input">Total / Max Marks <span style="color:var(--accent-rose)">*</span></label>
+            <input type="number" step="0.5" id="subject-total-input" class="form-input" min="1" value="100" required>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-subject-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-subject-modal">Save Subject</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       TEACHER CLASS ROSTER STUDENT MODAL
+       ====================================================================== -->
+  <div class="modal-backdrop" id="teacher-student-modal">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="t-student-modal-title" style="font-size: 18px; font-weight: 700; color: var(--text-primary);">
+          ➕ Add Student to Class Roster
+        </h3>
+        <button type="button" class="btn-icon" id="btn-close-t-student-modal" style="font-size: 20px;">&times;</button>
+      </div>
+
+      <form id="t-student-entry-form">
+        <input type="hidden" id="t-student-edit-idx" value="">
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="t-modal-roll">Roll No <span style="color:var(--accent-rose)">*</span></label>
+            <input type="text" id="t-modal-roll" class="form-input" placeholder="e.g. 06" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-modal-name">Student Full Name <span style="color:var(--accent-rose)">*</span></label>
+            <input type="text" id="t-modal-name" class="form-input" placeholder="e.g. Sarah Khan" required>
+          </div>
+        </div>
+
+        <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="t-modal-att">Attendance %</label>
+            <input type="number" id="t-modal-att" class="form-input" min="0" max="100" value="85" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-modal-test">Quiz/Test %</label>
+            <input type="number" id="t-modal-test" class="form-input" min="0" max="100" value="80" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-modal-assign">Assignment %</label>
+            <input type="number" id="t-modal-assign" class="form-input" min="0" max="100" value="85" required>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-6);">
+          <label class="form-label" for="t-modal-grade">Midterm Assessment Grade</label>
+          <select id="t-modal-grade" class="form-select">
+            <option value="A+" selected>A+ (Exemplary)</option>
+            <option value="A">A (Excellent)</option>
+            <option value="B">B (Good)</option>
+            <option value="C">C (Satisfactory)</option>
+            <option value="D">D (Needs Support)</option>
+            <option value="F">F (At Risk)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-t-student-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       ROLE SWITCH CONFIRMATION MODAL (SAFEGUARD)
+       ====================================================================== -->
+  <div class="modal-backdrop" id="role-switch-modal">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title" style="font-size: 18px;">⚠️ Switch Role Confirmation</h2>
+        <button class="btn-icon" id="btn-close-role-modal" style="font-size: 20px;">&times;</button>
+      </div>
+      <p style="font-size: var(--font-size-sm); color: var(--text-secondary); line-height: 1.6; margin-bottom: var(--space-6);">
+        Switching between Student and Teacher modes may reset your current in-progress form inputs. Are you sure you want to proceed?
+      </p>
+      <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-role-switch">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-role-switch">Switch Role</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       STUDENT PROFILE & SETTINGS MODAL (PRESERVED)
+       ====================================================================== -->
+  <div class="modal-backdrop" id="profile-settings-modal">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">⚙️ Student Profile & Settings</h2>
+          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
+            Manage your personal profile, custom photo, security, and account preferences.
+          </div>
+        </div>
+        <button class="btn-icon" id="btn-close-profile-modal" style="font-size: 20px;">&times;</button>
+      </div>
+
+      <!-- Modal Tabs Header -->
+      <div class="modal-tabs-header">
+        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
+          👤 Profile Details
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-profile-avatar">
+          🖼️ Picture & Avatar
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
+          🔒 Security & Account
+        </button>
+      </div>
+
+      <!-- Tab 1: Profile Details -->
+      <div class="profile-tab-content active" id="tab-profile-general">
+        <form id="profile-details-form">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="setting-fullname">Full Name <span style="color:var(--accent-rose)">*</span></label>
+              <input type="text" id="setting-fullname" class="form-input" value="Muhammad Ali" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="setting-studentid">Student ID / Roll Code</label>
+              <input type="text" id="setting-studentid" class="form-input" value="SE-2023-049">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: var(--space-4);">
+            <label class="form-label" for="setting-institution">Institution / University Name</label>
+            <input type="text" id="setting-institution" class="form-input" value="Faculty of Computer Science & Engineering">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
+            <div class="form-group">
+              <label class="form-label" for="setting-major">Program / Major</label>
+              <input type="text" id="setting-major" class="form-input" value="Software Engineering">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="setting-stage">Default Education Level</label>
+              <select id="setting-stage" class="form-select">
+                <option value="university" selected>University</option>
+                <option value="intermediate">Intermediate (HSSC)</option>
+                <option value="matric">Matric (SSC)</option>
+                <option value="secondary">Secondary School</option>
+                <option value="primary">Primary Education</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-profile">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Profile Changes</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tab 2: Avatar & Custom Photo -->
+      <div class="profile-tab-content" id="tab-profile-avatar">
+        <div class="avatar-customizer-box">
+          <img id="avatar-preview-big" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar Preview" class="avatar-big-preview">
+          <div class="avatar-actions-col">
+            <div style="font-weight: 600; color: var(--text-primary); font-size: var(--font-size-sm);">Upload Your Custom Photo</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Supports PNG, JPG, JPEG or GIF (Max 2MB)</div>
+            
+            <div style="display: flex; gap: var(--space-2); margin-top: 4px;">
+              <input type="file" id="avatar-file-input" accept="image/*" style="display: none;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('avatar-file-input').click();">
+                📁 Choose Image File
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btn-generate-avatar">
+                🎲 Randomize Avatar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-6);">
+          <label class="form-label" for="avatar-url-input">Or Paste Custom Image / Web URL</label>
+          <input type="url" id="avatar-url-input" class="form-input" placeholder="https://example.com/your-photo.jpg">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('profile-settings-modal').classList.remove('active');">Close</button>
+          <button type="button" class="btn btn-primary" id="btn-apply-avatar">Apply Photo</button>
+        </div>
+      </div>
+
+      <!-- Tab 3: Security & Account Deletion -->
+      <div class="profile-tab-content" id="tab-profile-security">
+        <!-- Change Password -->
+        <form id="password-change-form" style="margin-bottom: var(--space-6);">
+          <div style="font-weight: 600; color: var(--text-primary); font-size: var(--font-size-sm); margin-bottom: var(--space-3);">
+            Update Password
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="setting-new-password">New Password</label>
+              <input type="password" id="setting-new-password" class="form-input" placeholder="Min 6 characters" minlength="6" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="setting-confirm-password">Confirm Password</label>
+              <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter password" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">Update Password</button>
+        </form>
+
+        <!-- Danger Zone: Account Deletion -->
+        <div class="danger-zone-card">
+          <div class="danger-zone-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Danger Zone - Permanent Account Deletion</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+            Deleting your account will permanently wipe your student academic records, subject logs, and AI forecast histories from the system. This action cannot be undone.
+          </div>
+          <div style="display: flex; gap: var(--space-3); margin-top: var(--space-2);">
+            <button type="button" class="btn btn-danger btn-sm" id="btn-delete-account">
+              🗑️ Permanently Delete My Account
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Application Logic Scripts -->
+  <script src="js/supabase-client.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/prediction.js"></script>
+</body>
+</html>
