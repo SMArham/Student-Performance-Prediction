@@ -264,9 +264,39 @@ document.addEventListener("DOMContentLoaded", () => {
     btnBackStep1.addEventListener("click", () => showForgotStep(1));
   }
 
-  // Helper: Dispatch Real Email to user's inbox
+  // Helper: Dispatch Real Email to user's inbox across all channels
   async function dispatchRealRecoveryEmail(recipientEmail, otpCode) {
-    // Channel 1: Real Direct Mail Delivery Service
+    let serverCode = null;
+
+    // Channel 1: Python Backend FastAPI Auth Mailer
+    try {
+      const endpoints = ["/api/v1/auth/send-reset-code", "http://127.0.0.1:8005/api/v1/auth/send-reset-code", "http://127.0.0.1:8000/api/v1/auth/send-reset-code"];
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: recipientEmail })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.code) serverCode = data.code;
+            console.log("[Auth] Backend email dispatch success:", data);
+            break;
+          }
+        } catch (e) {
+          // continue to next endpoint
+        }
+      }
+    } catch (err) {
+      console.warn("[Auth] Backend dispatch error:", err);
+    }
+
+    if (serverCode) {
+      activeRecoveryOtp = serverCode;
+    }
+
+    // Channel 2: Real Direct Mail Delivery Service
     try {
       await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipientEmail)}`, {
         method: "POST",
@@ -275,13 +305,13 @@ document.addEventListener("DOMContentLoaded", () => {
           "Accept": "application/json"
         },
         body: JSON.stringify({
-          _subject: `Your EduMetrics AI Password Reset Code: [${otpCode}]`,
+          _subject: `EduMetrics AI - Password Reset Code: [${activeRecoveryOtp}]`,
           _template: "box",
           _captcha: "false",
-          "Verification Code": otpCode,
+          "Verification Code": activeRecoveryOtp,
           "Purpose": "EduMetrics AI Student Portal Password Reset",
           "Recipient": recipientEmail,
-          "Instructions": "Enter this 6-digit code in the verification screen to reset your password."
+          "Instructions": "Enter this 6-digit verification code to reset your account password."
         })
       });
       console.log(`[Auth] Direct real email dispatched to ${recipientEmail}`);
@@ -289,7 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn("[Auth] Direct mailer error:", err);
     }
 
-    // Channel 2: Supabase Auth Recovery Dispatch
+    // Channel 3: Supabase Auth Recovery Dispatch
     if (window.authClient && window.authClient.client) {
       try {
         await window.authClient.client.auth.resetPasswordForEmail(recipientEmail, {

@@ -18,7 +18,7 @@ from backend.app.core.exceptions import (
     app_exception_handler,
     generic_exception_handler,
 )
-from backend.app.routes import health, dashboard, predictions, history, models_registry
+from backend.app.routes import health, dashboard, predictions, history, models_registry, auth
 from backend.app.services.ml_service import ml_service
 
 
@@ -85,6 +85,7 @@ app.include_router(dashboard.router)
 app.include_router(predictions.router)
 app.include_router(history.router)
 app.include_router(models_registry.router)
+app.include_router(auth.router, prefix="/api/v1")
 
 
 # ------------------------------------------------------------------------------
