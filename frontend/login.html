@@ -145,20 +145,21 @@
 
         <!-- STEP 2: Enter 6-Digit OTP Code -->
         <div id="forgot-step-2" style="display: none;">
-          <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); font-size: 12px; color: var(--text-secondary);">
-            Code sent to: <strong id="forgot-display-email" style="color: var(--primary-300);">student@university.edu</strong>
-          </div>
-
-          <!-- Simulator / Demo Code Display Banner -->
-          <div id="otp-simulator-banner" style="background: rgba(16, 185, 129, 0.12); border: 1px dashed var(--accent-emerald); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); text-align: center;">
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--accent-emerald); font-weight: 700; letter-spacing: 0.05em;">📬 Email Inbox Simulator Code</div>
-            <div style="font-size: 22px; font-weight: 800; color: #FFFFFF; letter-spacing: 4px; margin-top: 2px;" id="simulated-otp-display">749201</div>
+          <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-5); font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+            📧 We have sent a 6-digit verification code to: <strong id="forgot-display-email" style="color: var(--primary-300);">student@university.edu</strong>. Please check your inbox or spam folder and enter the code below.
           </div>
 
           <form id="form-forgot-verify">
-            <div class="form-group" style="margin-bottom: var(--space-5);">
+            <div class="form-group" style="margin-bottom: var(--space-4);">
               <label class="form-label" for="forgot-otp-input">Enter 6-Digit Verification Code</label>
-              <input type="text" id="forgot-otp-input" class="form-input" placeholder="e.g. 749201" maxlength="6" required style="font-size: 18px; font-weight: 700; letter-spacing: 4px; text-align: center;">
+              <input type="text" id="forgot-otp-input" class="form-input" placeholder="••••••" maxlength="6" required style="font-size: 20px; font-weight: 700; letter-spacing: 6px; text-align: center;">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-5); font-size: 12px;">
+              <span style="color: var(--text-muted);">Didn't receive the email?</span>
+              <button type="button" id="btn-resend-otp" style="background: none; border: none; color: var(--primary-400); font-weight: 600; cursor: pointer; text-decoration: underline;">
+                Resend Code
+              </button>
             </div>
 
             <div style="display: flex; gap: var(--space-3);">
