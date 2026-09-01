@@ -925,28 +925,271 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnExportLedgerCsv) btnExportLedgerCsv.addEventListener("click", exportLedgerCSV);
   if (btnExportAllCsv) btnExportAllCsv.addEventListener("click", exportLedgerCSV);
 
-  // Chart PNG Exporters
-  function setupChartPngDownloader(btnId, canvasId, filenamePrefix) {
-    const btn = document.getElementById(btnId);
-    if (!btn) return;
-    btn.addEventListener("click", () => {
-      const canvas = document.getElementById(canvasId);
-      if (!canvas) return showToast("Chart canvas not ready.", "error");
-      const imgURI = canvas.toDataURL("image/png");
+  // ----------------------------------------------------------------------------
+  // 10. FULLSCREEN HIGH-RESOLUTION THEATER CHART ENGINE
+  // ----------------------------------------------------------------------------
+  let fsChartInstance = null;
+  const fsModal = document.getElementById("analytics-fullscreen-modal");
+  const fsModalTitle = document.getElementById("fs-modal-title");
+  const fsModalSubtitle = document.getElementById("fs-modal-subtitle");
+  const fsCanvas = document.getElementById("fullscreenChartCanvas");
+  const btnFsDownloadPng = document.getElementById("btn-fs-download-png");
+  const btnCloseFsModal = document.getElementById("btn-close-fs-modal");
+  const btnCloseFsModalBtn = document.getElementById("btn-close-fs-modal-btn");
+
+  window.openFullscreenChart = (chartType) => {
+    if (!fsModal || !fsCanvas) return;
+    const ctx = fsCanvas.getContext("2d");
+    if (fsChartInstance) fsChartInstance.destroy();
+
+    const activeStage = currentStageFilter === "all" ? (predictionHistory[0]?.stage || "university") : currentStageFilter;
+    const stageMeta = getStageMetadata(activeStage);
+
+    if (chartType === "progression") {
+      if (fsModalTitle) fsModalTitle.innerHTML = `<span>📈 GPA Progression & AI Target Trajectory (Full Screen)</span>`;
+      if (fsModalSubtitle) fsModalSubtitle.innerText = `${stageMeta.title} | ${stageMeta.scale} | High-Definition View`;
+
+      const stageRecords = currentStageFilter === "all" ? predictionHistory : predictionHistory.filter((r) => r.stage === currentStageFilter);
+      let labels = ["Baseline Standing", "Evaluated Current Score", "Projected AI Target Milestone 🎯"];
+      let pastGpa = [3.40, null, null];
+      let currentGpa = [null, 3.65, null];
+      let predictedGpa = [null, 3.65, 3.82];
+
+      if (stageRecords.length > 0) {
+        const activeList = stageRecords.slice().reverse();
+        if (activeList.length === 1) {
+          const item = activeList[0];
+          const rawScore = parseFloat(item.score) || (stageMeta.isUni ? 3.65 : 85);
+          const baseline = stageMeta.isUni ? +(rawScore - 0.15).toFixed(2) : Math.max(stageMeta.min, Math.round(rawScore - 6));
+          const target = stageMeta.isUni ? Math.min(4.0, +(rawScore + 0.18).toFixed(2)) : Math.min(stageMeta.max, Math.round(rawScore + 5));
+          labels = ["1. Initial Baseline", "2. Current Evaluated Score", "3. Projected AI Target 🎯"];
+          pastGpa = [baseline, null, null];
+          currentGpa = [null, rawScore, null];
+          predictedGpa = [null, rawScore, target];
+        } else {
+          labels = activeList.map((r, i) => `Run #${i + 1} (${r.stage.toUpperCase()})`);
+          labels.push("Projected Milestone 🎯");
+          const scores = activeList.map((r) => parseFloat(r.score) || 3.5);
+          const lastScore = scores[scores.length - 1];
+          pastGpa = scores.map((s, idx) => (idx < scores.length - 1 ? s : null));
+          pastGpa.push(null);
+          currentGpa = scores.map((s, idx) => (idx === scores.length - 1 ? s : null));
+          currentGpa.push(null);
+          const target = stageMeta.isUni ? Math.min(4.0, +(lastScore + 0.16).toFixed(2)) : Math.min(stageMeta.max, Math.round(lastScore + 5));
+          predictedGpa = scores.map((s, idx) => (idx === scores.length - 1 ? s : null));
+          predictedGpa.push(target);
+        }
+      }
+
+      const indigoGrad = ctx.createLinearGradient(0, 0, 0, 500);
+      indigoGrad.addColorStop(0, "rgba(99, 102, 241, 0.4)");
+      indigoGrad.addColorStop(1, "rgba(99, 102, 241, 0.0)");
+
+      const emeraldGrad = ctx.createLinearGradient(0, 0, 0, 500);
+      emeraldGrad.addColorStop(0, "rgba(16, 185, 129, 0.4)");
+      emeraldGrad.addColorStop(1, "rgba(16, 185, 129, 0.0)");
+
+      fsChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Starting / Past Baseline",
+              data: pastGpa,
+              borderColor: "#6366F1",
+              backgroundColor: indigoGrad,
+              borderWidth: 4,
+              fill: true,
+              tension: 0.3,
+              pointBackgroundColor: "#6366F1",
+              pointBorderColor: "#FFFFFF",
+              pointBorderWidth: 3,
+              pointRadius: 8
+            },
+            {
+              label: "Current Evaluated Standing",
+              data: currentGpa,
+              borderColor: "#F59E0B",
+              backgroundColor: "rgba(245, 158, 11, 0.2)",
+              pointBackgroundColor: "#F59E0B",
+              pointBorderColor: "#FFFFFF",
+              pointBorderWidth: 3,
+              pointRadius: 10,
+              showLine: false
+            },
+            {
+              label: "AI Projected Target Milestone",
+              data: predictedGpa,
+              borderColor: "#10B981",
+              borderDash: [8, 8],
+              backgroundColor: emeraldGrad,
+              borderWidth: 4,
+              fill: true,
+              tension: 0.3,
+              pointBackgroundColor: "#10B981",
+              pointBorderColor: "#FFFFFF",
+              pointBorderWidth: 3,
+              pointRadius: 9
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "top", labels: { color: "#F8FAFC", font: { size: 13, weight: "bold" }, padding: 20 } },
+            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 14 }, bodyFont: { size: 13 }, padding: 16 }
+          },
+          scales: {
+            x: { grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } },
+            y: { min: stageMeta.min, max: stageMeta.max, grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } }
+          }
+        }
+      });
+    } else if (chartType === "distribution") {
+      if (fsModalTitle) fsModalTitle.innerHTML = `<span>🥧 Performance Tier & Risk Distribution (Full Screen)</span>`;
+      if (fsModalSubtitle) fsModalSubtitle.innerText = `Detailed cohort categorization across honors, proficient, standard, and intervention flags`;
+
+      let honors = 0, proficient = 0, standard = 0, atRisk = 0;
+      predictionHistory.forEach((item) => {
+        const badge = (item.status_badge || "").toLowerCase();
+        const score = parseFloat(item.score) || 0;
+        if (badge.includes("exemplary") || badge.includes("honor") || (score <= 4 ? score >= 3.6 : score >= 80)) honors++;
+        else if (badge.includes("proficient") || badge.includes("track") || (score <= 4 ? score >= 3.0 : score >= 70)) proficient++;
+        else if (badge.includes("standard") || badge.includes("capable") || (score <= 4 ? score >= 2.5 : score >= 60)) standard++;
+        else atRisk++;
+      });
+      if (honors + proficient + standard + atRisk === 0) { honors = 2; proficient = 1; standard = 0; atRisk = 0; }
+
+      fsChartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Honors / Exemplary", "Proficient / On Track", "Standard Competency", "Attention / At Risk"],
+          datasets: [{ data: [honors, proficient, standard, atRisk], backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444"], borderColor: "#1E293B", borderWidth: 3 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { color: "#F8FAFC", font: { size: 14 }, padding: 24, boxWidth: 16 } },
+            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 15 }, bodyFont: { size: 14 }, padding: 16 }
+          },
+          cutout: "60%"
+        }
+      });
+    } else if (chartType === "mastery") {
+      if (fsModalTitle) fsModalTitle.innerHTML = `<span>📊 Course Domain Mastery & Competency (Full Screen)</span>`;
+      if (fsModalSubtitle) fsModalSubtitle.innerText = `Evaluated percentage competency across Core Science, Applied Labs, Algorithms, & Humanities`;
+
+      const scores = { "Core Theory": [], "Applied Labs": [], "Algorithms": [], "Humanities": [], "Electives": [] };
+      predictionHistory.forEach((h) => {
+        const subList = h.payload?.subjects || [];
+        subList.forEach((s) => {
+          const cat = s.category || "Core Science";
+          const pct = s.max > 0 ? (s.obtained / s.max) * 100 : parseFloat(s.obtained) || 85;
+          if (cat.includes("Lab") || cat.includes("Practical")) scores["Applied Labs"].push(pct);
+          else if (cat.includes("Elective")) scores["Electives"].push(pct);
+          else if (cat.includes("Humanities") || cat.includes("Language")) scores["Humanities"].push(pct);
+          else if (s.name && (s.name.includes("Algo") || s.name.includes("Data") || s.name.includes("Code"))) scores["Algorithms"].push(pct);
+          else scores["Core Theory"].push(pct);
+        });
+      });
+      const calcAvg = (arr, fallback) => (arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : fallback);
+
+      fsChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["Core Theory", "Applied Labs", "Algorithms & Data Structures", "Humanities & Soft Skills", "Electives"],
+          datasets: [{
+            label: "Domain Mastery Level %",
+            data: [calcAvg(scores["Core Theory"], 86), calcAvg(scores["Applied Labs"], 92), calcAvg(scores["Algorithms"], 82), calcAvg(scores["Humanities"], 84), calcAvg(scores["Electives"], 88)],
+            backgroundColor: ["rgba(99, 102, 241, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(245, 158, 11, 0.8)", "rgba(14, 165, 233, 0.8)", "rgba(168, 85, 247, 0.8)"],
+            borderColor: ["#6366F1", "#10B981", "#F59E0B", "#0EA5E9", "#A855F7"],
+            borderWidth: 2,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: "y",
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 14 }, bodyFont: { size: 13 }, padding: 14 }
+          },
+          scales: {
+            x: { min: 0, max: 100, grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } },
+            y: { grid: { display: false }, ticks: { color: "#F8FAFC", font: { size: 14, weight: "bold" } } }
+          }
+        }
+      });
+    } else if (chartType === "habits") {
+      if (fsModalTitle) fsModalTitle.innerHTML = `<span>🎯 Study Habits vs Exam Score Correlation (Full Screen)</span>`;
+      if (fsModalSubtitle) fsModalSubtitle.innerText = `Empirical impact of daily self-study hours and active revision discipline on examination outcomes`;
+
+      fsChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["< 2 hrs/day (Low Discipline)", "2-4 hrs/day (Moderate)", "4-6 hrs/day (Consistent)", "6+ hrs/day (Intensive)"],
+          datasets: [{
+            label: "Expected Average Score %",
+            data: [62, 74, 86, 94],
+            backgroundColor: ["rgba(239, 68, 68, 0.75)", "rgba(245, 158, 11, 0.75)", "rgba(99, 102, 241, 0.75)", "rgba(16, 185, 129, 0.75)"],
+            borderColor: ["#EF4444", "#F59E0B", "#6366F1", "#10B981"],
+            borderWidth: 2,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 14 }, bodyFont: { size: 13 }, padding: 14 }
+          },
+          scales: {
+            x: { grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } },
+            y: { min: 50, max: 100, grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } }
+          }
+        }
+      });
+    }
+
+    fsModal.classList.add("active");
+  };
+
+  // Fullscreen Button Triggers
+  document.getElementById("btn-fullscreen-progression")?.addEventListener("click", () => window.openFullscreenChart("progression"));
+  document.getElementById("btn-fullscreen-distribution")?.addEventListener("click", () => window.openFullscreenChart("distribution"));
+  document.getElementById("btn-fullscreen-mastery")?.addEventListener("click", () => window.openFullscreenChart("mastery"));
+  document.getElementById("btn-fullscreen-habits")?.addEventListener("click", () => window.openFullscreenChart("habits"));
+
+  // Fullscreen Download PNG
+  if (btnFsDownloadPng) {
+    btnFsDownloadPng.addEventListener("click", () => {
+      if (!fsCanvas) return;
+      const imgURI = fsCanvas.toDataURL("image/png");
       const link = document.createElement("a");
-      link.download = `${filenamePrefix}_${Date.now()}.png`;
+      link.download = `edumetrics_fullscreen_chart_${Date.now()}.png`;
       link.href = imgURI;
       document.body.appendChild(link);
       link.click();
       link.remove();
-      showToast("Chart saved as PNG image!", "success");
+      showToast("High-resolution chart saved as PNG!", "success");
     });
   }
 
-  setupChartPngDownloader("btn-save-progression-png", "analyticsProgressionChart", "academic_progression_trend");
-  setupChartPngDownloader("btn-save-distribution-png", "analyticsGradeDistributionChart", "performance_tier_distribution");
-  setupChartPngDownloader("btn-save-mastery-png", "analyticsSubjectMasteryChart", "course_domain_mastery");
-  setupChartPngDownloader("btn-save-habits-png", "analyticsHabitsCorrelationChart", "study_habits_correlation");
+  // Fullscreen Modal Closers
+  if (btnCloseFsModal) btnCloseFsModal.onclick = () => fsModal?.classList.remove("active");
+  if (btnCloseFsModalBtn) btnCloseFsModalBtn.onclick = () => fsModal?.classList.remove("active");
+  if (fsModal) fsModal.onclick = (e) => { if (e.target === fsModal) fsModal.classList.remove("active"); };
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && fsModal?.classList.contains("active")) {
+      fsModal.classList.remove("active");
+    }
+  });
 
   // Initial Load
   await loadHistory();
