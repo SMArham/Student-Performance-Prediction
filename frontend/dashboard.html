@@ -3,504 +3,649 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Performance Analytics & Executive Dashboard - EduMetrics AI</title>
+  <title>Student Performance Prediction</title>
   
-  <!-- Design System CSS -->
-  <link rel="stylesheet" href="css/variables.css">
-  <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/dashboard.css">
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Production API Base URL -->
+  <meta name="api-base-url" content="">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css?v=2.5.1">
+  <link rel="stylesheet" href="css/layout.css?v=2.5.1">
+  <link rel="stylesheet" href="css/components.css?v=2.5.1">
+  <link rel="stylesheet" href="css/dashboard.css?v=2.5.1">
   
-  <!-- Google Fonts -->
+  <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  
-  <!-- Supabase JS CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-container">
+  
+  <!-- APPLICATION MAIN SHELL WRAPPER -->
+  <div class="app-shell-viewport">
     
-    <!-- ======================================================================
-         1. SIDEBAR NAVIGATION
-         ====================================================================== -->
-    <aside class="sidebar" id="sidebar">
-      <a href="dashboard.html" class="sidebar-header" style="text-decoration: none; cursor: pointer;">
-        <div class="brand-logo-icon">🎓</div>
-        <div>
-          <div class="brand-title">EduMetrics AI</div>
-          <div class="brand-subtitle">Analytics Engine</div>
-        </div>
-      </a>
-
-      <div class="sidebar-nav">
-        <div>
-          <div class="nav-section-title">Core Modules</div>
-          <ul class="nav-list">
-            <li class="nav-item active">
-              <a href="dashboard.html">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
-                </svg>
-                <span>Student Dashboard</span>
-                <span class="nav-badge">P1</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="prediction.html" title="Academic Records & Prediction Form (Page 2)">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-                <span>Academic Records & Form</span>
-                <span class="nav-badge" style="background-color: var(--primary-600); color: white;">P2</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="analytics.html" title="Analytics, Comparison & History Hub (Page 3)">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-                </svg>
-                <span>Analytics & History</span>
-                <span class="nav-badge" style="background-color: var(--accent-emerald); color: white;">P3</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="sidebar-footer">
-        <div class="user-profile-summary" id="user-profile-btn" title="Click to edit profile & settings">
-          <div class="user-avatar-container">
-            <img id="student-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar" class="user-avatar">
-            <span class="avatar-edit-badge">✏️</span>
-          </div>
-          <div class="user-info">
-            <div class="user-name" id="student-name">Muhammad Ali</div>
-            <div class="user-role" id="student-id-code">SE-2023-049</div>
-          </div>
-          <button id="logout-btn" class="btn-icon" title="Sign Out" style="margin-left: auto;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </aside>
-
-    <!-- ======================================================================
-         2. MAIN CONTENT WRAPPER & TOP NAVBAR
-         ====================================================================== -->
-    <div class="main-wrapper">
-      <header class="navbar">
-        <div class="navbar-left">
-          <button class="menu-toggle-btn" id="sidebar-toggle">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>
-            </svg>
-          </button>
-          <div class="page-breadcrumb">
-            <a href="dashboard.html" style="color: inherit; text-decoration: none;">Home</a>
-            <span>/</span>
-            <span class="current">Executive Dashboard</span>
-          </div>
-        </div>
-
-        <div class="navbar-right">
-          <!-- Stage Selector Dropdown -->
-          <div class="stage-select-container">
-            <span class="stage-select-label">Stage:</span>
-            <select id="stage-selector" class="form-select" style="padding: 4px 8px; font-size: 13px; background: transparent; border: none;">
-              <option value="university" selected>University</option>
-              <option value="intermediate">Intermediate (HSSC)</option>
-              <option value="matric">Matric (SSC)</option>
-              <option value="secondary">Middle / Secondary</option>
-              <option value="primary">Primary</option>
-            </select>
-          </div>
-
-          <a href="prediction.html" class="btn btn-primary btn-sm">
-            <span>⚡ Run Forecast (Page 2)</span>
+    <!-- FLOATING DASHBOARD PANEL SHELL -->
+    <div class="dashboard-shell">
+      
+      <!-- 1. TOP NAVBAR -->
+      <header class="top-navbar">
+        <div class="navbar-brand-group">
+          <!-- Circular Logo Badge on Far Left -->
+          <a href="dashboard.html" class="brand-logo-badge" title="Student Performance Prediction">
+            SP
           </a>
+        </div>
+
+        <!-- Upper Right User Identity Block -->
+        <div class="navbar-user-block" id="user-profile-btn" title="Profile & Account Settings" role="button" tabindex="0">
+          <div class="user-avatar-badge">
+            <div class="user-avatar-circle" id="navbar-user-avatar">MA</div>
+            <div class="user-status-indicator"></div>
+          </div>
+          <div class="user-text-meta">
+            <div class="user-display-name" id="student-name">Muhammad Ali</div>
+            <div class="user-subrole" id="student-id-code">Student</div>
+          </div>
         </div>
       </header>
 
-      <!-- ======================================================================
-           3. DASHBOARD BODY & EXECUTIVE OVERVIEW
-           ====================================================================== -->
-      <main class="content-body">
-        <div class="dashboard-container">
+      <!-- 2. SHELL BODY: LEFT UTILITY RAIL + MAIN CONTENT CANVAS -->
+      <div class="shell-body-wrapper">
+        
+        <!-- Left Action Rail -->
+        <aside class="left-action-rail">
+          <div class="action-rail-stack">
+            <a href="dashboard.html" class="rail-icon-btn active" title="Dashboard">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+              <span class="rail-label">Dashboard</span>
+            </a>
+            <a href="prediction.html" class="rail-icon-btn" title="Run Forecast">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span class="rail-label">Forecast</span>
+            </a>
+            <a href="analytics.html" class="rail-icon-btn" title="Analytics Hub">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span class="rail-label">Analytics</span>
+            </a>
+            <button type="button" class="rail-icon-btn" id="rail-profile-btn" title="Profile & Account Settings">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span class="rail-label">Profile</span>
+            </button>
+            <button type="button" class="rail-icon-btn" id="logout-btn" title="Sign Out">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span class="rail-label">Logout</span>
+            </button>
+          </div>
+        </aside>
+
+        <!-- Main Content Canvas -->
+        <main class="main-content-canvas">
+          
+          <!-- Top Row: Page Title -->
+          <div class="dashboard-top-row">
+            <h1 class="page-title-display" style="font-size: 36px; letter-spacing: 0.04em;">STUDENT PERFORMANCE PREDICTION</h1>
+          </div>
 
           <!-- Hero Greeting Banner -->
           <div class="dashboard-hero">
-            <div class="hero-text-content">
-              <h1 class="hero-greeting" id="hero-greeting">Welcome back, Ali 👋</h1>
-              <p class="hero-subtitle">
+            <div>
+              <h2 class="hero-welcome-title" id="hero-greeting">Welcome back, Ali 👋</h2>
+              <p class="hero-welcome-subtitle" id="hero-subtitle">
                 Academic Performance & AI Evaluation Center. Monitor semester metrics, run predictive models, and access longitudinal insights.
               </p>
             </div>
-            <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
-              <a href="prediction.html" class="btn btn-primary">
-                <span>⚡ Run AI Forecast</span>
+            <div class="hero-actions">
+              <a href="prediction.html" class="btn btn-primary" id="hero-action-primary">
+                <span>⚡ Run AI</span>
               </a>
-              <a href="analytics.html" class="btn btn-secondary">
-                <span>📈 View Analytics Hub</span>
+              <a href="analytics.html" class="btn btn-secondary" id="hero-action-secondary">
+                <span>📈 Analytics</span>
               </a>
             </div>
           </div>
 
-          <!-- Executive KPI Cards -->
-          <div class="kpi-grid">
-            <!-- KPI 1: Cumulative CGPA -->
-            <div class="card kpi-card">
-              <div class="kpi-label">Cumulative GPA / Standing</div>
-              <div class="kpi-value-row">
-                <div class="kpi-value" id="kpi-cgpa">3.55</div>
-                <div class="kpi-icon-container" style="background: rgba(99, 102, 241, 0.1); color: var(--primary-400);">🎓</div>
-              </div>
-              <div class="kpi-meta" id="kpi-cgpa-meta">Target: 3.75+ for Dean's List</div>
-            </div>
-
-            <!-- KPI 2: Attendance Rate -->
-            <div class="card kpi-card">
-              <div class="kpi-label">Lecture Attendance Rate</div>
-              <div class="kpi-value-row">
-                <div class="kpi-value" id="kpi-attendance" style="color: var(--accent-emerald);">91.5%</div>
-                <div class="kpi-icon-container" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-emerald);">📅</div>
-              </div>
-              <div class="kpi-meta">High regularity (>85% benchmark)</div>
-            </div>
-
-            <!-- KPI 3: Latest AI Predicted Performance -->
-            <div class="card kpi-card">
-              <div class="kpi-label">Latest AI Performance Forecast</div>
-              <div class="kpi-value-row">
-                <div class="kpi-value" id="kpi-predicted-gpa" style="color: var(--accent-amber);">3.75</div>
-                <div class="kpi-icon-container" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-amber);">⚡</div>
-              </div>
-              <div class="kpi-meta">
-                <span class="badge badge-success" id="kpi-status-badge">Exemplary</span>
-              </div>
-            </div>
-
-            <!-- KPI 4: Coursework Completion -->
-            <div class="card kpi-card">
-              <div class="kpi-label">Assignments & Assessments</div>
-              <div class="kpi-value-row">
-                <div class="kpi-value" id="kpi-quizzes">18 / 20</div>
-                <div class="kpi-icon-container" style="background: rgba(14, 165, 233, 0.1); color: var(--accent-cyan);">📝</div>
-              </div>
-              <div class="kpi-meta">90% Completion Rate</div>
-            </div>
-          </div>
-
-          <!-- Academic Profile & Calibrated Standing Grid -->
-          <div class="analytics-main-grid" style="margin-bottom: var(--space-8);">
-            <!-- Academic Profile Card -->
-            <div class="card">
-              <div class="card-header">
-                <h2 class="card-title">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  <span>Student Academic Identity</span>
-                </h2>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-edit-profile-overview">Edit Profile</button>
-              </div>
-
-              <div class="profile-summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); padding: var(--space-2) 0;">
-                <div>
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Enrolled Program / Major</div>
-                  <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);" id="student-major">Software Engineering</div>
+          <!-- ================================================================
+               VIEW A: STUDENT PORTAL VIEW (DEFAULT FOR STUDENTS)
+               ================================================================ -->
+          <div id="student-portal-view">
+            <!-- 4 EXECUTIVE KPI CARDS (Real Student Metrics) -->
+            <div class="kpi-quad-grid">
+              
+              <!-- KPI 1: Cumulative CGPA / Standing -->
+              <div class="card bento-metric-card">
+                <div class="bento-title">
+                  <span>CUMULATIVE CGPA / STANDING</span>
                 </div>
-                <div>
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Current Term / Semester</div>
-                  <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);" id="grade-level">Semester 4 (Undergraduate)</div>
-                </div>
-                <div>
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Institution</div>
-                  <div style="font-size: 14px; color: var(--text-secondary);" id="institution-name">Faculty of Computer Science & Engineering</div>
-                </div>
-                <div>
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Student ID / Code</div>
-                  <div style="font-size: 14px; font-weight: 600; color: var(--primary-400);" id="student-id-display">SE-2023-049</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- AI Advisory & Growth Levers Card -->
-            <div class="card">
-              <div class="card-header">
-                <h2 class="card-title">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                  <span>AI Performance Status & Advisory</span>
-                </h2>
-              </div>
-
-              <div class="status-card-content">
-                <div id="advisory-badge-hero" class="status-badge-hero badge-success">
-                  <div class="status-title" id="advisory-title">Performance Status: Exemplary</div>
-                  <div class="status-desc" id="advisory-desc">
-                    Outstanding academic trajectory. Consistent study routine supports high semester retention.
+                <div class="bento-kpi-row">
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="kpi-cgpa">--</div>
+                    <div class="kpi-sublabel">Cumulative CGPA</div>
+                  </div>
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="kpi-sem-gpa" style="color: var(--color-lime);">--</div>
+                    <div class="kpi-sublabel">Semester GPA</div>
                   </div>
                 </div>
+              </div>
 
-                <div style="font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-transform: uppercase; color: var(--text-muted); margin-top: var(--space-4);">
-                  Key Growth Levers
+              <!-- KPI 2: Lecture Attendance Rate -->
+              <div class="card bento-metric-card">
+                <div class="bento-title">
+                  <span>ATTENDANCE & STUDY TIME</span>
                 </div>
-                <ul class="ai-recommendations-list" id="ai-tips-list" style="margin-top: var(--space-2);">
-                  <li class="ai-rec-item"><span class="ai-rec-icon">⚡</span> Maintain current attendance (>85%) to secure distinction eligibility.</li>
-                  <li class="ai-rec-item"><span class="ai-rec-icon">⚡</span> Schedule weekly revision blocks for core analytical courses.</li>
-                </ul>
+                <div class="bento-kpi-row">
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="kpi-attendance" style="color: var(--color-lime);">--</div>
+                    <div class="kpi-sublabel">Attendance Rate</div>
+                  </div>
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="kpi-study-hours" style="color: var(--color-orange);">--</div>
+                    <div class="kpi-sublabel">Daily Study Time</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPI 3: Latest AI Predicted Performance -->
+              <div class="card bento-metric-card">
+                <div class="bento-title">
+                  <span>LATEST AI FORECAST</span>
+                </div>
+                <div class="bento-kpi-row">
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="kpi-predicted-gpa" style="color: var(--color-lime);">--</div>
+                    <div class="kpi-sublabel">Forecasted GPA</div>
+                  </div>
+                  <div class="kpi-col">
+                    <div style="margin-top: 4px; display: flex; justify-content: flex-start; align-items: center;">
+                      <span class="badge badge-neutral" id="kpi-status-badge">No Evaluations</span>
+                    </div>
+                    <div class="kpi-sublabel" style="margin-top: 6px;">Status Tier</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPI 4: Target Attendance Goal -->
+              <div class="card bento-metric-card">
+                <div class="bento-title">
+                  <span>TARGET ATTENDANCE</span>
+                </div>
+                <div class="bento-kpi-row">
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="kpi-target-gpa" style="color: var(--color-orange);">> 90%</div>
+                    <div class="kpi-sublabel" id="kpi-target-sublabel">Attendance Target</div>
+                  </div>
+                  <div class="kpi-col">
+                    <div style="font-size: 13.5px; font-weight: 700; color: var(--color-lime); line-height: 1.3;">Target Goal</div>
+                    <div class="kpi-sublabel">Attendance &gt; 90% should be your target</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- STUDENT ACADEMIC IDENTITY -->
+            <div class="card" style="margin-top: var(--space-6);">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">STUDENT ACADEMIC IDENTITY</div>
+                  <div class="card-subtitle">Verified registration credentials and academic records</div>
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-edit-profile-overview">⚙️ Edit Profile</button>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); padding: var(--space-2) 0;">
+                <div style="background-color: var(--color-control); padding: var(--space-4); border-radius: var(--radius-card); border: 1px solid var(--border-subtle);">
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Enrolled Program</div>
+                  <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin-top: 4px;" id="student-program">--</div>
+                </div>
+                <div style="background-color: var(--color-control); padding: var(--space-4); border-radius: var(--radius-card); border: 1px solid var(--border-subtle);">
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Current Education Stage</div>
+                  <div style="font-size: 15px; font-weight: 700; color: var(--color-lime); margin-top: 4px;" id="grade-level">--</div>
+                </div>
+                <div style="background-color: var(--color-control); padding: var(--space-4); border-radius: var(--radius-card); border: 1px solid var(--border-subtle);">
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Academic Institution</div>
+                  <div style="font-size: 13.5px; color: var(--text-secondary); margin-top: 4px;" id="institution-name">--</div>
+                </div>
+                <div style="background-color: var(--color-control); padding: var(--space-4); border-radius: var(--radius-card); border: 1px solid var(--border-subtle);">
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Student ID</div>
+                  <div style="font-size: 14px; font-weight: 700; color: var(--color-orange); font-family: var(--font-family-mono); margin-top: 4px;" id="student-id-display">--</div>
+                </div>
               </div>
             </div>
+
+            <!-- RECENT PREDICTION CHECKPOINTS LEDGER -->
+            <section class="card" style="margin-top: var(--space-6);">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">RECENT PREDICTION CHECKPOINTS</div>
+                  <div class="card-subtitle">Historical forecast runs evaluated for your account</div>
+                </div>
+                <a href="analytics.html" class="btn btn-outline btn-sm">
+                  <span>View Analytics ➔</span>
+                </a>
+              </div>
+
+              <div class="data-table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Record ID & Date</th>
+                      <th>Stage</th>
+                      <th>Predicted Score</th>
+                      <th>Status Tier</th>
+                      <th style="text-align: right;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboard-recent-history-body">
+                    <!-- Populated dynamically by js/dashboard.js -->
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
 
-          <!-- Quick Navigation Action Modules -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-8);">
-            <div class="card" style="border-left: 4px solid var(--primary-500);">
-              <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
-                📝 Academic Records & Prediction Form (Page 2)
+          <!-- ================================================================
+               VIEW B: TEACHER & INSTRUCTOR PORTAL VIEW (CRUD & CLASS MANAGEMENT)
+               ================================================================ -->
+          <div id="teacher-portal-view" style="display: none;">
+            
+            <!-- TEACHER EXECUTIVE KPI STATS -->
+            <div class="kpi-quad-grid">
+              <div class="card bento-metric-card">
+                <div class="bento-title">
+                  <span>TOTAL ENROLLED STUDENTS</span>
+                </div>
+                <div class="bento-kpi-row">
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="teacher-kpi-total-students">0</div>
+                    <div class="kpi-sublabel">Total Students</div>
+                  </div>
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" style="color: var(--color-lime);">Active</div>
+                    <div class="kpi-sublabel">Roster Status</div>
+                  </div>
+                </div>
               </div>
-              <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-4);">
-                Enter current semester marks, subject-wise scores, learning habits, and attentiveness to run multi-factor machine learning forecasts.
-              </p>
-              <a href="prediction.html" class="btn btn-primary btn-sm">
-                <span>Launch Prediction Engine ➔</span>
-              </a>
+
+              <div class="card bento-metric-card">
+                <div class="bento-title">
+                  <span>CLASS AVERAGE SCORE</span>
+                </div>
+                <div class="bento-kpi-row">
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="teacher-kpi-class-avg" style="color: var(--color-lime);">0.00</div>
+                    <div class="kpi-sublabel">Mean Predicted Score</div>
+                  </div>
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="teacher-kpi-attendance-avg" style="color: var(--color-lime);">0.0%</div>
+                    <div class="kpi-sublabel">Mean Attendance</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card bento-metric-card">
+                <div class="bento-title">
+                  <span>AT-RISK ALERTS</span>
+                </div>
+                <div class="bento-kpi-row">
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="teacher-kpi-at-risk-count" style="color: var(--color-orange);">0</div>
+                    <div class="kpi-sublabel">Intervention Required</div>
+                  </div>
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="teacher-kpi-high-achievers" style="color: var(--color-lime);">0</div>
+                    <div class="kpi-sublabel">High Achievers</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card bento-metric-card">
+                <div class="bento-title">
+                  <span>AI DIAGNOSTIC ENGINE</span>
+                </div>
+                <div class="bento-kpi-row">
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" id="teacher-kpi-eval-rate">100%</div>
+                    <div class="kpi-sublabel">Coverage</div>
+                  </div>
+                  <div class="kpi-col">
+                    <div class="kpi-number-big" style="font-size: 15px; color: var(--color-lime); margin-top: 4px;">ML Calibrated</div>
+                    <div class="kpi-sublabel">Active Pipelines</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="card" style="border-left: 4px solid var(--accent-emerald);">
-              <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
-                📈 Dedicated Analytics & History Hub (Page 3)
+            <!-- TEACHER STUDENT MANAGEMENT & CRUD ROSTER SECTION -->
+            <section class="card" style="margin-top: var(--space-6);">
+              <div class="card-header" style="flex-wrap: wrap; gap: var(--space-3);">
+                <div>
+                  <div class="card-title">INSTRUCTOR STUDENT GRADEBOOK</div>
+                  <div class="card-subtitle">Manage student records, update grades, and run AI diagnostics</div>
+                </div>
+                <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+                  <button type="button" class="btn btn-primary btn-sm" id="btn-add-student-modal">
+                    <span>+ Add Student</span>
+                  </button>
+                  <a href="prediction.html" class="btn btn-secondary btn-sm">
+                    <span>Run AI ➔</span>
+                  </a>
+                </div>
               </div>
-              <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-4);">
-                View 4-chart longitudinal progression curves, subject domain mastery, habit correlations, and comparative before-vs-after matrix.
-              </p>
-              <a href="analytics.html" class="btn btn-secondary btn-sm">
-                <span>Open Analytics Hub ➔</span>
-              </a>
-            </div>
+
+              <!-- Filter / Search Toolbar -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); gap: var(--space-3); flex-wrap: wrap;">
+                <div style="display: flex; gap: var(--space-3); flex: 1; min-width: 240px;">
+                  <input type="text" id="teacher-search-input" class="form-input" placeholder="Search student by name, roll number, section..." style="height: 38px; font-size: 13px;">
+                </div>
+                <div style="display: flex; gap: var(--space-3); align-items: center;">
+                  <select id="teacher-filter-stage" class="form-select" style="height: 38px; font-size: 12.5px; width: 160px;">
+                    <option value="all">All Stages</option>
+                    <option value="university" selected>University</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="matric">Matric</option>
+                    <option value="secondary">Secondary</option>
+                    <option value="primary">Primary</option>
+                  </select>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-refresh-students" title="Refresh student roster">
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Student Gradebook CRUD Data Table -->
+              <div class="data-table-container">
+                <table class="data-table" id="teacher-students-table">
+                  <thead>
+                    <tr>
+                      <th>Roll No</th>
+                      <th>Student Name</th>
+                      <th>Class & Subject</th>
+                      <th>Attendance</th>
+                      <th>Quiz / Test</th>
+                      <th>Assignment</th>
+                      <th>Midterm</th>
+                      <th>Forecast</th>
+                      <th>Status Tier</th>
+                      <th style="text-align: right;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="teacher-students-table-body">
+                    <!-- Populated dynamically by js/dashboard.js -->
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
 
-          <!-- Recent Prediction Checkpoints Mini-Ledger -->
-          <section class="card">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  <span>Recent Academic Prediction Checkpoints</span>
-                </h2>
-                <div class="card-subtitle">Latest evaluated runs saved to your account</div>
-              </div>
-              <a href="analytics.html" class="btn btn-outline btn-sm">
-                <span>View All History in Hub ➔</span>
-              </a>
-            </div>
+        </main>
+      </div>
 
-            <div class="table-responsive">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Record ID & Date</th>
-                    <th>Role & Stage</th>
-                    <th>Predicted Score</th>
-                    <th>Status Tier</th>
-                    <th style="text-align: right;">Action</th>
-                  </tr>
-                </thead>
-                <tbody id="dashboard-recent-history-body">
-                  <!-- Populated dynamically by js/dashboard.js -->
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-        </div>
-      </main>
     </div>
   </div>
 
-  <!-- Student Profile & Settings Modal -->
-  <div class="modal-backdrop" id="profile-settings-modal">
+  <!-- ================================================================
+       MODAL 1: ADD / EDIT STUDENT MODAL (CRUD)
+       ================================================================ -->
+  <div class="modal-backdrop" id="modal-student-crud">
     <div class="modal-dialog" style="max-width: 600px;">
       <div class="modal-header">
         <div>
-          <h2 class="modal-title">⚙️ Student Profile & Settings</h2>
+          <h2 class="modal-title" id="crud-modal-title">Add Student Record</h2>
           <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
-            Manage your personal profile, custom photo, security, and account preferences.
+            Enter student marks, attendance, and details to store in database and run AI forecast.
           </div>
         </div>
-        <button class="btn-icon" id="btn-close-profile-modal" style="font-size: 20px;">&times;</button>
+        <button class="btn-icon" id="btn-close-crud-modal" style="font-size: 20px;">&times;</button>
       </div>
 
-      <div class="modal-tabs-header">
-        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">👤 Profile Details</button>
-        <button type="button" class="modal-tab-btn" data-tab="tab-profile-avatar">🖼️ Picture & Avatar</button>
-        <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">🔒 Security</button>
-        <button type="button" class="modal-tab-btn" data-tab="tab-profile-danger" style="color: var(--accent-rose);">⚠️ Danger Zone</button>
-      </div>
+      <form id="student-crud-form" style="padding: var(--space-6);">
+        <input type="hidden" id="crud-student-id">
 
-      <!-- TAB 1: General Details -->
-      <div class="profile-tab-content active" id="tab-profile-general">
-        <form id="profile-details-form" style="padding: var(--space-6);">
-          <!-- Live Avatar Preview Box -->
-          <div style="display: flex; align-items: center; gap: var(--space-4); background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-5);">
-            <img id="setting-avatar-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar Preview" style="width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--primary-500); background: var(--bg-card);">
-            <div>
-              <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Interactive Avatar Preview</div>
-              <div style="font-size: 11px; color: var(--text-muted);" id="setting-avatar-caption">Type your name or select gender below to automatically adapt your avatar.</div>
-            </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="crud-roll-no">Roll Number / Seat Code</label>
+            <input type="text" id="crud-roll-no" class="form-input" placeholder="e.g. SE-2026-049" required>
           </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-            <div class="form-group">
-              <label class="form-label" for="setting-fullname">Full Name <span style="color:var(--accent-rose)">*</span></label>
-              <input type="text" id="setting-fullname" class="form-input" value="Muhammad Ali" required placeholder="e.g. Fatima Zahra or Muhammad Ali">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="setting-gender">Avatar Style & Gender</label>
-              <select id="setting-gender" class="form-select">
-                <option value="auto" selected>✨ Auto-Detect by Name</option>
-                <option value="female">👩 Female Avatar (Lorelei)</option>
-                <option value="male">👨 Male Avatar (Avataaars)</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-            <div class="form-group">
-              <label class="form-label" for="setting-studentid">Student ID / Code</label>
-              <input type="text" id="setting-studentid" class="form-input" value="SE-2023-049">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="setting-major">Major / Program</label>
-              <input type="text" id="setting-major" class="form-input" value="Software Engineering">
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: var(--space-6);">
-            <label class="form-label" for="setting-institution">Institution Name</label>
-            <input type="text" id="setting-institution" class="form-input" value="Faculty of Computer Science & Engineering">
-          </div>
-
-          <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
-            <button type="button" class="btn btn-secondary" id="btn-cancel-profile">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Profile</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- TAB 2: Picture & Custom Avatar Presets -->
-      <div class="profile-tab-content" id="tab-profile-avatar" style="display: none; padding: var(--space-6);">
-        <div class="avatar-customizer-box" style="display: flex; align-items: center; gap: var(--space-5); padding: var(--space-4); background-color: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); margin-bottom: var(--space-5);">
-          <img id="avatar-big-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli" alt="Avatar Big" class="avatar-big-preview" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-500); object-fit: cover;">
-          <div style="flex: 1;">
-            <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">Choose Your Avatar Style</div>
-            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Select from ready-made presets or paste custom image link</div>
+          <div class="form-group">
+            <label class="form-label" for="crud-student-name">Student Full Name</label>
+            <input type="text" id="crud-student-name" class="form-input" placeholder="e.g. Muhammad Ali" required>
           </div>
         </div>
 
-        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3);">
-          👩 Girl & Female Presets:
-        </div>
-        <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-5);">
-          <button type="button" class="btn btn-secondary btn-sm btn-avatar-preset" data-avatar="https://api.dicebear.com/7.x/lorelei/svg?seed=Fatima&backgroundColor=ffd5dc">
-            👩 Fatima (Lorelei)
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-avatar-preset" data-avatar="https://api.dicebear.com/7.x/lorelei/svg?seed=Ayesha&backgroundColor=c0aede">
-            🧕 Ayesha (Modest)
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-avatar-preset" data-avatar="https://api.dicebear.com/7.x/lorelei/svg?seed=Sara&backgroundColor=b6e3f4">
-            👱‍♀️ Sara (Student)
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-avatar-preset" data-avatar="https://api.dicebear.com/7.x/lorelei/svg?seed=Zainab&backgroundColor=ffdfbf">
-            🌸 Zainab (Creative)
-          </button>
-        </div>
-
-        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3);">
-          👨 Boy & Male Presets:
-        </div>
-        <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-5);">
-          <button type="button" class="btn btn-secondary btn-sm btn-avatar-preset" data-avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli&clothingColor=262e33">
-            👨 Ali (University)
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-avatar-preset" data-avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=Ahmed&clothingColor=3c4f5c">
-            🧔 Ahmed (Tech)
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-avatar-preset" data-avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=Yahya&clothingColor=5199e4">
-            🧑 Yahya (Scholar)
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-avatar-preset" data-avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=Bilal&clothingColor=25557c">
-            ⚡ Bilal (Engineer)
-          </button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="crud-stage">Education Stage</label>
+            <select id="crud-stage" class="form-select">
+              <option value="university" selected>University</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="matric">Matric</option>
+              <option value="secondary">Secondary</option>
+              <option value="primary">Primary</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crud-gender">Gender</label>
+            <select id="crud-gender" class="form-select">
+              <option value="male" selected>Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
         </div>
 
-        <div class="form-group" style="margin-bottom: var(--space-5);">
-          <label class="form-label" for="setting-custom-avatar-url">Custom Photo / Avatar Image URL</label>
-          <input type="url" id="setting-custom-avatar-url" class="form-input" placeholder="https://example.com/your-photo.png">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="crud-section">Class Section</label>
+            <input type="text" id="crud-section" class="form-input" placeholder="e.g. Section A" value="Section A" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crud-subject">Subject / Course</label>
+            <input type="text" id="crud-subject" class="form-input" placeholder="e.g. Computer Science" value="Computer Science" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="crud-attendance">Attendance %</label>
+            <input type="number" id="crud-attendance" class="form-input" min="0" max="100" step="0.5" value="85.0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crud-quiz">Quiz %</label>
+            <input type="number" id="crud-quiz" class="form-input" min="0" max="100" step="0.5" value="80.0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crud-assignment">Assignment %</label>
+            <input type="number" id="crud-assignment" class="form-input" min="0" max="100" step="0.5" value="80.0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crud-midterm">Midterm %</label>
+            <input type="number" id="crud-midterm" class="form-input" min="0" max="100" step="0.5" value="75.0" required>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-6);">
+          <label class="form-label" for="crud-notes">Instructor Remarks</label>
+          <input type="text" id="crud-notes" class="form-input" placeholder="e.g. Strong conceptual grasp in coursework.">
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
-          <button type="button" class="btn btn-primary" id="btn-save-avatar-tab">Apply Avatar</button>
+          <button type="button" class="btn btn-secondary" id="btn-cancel-crud-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-student-crud">
+            Save Student
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       MODAL 2: CONFIRM DELETE STUDENT MODAL
+       ================================================================ -->
+  <div class="modal-backdrop" id="modal-confirm-delete-student">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" style="color: var(--color-red);">Confirm Delete Student</h2>
+          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
+            Permanently remove student record from roster and database.
+          </div>
+        </div>
+        <button class="btn-icon" id="btn-close-delete-modal" style="font-size: 20px;">&times;</button>
+      </div>
+      <div style="padding: var(--space-6);">
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: var(--space-5);">
+          Are you sure you want to delete <strong id="delete-student-name" style="color: #ffffff;">Student</strong> (<span id="delete-student-roll" style="color: var(--color-orange);">Roll No</span>) from the database? This action cannot be undone.
+        </p>
+        <input type="hidden" id="delete-student-id">
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-delete-modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="btn-confirm-delete-action">
+            Delete Record
+          </button>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- TAB 3: Security & Password -->
-      <div class="profile-tab-content" id="tab-profile-security" style="display: none; padding: var(--space-6);">
-        <form id="profile-security-form">
-          <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label class="form-label" for="security-current-pass">Current Password</label>
-            <input type="password" id="security-current-pass" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+  <!-- =========================================================================
+       MODAL: STUDENT PROFILE & ACCOUNT SETTINGS (TOP-TIER OVERHAUL)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="profile-settings-modal">
+    <div class="modal-dialog profile-settings-dialog">
+      
+      <!-- Modal Header with Avatar & Meta -->
+      <div class="profile-modal-header">
+        <div class="profile-header-meta">
+          <div class="profile-avatar-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-lime)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
-          <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label class="form-label" for="security-new-pass">New Password (Min. 6 chars)</label>
-            <input type="password" id="security-new-pass" class="form-input" placeholder="New strong password" required autocomplete="new-password">
+          <div>
+            <h2 class="profile-modal-title">Student Profile & Settings</h2>
+            <div class="profile-modal-subtitle">Manage personal information, academic credentials, and security</div>
           </div>
-          <div class="form-group" style="margin-bottom: var(--space-6);">
-            <label class="form-label" for="security-confirm-pass">Confirm New Password</label>
-            <input type="password" id="security-confirm-pass" class="form-input" placeholder="Repeat new password" required autocomplete="new-password">
-          </div>
-          <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
-            <button type="submit" class="btn btn-primary">Update Password</button>
-          </div>
-        </form>
+        </div>
+        <button type="button" class="profile-close-btn" id="btn-close-profile-modal" aria-label="Close modal">&times;</button>
       </div>
 
-      <!-- TAB 4: Danger Zone / Delete Account -->
-      <div class="profile-tab-content" id="tab-profile-danger" style="display: none; padding: var(--space-6);">
-        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--status-danger-border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-6);">
-          <div style="font-size: 15px; font-weight: 700; color: var(--accent-rose); display: flex; align-items: center; gap: 6px;">
-            <span>⚠️ Permanent Account Deletion</span>
-          </div>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-top: var(--space-2); line-height: 1.5;">
-            Warning: This action cannot be undone. All your saved diagnostic history, prediction records, GPA tracking metrics, and profile credentials will be permanently erased from EduMetrics AI.
-          </p>
-        </div>
+      <!-- Navigation Tabs -->
+      <div class="profile-tabs-bar">
+        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Academic Profile</span>
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Security</span>
+        </button>
+        <button type="button" class="modal-tab-btn danger-tab" data-tab="tab-profile-danger">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <span>Danger Zone</span>
+        </button>
+      </div>
 
-        <form id="delete-account-form">
-          <div class="form-group" style="margin-bottom: var(--space-6);">
-            <label class="form-label" for="delete-confirm-input" style="color: var(--accent-rose);">
-              Type <strong style="color:#ffffff;">DELETE</strong> to confirm permanent erasure:
-            </label>
-            <input type="text" id="delete-confirm-input" class="form-input" placeholder="DELETE" required autocomplete="off" style="border-color: rgba(239, 68, 68, 0.4);">
+      <!-- TAB 1: Academic & Personal Profile -->
+      <div class="profile-tab-content active" id="tab-profile-general">
+        <form id="profile-details-form">
+          <div class="profile-section-card">
+            <div class="profile-section-heading">Personal & Academic Identification</div>
+            
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+              <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
+              <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Muhammad Ali" required>
+            </div>
+
+            <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+              <div class="form-group">
+                <label class="form-label" for="setting-studentid">
+                  Student ID Code <span class="badge-fixed-tag">🔒 Fixed</span>
+                </label>
+                <div class="fixed-input-wrapper">
+                  <input type="text" id="setting-studentid" class="form-input readonly-fixed-input" placeholder="STU-2026-001" readonly>
+                </div>
+                <div class="field-hint-text">Generated automatically upon registration. Immutable.</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="setting-program">Enrolled Program / Major</label>
+                <input type="text" id="setting-program" class="form-input" placeholder="e.g. Software Engineering / Pre-Engineering">
+                <div class="field-hint-text">Your primary degree or academic stream.</div>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-2);">
+              <label class="form-label" for="setting-institution">Institution Name</label>
+              <input type="text" id="setting-institution" class="form-input" placeholder="e.g. Faculty of Engineering / Govt College">
+              <div class="field-hint-text">Your registered school, college, or university.</div>
+            </div>
           </div>
 
-          <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
-            <button type="submit" class="btn btn-danger" id="btn-delete-account-submit">
-              <span>🗑️ Permanently Delete Account</span>
+          <div class="profile-action-row" style="margin-top: var(--space-5);">
+            <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; font-size: 14px; font-weight: 700; letter-spacing: 0.02em;">
+              💾 Save Profile Changes
             </button>
           </div>
         </form>
       </div>
+
+      <!-- TAB 2: Security & Password -->
+      <div class="profile-tab-content" id="tab-profile-security" style="display: none;">
+        <form id="profile-security-form">
+          <div class="profile-section-card">
+            <div class="profile-section-heading">Password & Authentication</div>
+            
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+              <label class="form-label" for="setting-new-password">New Password</label>
+              <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password" value="">
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-2);">
+              <label class="form-label" for="setting-confirm-password">Confirm New Password</label>
+              <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter new password to confirm" required autocomplete="new-password" value="">
+            </div>
+          </div>
+
+          <div class="profile-action-row" style="margin-top: var(--space-5);">
+            <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; font-size: 14px; font-weight: 700;">
+              🔒 Update Password Securely
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 3: Danger Zone -->
+      <div class="profile-tab-content" id="tab-profile-danger" style="display: none;">
+        <div class="danger-zone-card">
+          <div class="danger-zone-header">
+            <span class="danger-icon">⚠️</span>
+            <div>
+              <div class="danger-title">Permanent Account & Data Deletion</div>
+              <div class="danger-desc">
+                Permanently deletes your account authentication profile, stored student grades, custom ML history forecasts, and saved preferences.
+              </div>
+            </div>
+          </div>
+
+          <div class="danger-warning-note">
+            This action cannot be undone. All your academic diagnostic records will be wiped from the Supabase database.
+          </div>
+
+          <button type="button" class="btn btn-danger" id="btn-delete-account-confirm" style="width: 100%; height: 48px; font-size: 14px; font-weight: 700;">
+            🗑️ Permanently Delete My Account
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Application Scripts -->
-  <script src="js/supabase-client.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/dashboard.js"></script>
+  <!-- Scripts -->
+  <script src="js/supabase-client.js?v=2.5.1"></script>
+  <script src="js/api.js?v=2.5.1"></script>
+  <script src="js/dashboard.js?v=2.5.1"></script>
 </body>
 </html>

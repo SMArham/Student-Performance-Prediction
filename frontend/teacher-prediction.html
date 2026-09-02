@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Academic Suite & Class Analytics | EduMetrics AI</title>
+  
+  <!-- Modern Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Unified Dark Futuristic Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/prediction.css">
+</head>
+<body>
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="app-viewport">
+    <!-- FLOATING DASHBOARD PANEL SHELL -->
+    <div class="dashboard-shell">
+      
+      <!-- 1. TOP NAVBAR -->
+      <header class="top-navbar">
+        <div class="navbar-brand-group">
+          <!-- Circular Logo Badge on Far Left -->
+          <a href="teacher-dashboard.html" class="brand-logo-badge" title="EduMetrics Instructor Portal">
+            TP
+          </a>
+        </div>
+
+        <!-- Upper Right User Identity Block -->
+        <div class="navbar-user-block" id="user-profile-btn" title="Profile & Account Settings">
+          <div class="user-status-indicator"></div>
+          <div class="user-text-meta">
+            <div class="user-display-name" id="teacher-name">Instructor Portal</div>
+            <div class="user-subrole" id="teacher-id-code">TCH-2026-001</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- 2. SHELL BODY: LEFT UTILITY RAIL + MAIN CONTENT CANVAS -->
+      <div class="shell-body-wrapper">
+        <!-- Left Action Rail -->
+        <aside class="left-action-rail">
+          <div class="action-rail-stack">
+            <a href="teacher-dashboard.html" class="rail-icon-btn" title="Class Dashboard">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+              <span class="rail-label">Dashboard</span>
+            </a>
+            <a href="teacher-prediction.html" class="rail-icon-btn active" title="Teacher Prediction Suite">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span class="rail-label">Forecast</span>
+            </a>
+            <a href="teacher-analytics.html" class="rail-icon-btn" title="Cohort Analytics">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span class="rail-label">Analytics</span>
+            </a>
+            <button type="button" class="rail-icon-btn" id="rail-profile-btn" title="Profile & Account Settings">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span class="rail-label">Profile</span>
+            </button>
+            <button type="button" class="rail-icon-btn" id="logout-btn" title="Sign Out">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span class="rail-label">Logout</span>
+            </button>
+          </div>
+        </aside>
+
+        <!-- Main Content Canvas -->
+        <main class="main-content-canvas">
+          <!-- Top Row: Page Title -->
+          <!-- Top Row: Page Title -->
+          <div class="dashboard-top-row">
+            <div>
+              <h1 class="page-title-display" style="font-size: 32px; letter-spacing: 0.04em;">TEACHER AI DIAGNOSTIC SUITE</h1>
+              <p style="color: var(--text-muted); font-size: 13.5px; margin-top: 4px;">
+                Individual student evaluation, holistic coursework assessment, behavioral scoring, and predictive forecasting.
+              </p>
+            </div>
+            <div style="display: flex; gap: var(--space-3); align-items: center;">
+              <a href="teacher-dashboard.html" class="btn btn-secondary btn-sm">
+                <span>📋 Teacher Dashboard</span>
+              </a>
+              <a href="teacher-analytics.html" class="btn btn-secondary btn-sm">
+                <span>📈 Cohort Analytics</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="prediction-container">
+
+          <!-- Inline Error / Validation Banner -->
+          <div id="error-banner" class="error-alert-banner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <div style="flex:1;" id="error-banner-message">Please correct input validation errors before submitting.</div>
+            <button onclick="document.getElementById('error-banner').classList.remove('active')" style="background:none; border:none; color:inherit; cursor:pointer; font-size:16px;">&times;</button>
+          </div>
+
+          <!-- ================================================================
+               INDIVIDUAL STUDENT ANALYZER & EVALUATOR
+               ================================================================ -->
+          <section class="card" id="teacher-view-individual">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--space-4); margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-3);">
+              <div>
+                <h2 class="card-title" style="margin:0;">
+                  <span>👤 Individual Student Academic & Behavioral Evaluation</span>
+                </h2>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                  Evaluate one student at a time with stage-adapted curriculum metrics and qualitative observations.
+                </div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-form" title="Clear form for a new student">
+                <span>🔄 Reset Form</span>
+              </button>
+            </div>
+
+            <form id="teacher-individual-form">
+              <!-- SECTION 1: Student Identity & Academic Stage -->
+              <div class="form-section-title">1. Student Identification & Education Level</div>
+              <div class="form-grid-3col" style="margin-bottom: var(--space-5);">
+                <div class="form-group">
+                  <label class="form-label" for="t_student_name">Student Full Name <span style="color:var(--accent-rose)">*</span></label>
+                  <input type="text" id="t_student_name" class="form-input" placeholder="e.g. Ayesha Malik" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_student_id">Roll No / Student ID <span style="color:var(--accent-rose)">*</span></label>
+                  <input type="text" id="t_student_id" class="form-input" placeholder="e.g. STU-2026-104" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_student_stage">Education Level <span style="color:var(--accent-rose)">*</span></label>
+                  <select id="t_student_stage" class="form-select">
+                    <option value="university" selected>🎓 University Level (CGPA & Semester Credits)</option>
+                    <option value="intermediate">🏛️ Intermediate (HSSC Board - 11th/12th)</option>
+                    <option value="matric">🏫 Matriculation (SSC Board - 9th/10th)</option>
+                    <option value="secondary">🎒 Middle / Secondary (Class 5 - 8)</option>
+                    <option value="primary">✏️ Primary School (Class 1 - 5)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- SECTION 2: Dynamic Stage-Specific Academic Context Fields -->
+              <div class="form-section-title">2. Academic Background & Stage-Specific Context</div>
+              <div id="t-stage-context-container" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-6);">
+                <!-- Dynamically populated based on t_student_stage -->
+              </div>
+
+              <!-- SECTION 3: Courses & Coursework Gradebook Component (Contains Quiz, Assignment, Exam inside each course!) -->
+              <div class="form-section-title">3. Enrolled Courses, Exams, Quizzes & Assignments</div>
+              <div class="subjects-card" style="margin-bottom: var(--space-6);">
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4);">
+                  <div>
+                    <h3 style="font-size: var(--font-size-md); font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                      <span>📚 Course Gradebook Entries (Theory + Quiz + Assignment per Course)</span>
+                    </h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                      Each course includes its own Theory Exam, Quizzes, and Assignments. Aggregates are computed automatically.
+                    </div>
+                  </div>
+
+                  <button type="button" class="btn btn-primary btn-sm" id="btn-t-add-subject">
+                    <span>➕ Add Course to Student</span>
+                  </button>
+                </div>
+
+                <!-- Course Aggregates KPI Bar -->
+                <div class="subjects-summary-grid">
+                  <div class="summary-kpi-card">
+                    <div class="summary-kpi-title">Total Courses Taught</div>
+                    <div class="summary-kpi-value" id="t-kpi-total-subjects">0</div>
+                    <div class="summary-kpi-subtitle">Course Enrolment</div>
+                  </div>
+
+                  <div class="summary-kpi-card">
+                    <div class="summary-kpi-title">Aggregate Marks</div>
+                    <div class="summary-kpi-value" id="t-kpi-total-marks">0 / 0</div>
+                    <div class="summary-kpi-subtitle">Obtained vs Max</div>
+                  </div>
+
+                  <div class="summary-kpi-card">
+                    <div class="summary-kpi-title">Coursework Percentage</div>
+                    <div class="summary-kpi-value" id="t-kpi-aggregate-pct" style="color: var(--accent-emerald);">0.0%</div>
+                    <div class="summary-kpi-subtitle">Weighted Average</div>
+                  </div>
+
+                  <div class="summary-kpi-card">
+                    <div class="summary-kpi-title">Calculated Standing</div>
+                    <div class="summary-kpi-value" id="t-kpi-calc-gpa" style="color: var(--primary-400);">0.00 GPA</div>
+                    <div class="summary-kpi-subtitle">Equivalent Scale</div>
+                  </div>
+                </div>
+
+                <!-- Teacher Subjects Table -->
+                <div class="table-responsive">
+                  <table class="data-table" id="t-subjects-table">
+                    <thead>
+                      <tr>
+                        <th>Subject / Course</th>
+                        <th>Category</th>
+                        <th>Theory Exam</th>
+                        <th>Quizzes & Tests</th>
+                        <th>Assignments & Labs</th>
+                        <th>Total Marks</th>
+                        <th>Score %</th>
+                        <th>Grade</th>
+                        <th style="text-align: right;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="t-subjects-table-body">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- SECTION 4: Teacher Behavioral Dynamics, Soft Skills & Support -->
+              <div class="form-section-title">4. Classroom Behavior, Soft Skills & Instructor Evaluation</div>
+              <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
+                <div class="form-group">
+                  <label class="form-label" for="t_attendance">Classroom Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
+                  <input type="number" id="t_attendance" class="form-input" min="0" max="100" placeholder="e.g. 85" required value="85">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_attentive">Classroom Focus & Attentiveness <span style="color:var(--accent-rose)">*</span></label>
+                  <select id="t_attentive" class="form-select" required>
+                    <option value="High" selected>High (Consistently focused & vigilant)</option>
+                    <option value="Moderate">Moderate (Attentive with occasional lapses)</option>
+                    <option value="Low">Low (Easily distracted / needs refocusing)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_comm_skill">Communication & Verbal Presentation <span style="color:var(--accent-rose)">*</span></label>
+                  <select id="t_comm_skill" class="form-select" required>
+                    <option value="Exceptional" selected>Exceptional (Articulate, clear & confident presentation)</option>
+                    <option value="Good">Good (Effective communicator)</option>
+                    <option value="Developing">Developing (Hesitant / average verbal delivery)</option>
+                    <option value="Needs Support">Needs Support (Requires coaching & practice)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
+                <div class="form-group">
+                  <label class="form-label" for="t_behavior">Classroom Behavior & Discipline</label>
+                  <select id="t_behavior" class="form-select">
+                    <option value="Exemplary" selected>Exemplary (Respectful, sets positive classroom standard)</option>
+                    <option value="Cooperative">Cooperative (Compliant & collaborative)</option>
+                    <option value="Needs Guidance">Needs Guidance (Occasional disruptive tendencies)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_participation">Discussion & Team Participation</label>
+                  <select id="t_participation" class="form-select">
+                    <option value="Leader" selected>Active Contributor / Discussion Leader</option>
+                    <option value="Active">Regular Participant</option>
+                    <option value="Passive">Passive Listener</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_academic_need">Academic Support & Learning Need <span style="color:var(--accent-rose)">*</span></label>
+                  <select id="t_academic_need" class="form-select" required>
+                    <option value="Independent" selected>Independent Learner (Self-directed)</option>
+                    <option value="Moderate">Moderate Support (Benefits from office hours / peer study)</option>
+                    <option value="High">Intensive Remedial Support (Requires 1-on-1 coaching)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-grid-2col" style="margin-bottom: var(--space-5);">
+                <div class="form-group">
+                  <label class="form-label" for="t_rating">Overall Instructor Assessment Rating <span style="color:var(--accent-rose)">*</span></label>
+                  <select id="t_rating" class="form-select" required>
+                    <option value="5.0" selected>⭐⭐⭐⭐⭐ 5.0 (Outstanding / Exemplary)</option>
+                    <option value="4.0">⭐⭐⭐⭐ 4.0 (Proficient / High Achiever)</option>
+                    <option value="3.0">⭐⭐⭐ 3.0 (Capable / Standard Performance)</option>
+                    <option value="2.0">⭐⭐ 2.0 (Needs Support / Developing)</option>
+                    <option value="1.0">⭐ 1.0 (At Risk / Urgent Remediation)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t_notes">Teacher Diagnostic Remarks & Observations</label>
+                  <input type="text" id="t_notes" class="form-input" placeholder="e.g. Strong in laboratory problem solving; recommended extra practice for final theory exam.">
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: var(--space-3); padding-top: var(--space-5); border-top: 1px solid var(--border-subtle);">
+                <button type="submit" class="btn btn-primary" id="btn-t-individual-submit" style="font-size: 14.5px; padding: 10px 24px; font-weight: 700;">
+                  <span>⚡ Run AI</span>
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <!-- INDIVIDUAL STUDENT AI DIAGNOSTIC RESULTS -->
+          <section id="teacher-result-card" class="teacher-result-hero" style="display: none;">
+            <!-- Modern Diagnostic Header Banner -->
+            <div class="teacher-result-header">
+              <div class="teacher-student-badge-group">
+                <div class="teacher-student-avatar">🎓</div>
+                <div>
+                  <h2 class="teacher-result-title" id="t-result-student-header">
+                    AI Diagnostic Evaluation: Student Name
+                  </h2>
+                  <div class="teacher-result-meta" id="t-result-meta">
+                    <span>Instructor Diagnostic Assessment</span>
+                    <span>•</span>
+                    <span>Multi-Factor Machine Learning Projection</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap;">
+                <span class="badge badge-info" id="t-result-stage-badge">Secondary</span>
+                <span class="badge badge-success" id="t-result-risk-badge">On Track</span>
+                <span class="badge badge-warning" id="t-rating-badge" style="background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3);">Rating: 5.0 ⭐</span>
+              </div>
+            </div>
+
+            <!-- Bento-Style 4-Card KPI Grid -->
+            <div class="t-kpi-quad-grid">
+              <div class="t-kpi-metric-card accent-lime">
+                <div class="t-kpi-head">
+                  <span class="t-kpi-label">Predicted Academic Score</span>
+                  <span class="t-kpi-icon">🎯</span>
+                </div>
+                <div class="t-kpi-value" id="t-res-predicted-score" style="color: var(--color-lime);">79.9%</div>
+                <div class="t-kpi-subtext" id="t-res-score-unit">Projected Overall Board Marks %</div>
+              </div>
+
+              <div class="t-kpi-metric-card accent-white">
+                <div class="t-kpi-head">
+                  <span class="t-kpi-label">Forecasted Final Grade</span>
+                  <span class="t-kpi-icon">🏆</span>
+                </div>
+                <div class="t-kpi-value" id="t-res-predicted-grade" style="color: var(--text-primary);">Grade A</div>
+                <div class="t-kpi-subtext">Calibrated Letter Scale</div>
+              </div>
+
+              <div class="t-kpi-metric-card accent-blue">
+                <div class="t-kpi-head">
+                  <span class="t-kpi-label">Coursework Average</span>
+                  <span class="t-kpi-icon">📚</span>
+                </div>
+                <div class="t-kpi-value" id="t-res-coursework-pct" style="color: var(--color-blue);">82.9%</div>
+                <div class="t-kpi-subtext">Exam + Quiz + Assignment</div>
+              </div>
+            </div>
+
+            <!-- Teacher Qualitative Assessment Breakdown -->
+            <div class="t-behavior-section" id="t-behavioral-summary-card">
+              <div style="font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #ffffff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                <span>🧠 Instructor Behavioral & Qualitative Evaluation</span>
+              </div>
+              <div class="t-behavior-grid">
+                <div class="t-behavior-pill-card">
+                  <div class="t-behavior-pill-icon">🎯</div>
+                  <div class="t-behavior-pill-content">
+                    <div class="t-behavior-pill-title">Classroom Focus</div>
+                    <div class="t-behavior-pill-val" id="t-res-focus" style="color: var(--color-lime);">High</div>
+                  </div>
+                </div>
+
+                <div class="t-behavior-pill-card">
+                  <div class="t-behavior-pill-icon">🗣️</div>
+                  <div class="t-behavior-pill-content">
+                    <div class="t-behavior-pill-title">Verbal & Presentation</div>
+                    <div class="t-behavior-pill-val" id="t-res-comm" style="color: #38bdf8;">Good</div>
+                  </div>
+                </div>
+
+                <div class="t-behavior-pill-card">
+                  <div class="t-behavior-pill-icon">🤝</div>
+                  <div class="t-behavior-pill-content">
+                    <div class="t-behavior-pill-title">Behavior & Discipline</div>
+                    <div class="t-behavior-pill-val" id="t-res-behavior" style="color: #4ade80;">Cooperative</div>
+                  </div>
+                </div>
+
+                <div class="t-behavior-pill-card">
+                  <div class="t-behavior-pill-icon">🛠️</div>
+                  <div class="t-behavior-pill-content">
+                    <div class="t-behavior-pill-title">Support Need</div>
+                    <div class="t-behavior-pill-val" id="t-res-need" style="color: #fb923c;">Moderate</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- AI Pedagogical Intervention Strategy -->
+            <div class="t-pedagogy-card">
+              <div class="t-pedagogy-header">
+                <span style="font-size: 18px;">💡</span>
+                <h3 class="t-pedagogy-title">AI Pedagogical Intervention Strategy & Action Plan</h3>
+              </div>
+              <div class="t-pedagogy-content" id="t-recommendations-text">
+                Student exhibits strong potential but demonstrates low classroom focus or passive participation. Recommend pairing with an active peer study group and incorporating interactive question-answering during lecture sessions.
+              </div>
+            </div>
+
+            <!-- Bottom Actions: Return to Dashboard, Print Report & Evaluate Next -->
+            <div class="t-action-footer">
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <a href="teacher-dashboard.html" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+                  <span>⬅ Back to Teacher Dashboard</span>
+                </a>
+              </div>
+              <button type="button" class="cta-btn-primary" id="btn-t-next-student" style="cursor: pointer;">
+                <span>🔄 Evaluate Another Student ➔</span>
+              </button>
+            </div>
+          </section>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- TEACHER SUBJECT MODAL WITH EMBEDDED QUIZ & ASSIGNMENT -->
+  <div class="modal-backdrop" id="teacher-subject-modal">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="t-subject-modal-title">➕ Add Course to Student Gradebook</h3>
+        <button type="button" class="btn-icon" id="btn-close-t-subject-modal">&times;</button>
+      </div>
+      <form id="t-subject-form">
+        <input type="hidden" id="t-subject-edit-id" value="">
+        <div class="t-subj-name-category-row">
+          <div class="form-group">
+            <label class="form-label" for="t-subj-name">Subject / Course Name <span style="color:var(--accent-rose)">*</span></label>
+            <input type="text" id="t-subj-name" class="form-input" placeholder="e.g. Data Structures & Algorithms" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-subj-category">Category</label>
+            <select id="t-subj-category" class="form-select">
+              <option value="Theory" selected>Theory</option>
+              <option value="Lab">Lab / Practical</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="font-weight: 700; font-size: 12.5px; color: var(--color-lime); margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 0.05em;">
+          📊 Coursework Components (Theory, Quizzes, Assignments)
+        </div>
+
+        <!-- 1. Theory Exam -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3);">
+          <div style="font-size: 12px; font-weight: 600; color: #ffffff; margin-bottom: 8px;">1. Theory / Terminal Exam</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+            <div class="form-group">
+              <label class="form-label" for="t-subj-exam-obt">Obtained Marks <span style="color:var(--accent-rose)">*</span></label>
+              <input type="number" step="0.5" id="t-subj-exam-obt" class="form-input" min="0" placeholder="e.g. 60" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="t-subj-exam-tot">Total Marks <span style="color:var(--accent-rose)">*</span></label>
+              <input type="number" step="0.5" id="t-subj-exam-tot" class="form-input" min="1" placeholder="e.g. 75" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Quizzes & Midterm -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3);">
+          <div style="font-size: 12px; font-weight: 600; color: #ffffff; margin-bottom: 8px;">2. Quizzes & Midterm Tests</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+            <div class="form-group">
+              <label class="form-label" for="t-subj-quiz-obt">Obtained Marks <span style="color:var(--accent-rose)">*</span></label>
+              <input type="number" step="0.5" id="t-subj-quiz-obt" class="form-input" min="0" placeholder="e.g. 18" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="t-subj-quiz-tot">Total Marks <span style="color:var(--accent-rose)">*</span></label>
+              <input type="number" step="0.5" id="t-subj-quiz-tot" class="form-input" min="1" placeholder="e.g. 20" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Assignments & Labs -->
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-4);">
+          <div style="font-size: 12px; font-weight: 600; color: #ffffff; margin-bottom: 8px;">3. Assignments & Practical Lab Work</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+            <div class="form-group">
+              <label class="form-label" for="t-subj-assign-obt">Obtained Marks <span style="color:var(--accent-rose)">*</span></label>
+              <input type="number" step="0.5" id="t-subj-assign-obt" class="form-input" min="0" placeholder="e.g. 9" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="t-subj-assign-tot">Total Marks <span style="color:var(--accent-rose)">*</span></label>
+              <input type="number" step="0.5" id="t-subj-assign-tot" class="form-input" min="1" placeholder="e.g. 10" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Composite Score Preview Banner -->
+        <div id="t-modal-course-preview" style="background: rgba(163, 230, 53, 0.08); border: 1px solid var(--color-lime); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: var(--space-4); display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 12px; color: var(--text-secondary);">Coursework Total:</span>
+          <span style="font-size: 13.5px; font-weight: 700; color: var(--color-lime);" id="t-modal-preview-text">0.0 / 0.0 (0.0% — Pending)</span>
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-4);">
+          <label class="form-label" for="t-subj-notes">Teacher Course Remarks (Optional)</label>
+          <input type="text" id="t-subj-notes" class="form-input" placeholder="e.g. Strong conceptual grasp in assignments.">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-t-subj">Cancel</button>
+          <button type="submit" class="btn btn-primary">💾 Save Course</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TEACHER PROFILE & ACCOUNT SETTINGS MODAL -->
+  <div class="modal-backdrop" id="profile-settings-modal">
+    <div class="modal-dialog profile-settings-dialog">
+      
+      <!-- Modal Header with Avatar & Meta -->
+      <div class="profile-modal-header">
+        <div class="profile-header-meta">
+          <div class="profile-avatar-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-lime)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div>
+            <h2 class="profile-modal-title">Instructor Profile & Settings</h2>
+            <div class="profile-modal-subtitle">Manage instructor credentials, department, and account security</div>
+          </div>
+        </div>
+        <button type="button" class="profile-close-btn" id="btn-close-profile-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="profile-tabs-bar">
+        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Instructor Profile</span>
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Security</span>
+        </button>
+        <button type="button" class="modal-tab-btn danger-tab" data-tab="tab-profile-danger">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <span>Danger Zone</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: General Details -->
+      <div class="profile-tab-content active" id="tab-profile-general">
+        <form id="profile-details-form">
+          <div class="profile-section-card">
+            <div class="profile-section-heading">Instructor Identification</div>
+            
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+              <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
+              <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Dr. Muhammad Farooq" required>
+            </div>
+
+            <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+              <div class="form-group">
+                <label class="form-label" for="setting-studentid">
+                  Teacher ID Code <span class="badge-fixed-tag">🔒 Fixed</span>
+                </label>
+                <div class="fixed-input-wrapper">
+                  <input type="text" id="setting-studentid" class="form-input readonly-fixed-input" placeholder="TCH-2026-001" readonly>
+                </div>
+                <div class="field-hint-text">Faculty registration ID. Immutable.</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="setting-program">Department / Program</label>
+                <input type="text" id="setting-program" class="form-input" placeholder="e.g. Computer Science & AI">
+                <div class="field-hint-text">Your academic department.</div>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-2);">
+              <label class="form-label" for="setting-institution">Institution Name</label>
+              <input type="text" id="setting-institution" class="form-input" placeholder="e.g. Faculty of Engineering">
+              <div class="field-hint-text">Your registered university or college.</div>
+            </div>
+          </div>
+
+          <div class="profile-action-row" style="margin-top: var(--space-4);">
+            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
+              💾 Save Instructor Profile
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 2: Security -->
+      <div class="profile-tab-content" id="tab-profile-security" style="display: none;">
+        <form id="password-change-form">
+          <div class="profile-section-card">
+            <div class="profile-section-heading">Password & Authentication</div>
+            
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+              <label class="form-label" for="setting-new-password">New Password</label>
+              <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password" value="">
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-2);">
+              <label class="form-label" for="setting-confirm-password">Confirm New Password</label>
+              <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter password to confirm" required autocomplete="new-password" value="">
+            </div>
+          </div>
+
+          <div class="profile-action-row" style="margin-top: var(--space-4);">
+            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
+              🔒 Update Password Securely
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 3: Danger Zone -->
+      <div class="profile-tab-content" id="tab-profile-danger" style="display: none;">
+        <div class="danger-zone-card">
+          <div class="danger-zone-header">
+            <span class="danger-icon">⚠️</span>
+            <div>
+              <div class="danger-title">Permanent Instructor Account Deletion</div>
+              <div class="danger-desc">
+                Permanently deletes your instructor profile, credentials, and saved cohort analytics.
+              </div>
+            </div>
+          </div>
+
+          <div class="danger-warning-note">
+            This action cannot be undone. Your instructor account will be permanently removed from Supabase.
+          </div>
+
+          <button type="button" class="btn btn-danger" id="btn-delete-account-confirm" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
+            🗑️ Permanently Delete My Account
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/supabase-client.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/teacher-prediction.js"></script>
+</body>
+</html>

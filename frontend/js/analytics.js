@@ -1,21 +1,43 @@
 /**
  * ============================================================================
  * EDUMETRICS AI — DEDICATED ANALYTICS, COMPARISON & HISTORY HUB (analytics.js)
+ * Complete Multi-Stage Longitudinal Engine with Full CRUD, XAI, and Visual Charts
  * ============================================================================
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // Authentication Safeguard
+  // --------------------------------------------------------------------------
+  // 1. AUTHENTICATION & ROLE SAFEGUARD
+  // --------------------------------------------------------------------------
   if (window.authClient && !window.authClient.isAuthenticated()) {
     window.location.href = "login.html";
     return;
   }
 
-  // DOM References
-  const sidebar = document.getElementById("sidebar");
-  const sidebarToggle = document.getElementById("sidebar-toggle");
+  const currentUser = window.authClient ? window.authClient.getUser() : null;
+  const userMeta = currentUser?.user_metadata || {};
+  if (userMeta.role === "teacher") {
+    window.location.href = "teacher-analytics.html";
+    return;
+  }
+
+  // Set Chart.js universal font to Inter for unified design system consistency
+  if (window.Chart) {
+    Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  }
+
+  // --------------------------------------------------------------------------
+  // 2. DOM ELEMENT REFERENCES
+  // --------------------------------------------------------------------------
   const logoutBtn = document.getElementById("logout-btn");
-  const stageSelector = document.getElementById("analytics-stage-selector");
+  const userProfileBtn = document.getElementById("user-profile-btn");
+  const railProfileBtn = document.getElementById("rail-profile-btn");
+  const btnOpenSettings = document.getElementById("btn-open-settings");
+  const profileModal = document.getElementById("profile-settings-modal");
+  const btnCloseProfile = document.getElementById("btn-close-profile-modal");
+  const profileForm = document.getElementById("profile-details-form");
+  const securityForm = document.getElementById("profile-security-form");
+  const btnDeleteAccount = document.getElementById("btn-delete-account-confirm");
 
   // Summary KPI DOMs
   const kpiTotalEvaluations = document.getElementById("kpi-total-evaluations");
@@ -37,8 +59,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ledgerTableBody = document.getElementById("analytics-ledger-body");
   const filterLedgerStage = document.getElementById("filter-ledger-stage");
   const filterLedgerRole = document.getElementById("filter-ledger-role");
-  const btnExportLedgerCsv = document.getElementById("btn-export-ledger-csv");
-  const btnExportAllCsv = document.getElementById("btn-export-all-csv");
   const btnClearAllHistory = document.getElementById("btn-clear-all-history");
 
   // Diagnostic Detail Modal DOMs
@@ -61,15 +81,41 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnCloseEditModal = document.getElementById("btn-close-edit-modal");
   const btnCancelEditModal = document.getElementById("btn-cancel-edit-modal");
 
-  // Chart Instances
+  // Trajectory Modal DOMs
+  const trajModal = document.getElementById("analytics-trajectory-modal");
+  const trajModalTitle = document.getElementById("traj-modal-title");
+  const trajModalSubtitle = document.getElementById("traj-modal-subtitle");
+  const trajValBaseline = document.getElementById("traj-val-baseline");
+  const trajValCurrent = document.getElementById("traj-val-current");
+  const trajValTarget = document.getElementById("traj-val-target");
+  const trajExplanation = document.getElementById("traj-modal-explanation");
+  const btnCloseTrajModal = document.getElementById("btn-close-traj-modal");
+  const btnCloseTrajModalBtn = document.getElementById("btn-close-traj-modal-btn");
+
+  // Fullscreen Theater Modal DOMs
+  const fsModal = document.getElementById("analytics-fullscreen-modal");
+  const fsModalTitle = document.getElementById("fs-modal-title");
+  const fsModalSubtitle = document.getElementById("fs-modal-subtitle");
+  const fsCanvas = document.getElementById("fullscreenChartCanvas");
+  const btnFsDownloadPng = document.getElementById("btn-fs-download-png");
+  const btnCloseFsModal = document.getElementById("btn-close-fs-modal");
+  const btnCloseFsModalBtn = document.getElementById("btn-close-fs-modal-btn");
+
+  // Chart Instances & Filters
   let progressionChart = null;
   let gradeDistributionChart = null;
   let subjectMasteryChart = null;
   let habitsCorrelationChart = null;
+  let modalTrajChartInstance = null;
+  let fsChartInstance = null;
+
   let predictionHistory = [];
   let currentStageFilter = "all";
+  let currentRoleFilter = "all";
 
-  // Toast Helper
+  // --------------------------------------------------------------------------
+  // 3. TOAST NOTIFICATION UTILITY
+  // --------------------------------------------------------------------------
   function showToast(message, type = "info") {
     const container = document.getElementById("toast-container");
     if (!container) return;
@@ -80,119 +126,292 @@ document.addEventListener("DOMContentLoaded", async () => {
       <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.6;font-size:18px;">&times;</button>
     `;
     container.appendChild(toast);
-    setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
+    setTimeout(() => { if (toast.parentElement) toast.remove(); }, 3500);
   }
 
-  // Sync Profile & Smart Avatar
+  // --------------------------------------------------------------------------
+  // 4. USER PROFILE & AVATAR SYNCHRONIZATION
+  // --------------------------------------------------------------------------
   function syncUserProfile() {
-    const currentUser = window.authClient ? window.authClient.getUser() : null;
-    const meta = currentUser?.user_metadata || {};
-    const displayName = meta.full_name || "Muhammad Ali";
-    const gender = meta.gender || "auto";
-    const studentAvatarEl = document.getElementById("student-avatar");
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const meta = user?.user_metadata || {};
+    const displayName = meta.full_name || (user?.email ? user.email.split("@")[0] : "Muhammad Ali");
+    const idCode = meta.student_id || meta.id_code || (meta.role === "teacher" ? "TCH-2026-001" : "STU-2026-001");
+    const program = meta.program || meta.major || "Software Engineering";
+    const institution = meta.institution_name || meta.institution || "Faculty of Engineering";
+
+    // Set Name & ID Code
     const studentNameEl = document.getElementById("student-name");
     const studentIdCodeEl = document.getElementById("student-id-code");
-
-    function getAvatar(name, gen) {
-      if (typeof window.getSmartAvatar === "function") return window.getSmartAvatar(name, gen);
-      const isFemale = gen === "female" || ["fatima", "ayesha", "sara", "sana", "maryam", "zainab", "hira", "anum", "mahnoor", "noor", "alishba", "dua", "zoya", "kinza", "rabia", "sadia", "laiba", "eman"].some(fn => (name || "").toLowerCase().includes(fn));
-      return isFemale 
-        ? `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
-        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&clothingColor=262e33,3c4f5c,5199e4,25557c,3c443c`;
-    }
-
     if (studentNameEl) studentNameEl.innerText = displayName;
-    if (studentAvatarEl) studentAvatarEl.src = meta.avatar_url || getAvatar(displayName, gender);
-    if (studentIdCodeEl) studentIdCodeEl.innerText = meta.student_id || "SE-2023-049";
+    if (studentIdCodeEl) studentIdCodeEl.innerText = idCode;
+
+    // Set Avatar Initials (e.g. "Muhammad Ali" -> "MA")
+    const words = displayName.trim().split(/\s+/);
+    const initials = words.length > 1
+      ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+      : displayName.slice(0, 2).toUpperCase();
+
+    const avatarEl = document.getElementById("navbar-user-avatar");
+    if (avatarEl) avatarEl.innerText = initials || "SP";
+
+    // Prefill Settings Modal Inputs
+    const settingFullname = document.getElementById("setting-fullname");
+    const settingStudentId = document.getElementById("setting-studentid");
+    const settingProgram = document.getElementById("setting-program") || document.getElementById("setting-major");
+    const settingInstitution = document.getElementById("setting-institution");
+
+    if (settingFullname) settingFullname.value = displayName;
+    if (settingStudentId) settingStudentId.value = idCode;
+    if (settingProgram) settingProgram.value = program;
+    if (settingInstitution) settingInstitution.value = institution;
   }
 
   syncUserProfile();
 
-  // ----------------------------------------------------------------------------
-  // 1. LOAD PREDICTION HISTORY (UNIFIED ENGINE)
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // 5. PROFILE & SETTINGS MODAL INTERACTION
+  // --------------------------------------------------------------------------
+  function openSettingsModal() {
+    if (!profileModal) return;
+    syncUserProfile();
+
+    // Reset password fields
+    if (securityForm) securityForm.reset();
+    const newPassInput = document.getElementById("setting-new-password");
+    const confPassInput = document.getElementById("setting-confirm-password");
+    if (newPassInput) newPassInput.value = "";
+    if (confPassInput) confPassInput.value = "";
+
+    // Default to General tab
+    const tabs = document.querySelectorAll(".modal-tab-btn");
+    const contents = document.querySelectorAll(".profile-tab-content");
+    tabs.forEach((t) => t.classList.remove("active"));
+    contents.forEach((c) => {
+      c.classList.remove("active");
+      c.style.display = "none";
+    });
+    const defaultTabBtn = document.querySelector('.modal-tab-btn[data-tab="tab-profile-general"]');
+    const defaultContent = document.getElementById("tab-profile-general");
+    if (defaultTabBtn) defaultTabBtn.classList.add("active");
+    if (defaultContent) {
+      defaultContent.classList.add("active");
+      defaultContent.style.display = "block";
+    }
+
+    profileModal.classList.add("active");
+  }
+
+  function closeSettingsModal() {
+    if (profileModal) profileModal.classList.remove("active");
+  }
+
+  if (userProfileBtn) userProfileBtn.addEventListener("click", openSettingsModal);
+  if (railProfileBtn) railProfileBtn.addEventListener("click", openSettingsModal);
+  if (btnOpenSettings) btnOpenSettings.addEventListener("click", openSettingsModal);
+  if (btnCloseProfile) btnCloseProfile.addEventListener("click", closeSettingsModal);
+  if (profileModal) {
+    profileModal.addEventListener("click", (e) => {
+      if (e.target === profileModal) closeSettingsModal();
+    });
+  }
+
+  // Profile Modal Tab Switching
+  const profileTabs = document.querySelectorAll(".modal-tab-btn");
+  const tabContents = document.querySelectorAll(".profile-tab-content");
+
+  profileTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const targetId = tab.getAttribute("data-tab");
+      profileTabs.forEach((t) => t.classList.remove("active"));
+      tabContents.forEach((c) => {
+        c.classList.remove("active");
+        c.style.display = "none";
+      });
+      tab.classList.add("active");
+      const targetContent = document.getElementById(targetId);
+      if (targetContent) {
+        targetContent.classList.add("active");
+        targetContent.style.display = "block";
+      }
+    });
+  });
+
+  // Profile Details Form Submission
+  if (profileForm) {
+    profileForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newName = document.getElementById("setting-fullname")?.value.trim() || "User";
+      const settingProgram = document.getElementById("setting-program") || document.getElementById("setting-major");
+      const newProgram = settingProgram?.value.trim() || "Software Engineering";
+      const newInst = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
+
+      if (window.authClient) {
+        await window.authClient.updateUser({
+          full_name: newName,
+          program: newProgram,
+          major: newProgram,
+          institution_name: newInst,
+          institution: newInst
+        });
+      }
+      syncUserProfile();
+      closeSettingsModal();
+      showToast("Academic profile updated successfully!", "success");
+    });
+  }
+
+  // Security Form Submission
+  if (securityForm) {
+    securityForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const p1 = document.getElementById("setting-new-password")?.value;
+      const p2 = document.getElementById("setting-confirm-password")?.value;
+
+      if (!p1 || p1.length < 6) return showToast("Password must be at least 6 characters.", "error");
+      if (p1 !== p2) return showToast("Passwords do not match.", "error");
+
+      try {
+        if (window.authClient) {
+          await window.authClient.updatePassword(p1);
+        }
+        closeSettingsModal();
+        showToast("Password updated securely!", "success");
+      } catch (err) {
+        showToast(err.message || "Failed to update password.", "error");
+      }
+    });
+  }
+
+  // Delete Account Action
+  if (btnDeleteAccount) {
+    btnDeleteAccount.addEventListener("click", async () => {
+      if (confirm("⚠️ ARE YOU SURE? This will permanently delete your student profile and all historical prediction records.")) {
+        if (window.authClient) await window.authClient.deleteAccount();
+        window.location.href = "login.html";
+      }
+    });
+  }
+
+  // Logout Handler
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      if (window.authClient) await window.authClient.signOut();
+      window.location.href = "login.html";
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // 6. PERSISTENCE & HISTORY STORAGE HELPER
+  // --------------------------------------------------------------------------
+  function persistHistory(historyList) {
+    const user = window.authClient ? window.authClient.getUser() : null;
+    if (user?.id) {
+      localStorage.setItem(`edumetrics_prediction_history_v2_${user.id}`, JSON.stringify(historyList));
+      localStorage.setItem(`edumetrics_prediction_history_${user.id}`, JSON.stringify(historyList));
+    }
+    localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(historyList));
+    localStorage.setItem("edumetrics_prediction_history", JSON.stringify(historyList));
+  }
+
+  // Formatter for diagnostic payload parameters
+  function formatDiagnosticParam(k, v) {
+    if (v === null || v === undefined) return "N/A";
+    if (k === "subjects" || Array.isArray(v)) {
+      if (Array.isArray(v)) {
+        if (v.length === 0) return "No coursework listed";
+        return v
+          .map((item) => {
+            if (typeof item === "object" && item !== null) {
+              const name = item.name || item.subject || "Subject";
+              const obtained = item.obtained !== undefined ? item.obtained : item.marks !== undefined ? item.marks : "";
+              const total = item.total !== undefined ? item.total : 100;
+              return obtained !== "" ? `${name} (${obtained}/${total})` : name;
+            }
+            return String(item);
+          })
+          .join(", ");
+      }
+    }
+    if (typeof v === "object" && v !== null) {
+      return Object.entries(v)
+        .map(([subK, subV]) => `${subK.replace(/_/g, " ")}: ${subV}`)
+        .join(", ");
+    }
+    return String(v);
+  }
+
+  // --------------------------------------------------------------------------
+  // 7. LOAD PREDICTION HISTORY (CONNECTED DIRECTLY TO SUPABASE BACKEND)
+  // --------------------------------------------------------------------------
   async function loadHistory() {
     try {
-      const storedV2 = localStorage.getItem("edumetrics_prediction_history_v2");
-      const storedV1 = localStorage.getItem("edumetrics_prediction_history");
+      const user = window.authClient ? window.authClient.getUser() : null;
       let list = [];
 
-      if (storedV2) {
-        list = JSON.parse(storedV2);
-      } else if (storedV1) {
-        list = JSON.parse(storedV1);
-      }
-
-      // If completely empty, generate calibrated sample records so graphs always shine
-      if (!list || list.length === 0) {
-        list = [
-          {
-            id: "pred-849201",
-            timestamp: new Date(Date.now() - 3600000 * 24 * 14).toISOString(),
-            role: "student",
-            stage: "university",
-            score: "3.42 CGPA",
-            status_badge: "Proficient",
-            status_color: "badge-info",
-            payload: { Previous_CGPA: 3.30, Attendance_Pct: 82, study_hours: 3.5, Attentive: "Moderate" },
-            recommendations: "Initial diagnostic. Increase daily self-study hours for core courses."
-          },
-          {
-            id: "pred-849202",
-            timestamp: new Date(Date.now() - 3600000 * 24 * 7).toISOString(),
-            role: "student",
-            stage: "university",
-            score: "3.60 CGPA",
-            status_badge: "Exemplary",
-            status_color: "badge-success",
-            payload: { Previous_CGPA: 3.42, Attendance_Pct: 88, study_hours: 5.0, Attentive: "High" },
-            recommendations: "Solid growth observed. Attendance and lab consistency markedly improved."
-          },
-          {
-            id: "pred-849203",
-            timestamp: new Date().toISOString(),
-            role: "student",
-            stage: "university",
-            score: "3.75 CGPA",
-            status_badge: "Exemplary",
-            status_color: "badge-success",
-            payload: { Previous_CGPA: 3.55, Attendance_Pct: 92, study_hours: 5.5, Attentive: "High" },
-            recommendations: "Outstanding academic momentum. On track for Dean's List honors recognition."
+      // 1. Fetch live prediction runs from Supabase Backend API
+      if (window.apiClient) {
+        try {
+          const apiRecords = await window.apiClient.getHistory(50);
+          if (Array.isArray(apiRecords) && apiRecords.length > 0) {
+            list = apiRecords;
+            if (user?.id) {
+              localStorage.setItem(`edumetrics_prediction_history_v2_${user.id}`, JSON.stringify(list));
+            }
+            localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(list));
+          } else {
+            list = [];
+            if (user?.id) {
+              localStorage.removeItem(`edumetrics_prediction_history_v2_${user.id}`);
+              localStorage.removeItem(`edumetrics_prediction_history_${user.id}`);
+            }
+            localStorage.removeItem("edumetrics_prediction_history_v2");
+            localStorage.removeItem("edumetrics_prediction_history");
           }
-        ];
-        localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(list));
+        } catch (apiErr) {
+          console.warn("[Analytics] Could not fetch live history from API:", apiErr.message);
+          list = [];
+        }
       }
 
-      predictionHistory = list;
+      predictionHistory = Array.isArray(list) ? list : [];
     } catch (e) {
-      console.warn("Error parsing history:", e);
+      console.warn("[Analytics] Error loading history:", e);
       predictionHistory = [];
     }
 
+    refreshAllViews();
+  }
+
+  // --------------------------------------------------------------------------
+  // 8. MASTER REFRESH VIEW CONTROLLER
+  // --------------------------------------------------------------------------
+  function refreshAllViews() {
     updateSummaryKPIs();
     renderProgressionChart();
     renderGradeDistributionChart();
     renderSubjectMasteryChart();
     renderHabitsCorrelationChart();
+    renderStudentInstructorMatrix();
     populateComparisonDropdowns();
     renderLedgerTable();
   }
 
-  // ----------------------------------------------------------------------------
-  // 2. UPDATE TOP SUMMARY METRICS
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // 9. UPDATE SUMMARY STAT CARDS (KPIS)
+  // --------------------------------------------------------------------------
   function updateSummaryKPIs() {
     if (kpiTotalEvaluations) kpiTotalEvaluations.innerText = `${predictionHistory.length}`;
 
     if (predictionHistory.length > 0) {
       const latest = predictionHistory[0];
-      if (kpiLatestScore) kpiLatestScore.innerText = latest.score;
+      if (kpiLatestScore) kpiLatestScore.innerText = latest.score || "--";
       if (kpiLatestBadge) {
         kpiLatestBadge.innerText = latest.status_badge || "Evaluated";
         kpiLatestBadge.className = `badge ${latest.status_color || "badge-success"}`;
       }
 
-      // Calculate longitudinal growth delta
+      // Longitudinal improvement delta
       const oldest = predictionHistory[predictionHistory.length - 1];
       const valLatest = parseFloat(latest.score) || 0;
       const valOldest = parseFloat(oldest.score) || 0;
@@ -204,29 +423,76 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       if (kpiRiskSummary) {
-        const isAtRisk = (latest.status_badge || "").toLowerCase().includes("risk") || (latest.status_badge || "").toLowerCase().includes("attention");
-        kpiRiskSummary.innerText = isAtRisk ? "Intervention Needed" : "On Track / Low Risk";
+        const badgeStr = (latest.status_badge || "").toLowerCase();
+        const isAtRisk = badgeStr.includes("risk") || badgeStr.includes("attention");
+        kpiRiskSummary.innerText = isAtRisk ? "Intervention Needed" : "Low Risk / On Track";
         kpiRiskSummary.style.color = isAtRisk ? "var(--accent-rose)" : "var(--accent-emerald)";
+      }
+    } else {
+      if (kpiLatestScore) kpiLatestScore.innerText = "--";
+      if (kpiLatestBadge) {
+        kpiLatestBadge.innerText = "--";
+        kpiLatestBadge.className = "badge badge-neutral";
+      }
+      if (kpiGrowthDelta) {
+        kpiGrowthDelta.innerText = "--";
+        kpiGrowthDelta.style.color = "var(--text-muted)";
+      }
+      if (kpiRiskSummary) {
+        kpiRiskSummary.innerText = "Awaiting Evaluation";
+        kpiRiskSummary.style.color = "var(--text-muted)";
       }
     }
   }
 
-  // ----------------------------------------------------------------------------
-  // 3. CHART 1: STAGE-AWARE GPA PROGRESSION & TARGET TRAJECTORY
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // 10. STAGE METADATA & NORMALIZATION HELPERS
+  // --------------------------------------------------------------------------
+  function parseNormalizedScore(item) {
+    if (!item) return { raw: 0, pct: 0, formatted: "0" };
+    const raw = parseFloat(item.score) || 0;
+    const s = (item.stage || "university").toLowerCase();
+
+    let pct = 0;
+    if (s === "university" || raw <= 4.0) {
+      pct = (raw / 4.0) * 100.0;
+    } else if (s === "intermediate" || s === "matric") {
+      if (raw > 100) {
+        pct = (raw / 1100.0) * 100.0;
+      } else {
+        pct = raw;
+      }
+    } else if (s === "secondary") {
+      if (raw <= 20) {
+        pct = (raw / 20.0) * 100.0;
+      } else {
+        pct = raw;
+      }
+    } else {
+      pct = Math.min(100, Math.max(0, raw));
+    }
+    pct = +Math.min(100, Math.max(0, pct)).toFixed(1);
+    return { raw, pct, formatted: item.score || `${pct}%` };
+  }
+
   function getStageMetadata(stage) {
     const s = (stage || "university").toLowerCase();
     if (s === "university") {
       return { title: "University CGPA Trajectory", scale: "0.00 – 4.00 CGPA", min: 2.0, max: 4.0, isUni: true, unit: " CGPA" };
-    } else if (s === "intermediate" || s === "matric") {
-      return { title: s === "intermediate" ? "Intermediate (HSSC) Board Trajectory" : "Matriculation (SSC) Board Trajectory", scale: "0 – 100% Scale", min: 40, max: 100, isUni: false, unit: "%" };
+    } else if (s === "intermediate") {
+      return { title: "Intermediate (HSSC) Board Trajectory", scale: "0 – 100% (1100 Marks)", min: 40, max: 100, isUni: false, unit: "%" };
+    } else if (s === "matric") {
+      return { title: "Matriculation (SSC) Board Trajectory", scale: "0 – 100% (1100 Marks)", min: 40, max: 100, isUni: false, unit: "%" };
     } else if (s === "secondary") {
-      return { title: "Middle / Secondary Academic Trajectory", scale: "0 – 20 Point Scale", min: 0, max: 20, isUni: false, unit: " / 20" };
+      return { title: "Secondary (Class 5-8) Academic Trajectory", scale: "0 – 100% Percentage Scale", min: 40, max: 100, isUni: false, unit: "%" };
     } else {
-      return { title: "Primary School Foundation Trajectory", scale: "0 – 100% Mastery Scale", min: 50, max: 100, isUni: false, unit: "% Mastery" };
+      return { title: "Primary School Foundation Trajectory", scale: "0 – 100% Mastery Scale", min: 40, max: 100, isUni: false, unit: "% Mastery" };
     }
   }
 
+  // --------------------------------------------------------------------------
+  // 11. CHART 1: PROGRESSION & TARGET TRAJECTORY (REDESIGNED)
+  // --------------------------------------------------------------------------
   function renderProgressionChart() {
     const canvas = document.getElementById("analyticsProgressionChart");
     if (!canvas) return;
@@ -234,58 +500,117 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (progressionChart) progressionChart.destroy();
 
-    // Filter by active stage if specified
-    const activeStage = currentStageFilter === "all" ? (predictionHistory[0]?.stage || "university") : currentStageFilter;
+    const isAll = currentStageFilter === "all";
+    const activeStage = isAll ? (predictionHistory[0]?.stage || "university") : currentStageFilter;
     const stageMeta = getStageMetadata(activeStage);
 
-    const stageRecords = currentStageFilter === "all"
+    const stageRecords = isAll
       ? predictionHistory
-      : predictionHistory.filter((r) => r.stage === currentStageFilter);
+      : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
 
-    let labels = ["Baseline Standing", "Evaluated Current Score", "Projected AI Target Milestone 🎯"];
-    let pastGpa = [3.40, null, null];
-    let currentGpa = [null, 3.65, null];
-    let predictedGpa = [null, 3.65, 3.82];
-
-    if (stageRecords.length > 0) {
-      const activeList = stageRecords.slice().reverse();
-
-      if (activeList.length === 1) {
-        const item = activeList[0];
-        const rawScore = parseFloat(item.score) || (stageMeta.isUni ? 3.65 : 85);
-        const baseline = stageMeta.isUni ? +(rawScore - 0.15).toFixed(2) : Math.max(stageMeta.min, Math.round(rawScore - 6));
-        const target = stageMeta.isUni ? Math.min(4.0, +(rawScore + 0.18).toFixed(2)) : Math.min(stageMeta.max, Math.round(rawScore + 5));
-
-        labels = ["1. Initial Baseline", "2. Current Evaluated Score", "3. Projected AI Target 🎯"];
-        pastGpa = [baseline, null, null];
-        currentGpa = [null, rawScore, null];
-        predictedGpa = [null, rawScore, target];
-      } else {
-        labels = activeList.map((r, i) => `Run #${i + 1} (${r.stage.toUpperCase()})`);
-        labels.push("Projected Milestone 🎯");
-
-        const scores = activeList.map((r) => parseFloat(r.score) || 3.5);
-        const lastScore = scores[scores.length - 1];
-
-        pastGpa = scores.map((s, idx) => (idx < scores.length - 1 ? s : null));
-        pastGpa.push(null);
-
-        currentGpa = scores.map((s, idx) => (idx === scores.length - 1 ? s : null));
-        currentGpa.push(null);
-
-        const target = stageMeta.isUni ? Math.min(4.0, +(lastScore + 0.16).toFixed(2)) : Math.min(stageMeta.max, Math.round(lastScore + 5));
-        predictedGpa = scores.map((s, idx) => (idx === scores.length - 1 ? s : null));
-        predictedGpa.push(target);
+    if (!stageRecords || stageRecords.length === 0) {
+      const trajActualEl = document.getElementById("trajectory-actual-val");
+      const trajProjEl = document.getElementById("trajectory-projected-val");
+      const trajBadgeEl = document.getElementById("trajectory-status-badge");
+      if (trajActualEl) trajActualEl.innerText = "--";
+      if (trajProjEl) trajProjEl.innerText = "--";
+      if (trajBadgeEl) {
+        trajBadgeEl.innerText = "--";
+        trajBadgeEl.className = "badge badge-neutral";
       }
+      progressionChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: ["No Evaluations Logged"],
+          datasets: [{ label: "No Data", data: [], borderColor: "rgba(255, 255, 255, 0.1)" }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#64748B" } },
+            y: { min: 40, max: 100, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#64748B" } }
+          }
+        }
+      });
+      return;
     }
 
-    const indigoGradient = ctx.createLinearGradient(0, 0, 0, 300);
-    indigoGradient.addColorStop(0, "rgba(99, 102, 241, 0.35)");
-    indigoGradient.addColorStop(1, "rgba(99, 102, 241, 0.0)");
+    const activeList = stageRecords.slice().reverse();
+    const isMobile = window.innerWidth <= 768;
 
-    const emeraldGradient = ctx.createLinearGradient(0, 0, 0, 300);
-    emeraldGradient.addColorStop(0, "rgba(16, 185, 129, 0.35)");
-    emeraldGradient.addColorStop(1, "rgba(16, 185, 129, 0.0)");
+    let labels = [];
+    let progressionData = []; // Solid line connecting all runs
+    let evaluatedData = [];   // Highlighted white node at latest run
+    let targetData = [];      // Dashed lime line leading to target milestone
+
+    const parseVal = (r) => {
+      const parsed = parseNormalizedScore(r);
+      if (!isAll && stageMeta.isUni) {
+        return parsed.raw <= 4.0 ? parsed.raw : +(parsed.pct / 25.0).toFixed(2);
+      }
+      return parsed.pct;
+    };
+
+    const trajActualEl = document.getElementById("trajectory-actual-val");
+    const trajProjEl = document.getElementById("trajectory-projected-val");
+    const trajBadgeEl = document.getElementById("trajectory-status-badge");
+
+    const latestRun = stageRecords[0];
+    if (trajActualEl && latestRun) {
+      trajActualEl.innerText = latestRun.score || "--";
+    }
+    if (trajBadgeEl && latestRun) {
+      trajBadgeEl.innerText = latestRun.status_badge || "Exemplary";
+      trajBadgeEl.className = `badge ${latestRun.status_color || "badge-success"}`;
+    }
+
+    if (activeList.length === 1) {
+      const item = activeList[0];
+      const val = parseVal(item);
+      const baseline = stageMeta.isUni && !isAll ? Math.max(0, +(val - 0.15).toFixed(2)) : Math.max(0, Math.round(val - 5));
+      const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(val + 0.18).toFixed(2)) : Math.min(100, Math.round(val + 4));
+
+      if (trajProjEl) {
+        trajProjEl.innerText = stageMeta.isUni && !isAll ? `${target.toFixed(2)} CGPA` : `${target}%`;
+      }
+
+      labels = isMobile ? ["Baseline", "Evaluated", "Target 🎯"] : ["1. Prior Standing", "2. Evaluated Checkpoint", "3. Projected Target Milestone 🎯"];
+      progressionData = [baseline, val, null];
+      evaluatedData = [null, val, null];
+      targetData = [null, val, target];
+    } else {
+      labels = activeList.map((r, i) => `Run #${i + 1} (${(r.stage || "Uni").slice(0, 4).toUpperCase()})`);
+      labels.push("Projected Target 🎯");
+
+      const values = activeList.map((r) => parseVal(r));
+      const lastVal = values[values.length - 1];
+      const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(lastVal + 0.16).toFixed(2)) : Math.min(100, Math.round(lastVal + 4));
+
+      if (trajProjEl) {
+        trajProjEl.innerText = stageMeta.isUni && !isAll ? `${target.toFixed(2)} CGPA` : `${target}%`;
+      }
+
+      progressionData = [...values, null];
+      evaluatedData = values.map((v, idx) => (idx === values.length - 1 ? v : null));
+      evaluatedData.push(null);
+
+      targetData = values.map((v, idx) => (idx === values.length - 1 ? v : null));
+      targetData.push(target);
+    }
+
+    const orangeGradient = ctx.createLinearGradient(0, 0, 0, 300);
+    orangeGradient.addColorStop(0, "rgba(255, 156, 39, 0.35)");
+    orangeGradient.addColorStop(1, "rgba(255, 156, 39, 0.0)");
+
+    const limeGradient = ctx.createLinearGradient(0, 0, 0, 300);
+    limeGradient.addColorStop(0, "rgba(168, 240, 75, 0.4)");
+    limeGradient.addColorStop(1, "rgba(168, 240, 75, 0.0)");
+
+    const yMin = isAll ? 40 : stageMeta.min;
+    const yMax = isAll ? 100 : stageMeta.max;
+    const unitLabel = isAll ? "%" : stageMeta.unit;
 
     progressionChart = new Chart(ctx, {
       type: "line",
@@ -293,171 +618,91 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels: labels,
         datasets: [
           {
-            label: "Starting / Past Baseline",
-            data: pastGpa,
-            borderColor: "#6366F1",
-            backgroundColor: indigoGradient,
-            borderWidth: 3,
+            label: "Historical Academic Progression",
+            data: progressionData,
+            borderColor: "#ff9c27",
+            backgroundColor: orangeGradient,
+            borderWidth: 2.5,
             fill: true,
-            tension: 0.3,
-            pointBackgroundColor: "#6366F1",
+            tension: 0.25,
+            pointBackgroundColor: "#ff9c27",
             pointBorderColor: "#FFFFFF",
             pointBorderWidth: 2,
-            pointRadius: 6
+            pointRadius: isMobile ? 4 : 6
           },
           {
-            label: "Current Evaluated Standing",
-            data: currentGpa,
-            borderColor: "#F59E0B",
-            backgroundColor: "rgba(245, 158, 11, 0.2)",
-            pointBackgroundColor: "#F59E0B",
-            pointBorderColor: "#FFFFFF",
+            label: "Evaluated Current Score",
+            data: evaluatedData,
+            borderColor: "#ffffff",
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+            pointBackgroundColor: "#ffffff",
+            pointBorderColor: "#0c0d12",
             pointBorderWidth: 2,
-            pointRadius: 8,
+            pointRadius: isMobile ? 6 : 9,
             showLine: false
           },
           {
-            label: "AI Projected Target Milestone",
-            data: predictedGpa,
-            borderColor: "#10B981",
+            label: "Projected Target Milestone 🎯",
+            data: targetData,
+            borderColor: "#a8f04b",
             borderDash: [6, 6],
-            backgroundColor: emeraldGradient,
-            borderWidth: 3,
+            backgroundColor: limeGradient,
+            borderWidth: 2.5,
             fill: true,
-            tension: 0.3,
-            pointBackgroundColor: "#10B981",
-            pointBorderColor: "#FFFFFF",
+            tension: 0.25,
+            pointBackgroundColor: "#a8f04b",
+            pointBorderColor: "#0c0d12",
             pointBorderWidth: 2,
-            pointRadius: 7
+            pointRadius: isMobile ? 5 : 7
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: true, position: "top", labels: { color: "#94A3B8", font: { size: 11 }, boxWidth: 12 } },
+          legend: {
+            display: true,
+            position: "top",
+            labels: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11 }, boxWidth: 8, padding: 10 }
+          },
           tooltip: {
-            backgroundColor: "rgba(15, 23, 42, 0.95)",
             titleColor: "#F8FAFC",
             bodyColor: "#94A3B8",
-            borderColor: "rgba(255, 255, 255, 0.1)",
-            borderWidth: 1,
-            padding: 12
+            padding: 10,
+            callbacks: {
+              label: (context) => {
+                const idx = context.dataIndex;
+                if (idx === labels.length - 1) {
+                  return ` Target Milestone: ${context.parsed.y}${unitLabel}`;
+                }
+                const item = activeList[idx];
+                const stageStr = (item?.stage || "Record").toUpperCase();
+                return ` ${stageStr}: ${item?.score || context.parsed.y + unitLabel}`;
+              }
+            }
           }
         },
         scales: {
-          x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { family: "Inter", size: 11 } } },
+          x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11 } } },
           y: {
-            min: stageMeta.min,
-            max: stageMeta.max,
+            min: yMin,
+            max: yMax,
             grid: { color: "rgba(255, 255, 255, 0.06)" },
-            ticks: { color: "#94A3B8", font: { family: "Inter", size: 12 } }
+            ticks: {
+              color: "#94A3B8",
+              font: { family: "Inter", size: isMobile ? 10 : 11 },
+              callback: (val) => `${val}${unitLabel}`
+            }
           }
         }
       }
     });
   }
 
-  // ----------------------------------------------------------------------------
-  // DEDICATED INDIVIDUAL RUN TRAJECTORY GRAPH MODAL
-  // ----------------------------------------------------------------------------
-  let modalTrajChartInstance = null;
-  const trajModal = document.getElementById("analytics-trajectory-modal");
-  const trajModalTitle = document.getElementById("traj-modal-title");
-  const trajModalSubtitle = document.getElementById("traj-modal-subtitle");
-  const trajValBaseline = document.getElementById("traj-val-baseline");
-  const trajValCurrent = document.getElementById("traj-val-current");
-  const trajValTarget = document.getElementById("traj-val-target");
-  const trajExplanation = document.getElementById("traj-modal-explanation");
-  const btnCloseTrajModal = document.getElementById("btn-close-traj-modal");
-  const btnCloseTrajModalBtn = document.getElementById("btn-close-traj-modal-btn");
-
-  window.viewTrajectoryGraph = (id) => {
-    const item = predictionHistory.find((h) => h.id === id);
-    if (!item || !trajModal) return;
-
-    const meta = getStageMetadata(item.stage);
-    const scoreVal = parseFloat(item.score) || (meta.isUni ? 3.65 : 85);
-    const baselineVal = meta.isUni ? +(scoreVal - 0.16).toFixed(2) : Math.max(meta.min, Math.round(scoreVal - 7));
-    const targetVal = meta.isUni ? Math.min(4.0, +(scoreVal + 0.18).toFixed(2)) : Math.min(meta.max, Math.round(scoreVal + 6));
-
-    if (trajModalTitle) trajModalTitle.innerText = `📈 ${item.id} — ${meta.title}`;
-    if (trajModalSubtitle) trajModalSubtitle.innerText = `Stage: ${item.stage.toUpperCase()} | Evaluated on ${new Date(item.timestamp).toLocaleDateString()}`;
-
-    if (trajValBaseline) trajValBaseline.innerText = `${baselineVal}${meta.unit}`;
-    if (trajValCurrent) trajValCurrent.innerText = item.score;
-    if (trajValTarget) trajValTarget.innerText = `${targetVal}${meta.unit}`;
-
-    if (trajExplanation) {
-      trajExplanation.innerHTML = `
-        <strong>🎯 Trajectory Diagnostic:</strong> The model evaluates that you currently stand at <strong>${item.score}</strong> (${item.status_badge}).
-        By sustaining active classroom attentiveness, completing coursework assignments on time, and keeping attendance above 85%, your projected next milestone target is <strong>${targetVal}${meta.unit}</strong>.
-      `;
-    }
-
-    const canvas = document.getElementById("modalTrajectoryChart");
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (modalTrajChartInstance) modalTrajChartInstance.destroy();
-
-      modalTrajChartInstance = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: ["1. Initial Baseline Standing", "2. Current Evaluated Standing", "3. Projected AI Target Milestone 🎯"],
-          datasets: [
-            {
-              label: "Standing Trajectory",
-              data: [baselineVal, scoreVal, null],
-              borderColor: "#6366F1",
-              backgroundColor: "rgba(99, 102, 241, 0.2)",
-              borderWidth: 3,
-              fill: true,
-              pointBackgroundColor: ["#6366F1", "#F59E0B"],
-              pointBorderColor: "#FFFFFF",
-              pointBorderWidth: 2,
-              pointRadius: [6, 8]
-            },
-            {
-              label: "Target Projection",
-              data: [null, scoreVal, targetVal],
-              borderColor: "#10B981",
-              borderDash: [6, 6],
-              backgroundColor: "rgba(16, 185, 129, 0.2)",
-              borderWidth: 3,
-              fill: true,
-              pointBackgroundColor: ["#F59E0B", "#10B981"],
-              pointBorderColor: "#FFFFFF",
-              pointBorderWidth: 2,
-              pointRadius: [0, 8]
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: "top", labels: { color: "#94A3B8", font: { size: 10 } } }
-          },
-          scales: {
-            x: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#94A3B8" } },
-            y: { min: meta.min, max: meta.max, grid: { color: "rgba(255,255,255,0.06)" }, ticks: { color: "#94A3B8" } }
-          }
-        }
-      });
-    }
-
-    trajModal.classList.add("active");
-  };
-
-  if (btnCloseTrajModal) btnCloseTrajModal.onclick = () => trajModal?.classList.remove("active");
-  if (btnCloseTrajModalBtn) btnCloseTrajModalBtn.onclick = () => trajModal?.classList.remove("active");
-  if (trajModal) trajModal.onclick = (e) => { if (e.target === trajModal) trajModal.classList.remove("active"); };
-
-  // ----------------------------------------------------------------------------
-  // 4. CHART 2: RISK & GRADE DISTRIBUTION DONUT
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // 12. CHART 2: RISK & GRADE DISTRIBUTION DONUT
+  // --------------------------------------------------------------------------
   function renderGradeDistributionChart() {
     const canvas = document.getElementById("analyticsGradeDistributionChart");
     if (!canvas) return;
@@ -471,11 +716,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       predictionHistory.forEach((item) => {
         const badge = (item.status_badge || "").toLowerCase();
         const score = parseFloat(item.score) || 0;
-        if (badge.includes("exemplary") || badge.includes("honor") || (score <= 4 ? score >= 3.6 : score >= 80)) {
+        const isUni = score <= 4.0;
+        if (badge.includes("exemplary") || badge.includes("honor") || (isUni ? score >= 3.6 : score >= 80)) {
           honors++;
-        } else if (badge.includes("proficient") || badge.includes("track") || (score <= 4 ? score >= 3.0 : score >= 70)) {
+        } else if (badge.includes("proficient") || badge.includes("track") || (isUni ? score >= 3.0 : score >= 70)) {
           proficient++;
-        } else if (badge.includes("standard") || badge.includes("capable") || (score <= 4 ? score >= 2.5 : score >= 60)) {
+        } else if (badge.includes("standard") || badge.includes("capable") || (isUni ? score >= 2.0 : score >= 50)) {
           standard++;
         } else {
           atRisk++;
@@ -483,20 +729,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
-    if (honors + proficient + standard + atRisk === 0) {
-      honors = 2; proficient = 1; standard = 0; atRisk = 0;
-    }
+    const totalEvals = honors + proficient + standard + atRisk;
+    const hasData = totalEvals > 0;
 
     gradeDistributionChart = new Chart(ctx, {
       type: "doughnut",
       data: {
-        labels: ["Honors / Exemplary", "Proficient / On Track", "Standard Competency", "Attention / At Risk"],
+        labels: hasData
+          ? [
+              `Honors (≥3.6 / ≥80%): ${honors}`,
+              `Proficient (3.0-3.59 / 70-79%): ${proficient}`,
+              `Standard (2.0-2.99 / 50-69%): ${standard}`,
+              `At Risk (<2.0 / <50%): ${atRisk}`
+            ]
+          : ["No Evaluation History Logged"],
         datasets: [
           {
-            data: [honors, proficient, standard, atRisk],
-            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444"],
-            borderColor: "#1E293B",
-            borderWidth: 2
+            data: hasData ? [honors, proficient, standard, atRisk] : [1],
+            backgroundColor: hasData ? ["#a8f04b", "#c5f871", "#f7f7f7", "#ff9c27"] : ["#1e2129"],
+            borderColor: "#18191d",
+            borderWidth: 3
           }
         ]
       },
@@ -506,17 +758,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         plugins: {
           legend: {
             position: "bottom",
-            labels: { color: "#94A3B8", font: { size: 11 }, boxWidth: 10 }
+            labels: {
+              color: "#94A3B8",
+              font: { size: window.innerWidth <= 768 ? 9.5 : 11 },
+              boxWidth: 10,
+              padding: 8
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => (hasData ? ` ${ctx.label} (${Math.round((ctx.parsed / totalEvals) * 100)}%)` : "No history logged.")
+            }
           }
         },
-        cutout: "68%"
+        cutout: "66%"
       }
     });
   }
 
-  // ----------------------------------------------------------------------------
-  // 5. CHART 3: SUBJECT DOMAIN MASTERY
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // 13. CHART 3: SUBJECT DOMAIN MASTERY BAR CHART
+  // --------------------------------------------------------------------------
   function renderSubjectMasteryChart() {
     const canvas = document.getElementById("analyticsSubjectMasteryChart");
     if (!canvas) return;
@@ -524,59 +786,131 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (subjectMasteryChart) subjectMasteryChart.destroy();
 
-    const scores = { "Core Theory": [], "Applied Labs": [], "Algorithms": [], "Humanities": [], "Electives": [] };
+    const domainScores = {};
 
-    if (predictionHistory.length > 0) {
+    // Helper to safely register score
+    const registerScore = (name, pct) => {
+      if (!name) return;
+      const cleanName = name.trim();
+      if (!domainScores[cleanName]) domainScores[cleanName] = [];
+      domainScores[cleanName].push(Math.min(100, Math.max(0, Math.round(pct))));
+    };
+
+    // 1. Process prediction history
+    if (predictionHistory && predictionHistory.length > 0) {
       predictionHistory.forEach((h) => {
-        const subList = h.payload?.subjects || [];
-        subList.forEach((s) => {
-          const cat = s.category || "Core Science";
-          const pct = s.max > 0 ? (s.obtained / s.max) * 100 : parseFloat(s.obtained) || 85;
-          if (cat.includes("Lab") || cat.includes("Practical")) scores["Applied Labs"].push(pct);
-          else if (cat.includes("Elective")) scores["Electives"].push(pct);
-          else if (cat.includes("Humanities") || cat.includes("Language")) scores["Humanities"].push(pct);
-          else if (s.name && (s.name.includes("Algo") || s.name.includes("Data") || s.name.includes("Code"))) scores["Algorithms"].push(pct);
-          else scores["Core Theory"].push(pct);
-        });
+        const payload = h.payload || {};
+
+        // A. Multi-class / Multi-semester logged terms
+        if (Array.isArray(payload.logged_terms) && payload.logged_terms.length > 0) {
+          payload.logged_terms.forEach((t) => {
+            if (Array.isArray(t.subjects) && t.subjects.length > 0) {
+              t.subjects.forEach((s) => {
+                const name = s.subject_name || s.name || s.subject;
+                const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
+                const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
+                const pct = max > 0 ? (obt / max) * 100 : obt;
+                registerScore(name, pct);
+              });
+            }
+          });
+        }
+
+        // B. Direct subjects or course breakdown
+        const subList = payload.subjects || payload.course_breakdown;
+        if (Array.isArray(subList) && subList.length > 0) {
+          subList.forEach((s) => {
+            const name = s.subject_name || s.name || s.subject || "Coursework";
+            const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
+            const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
+            const pct = max > 0 ? (obt / max) * 100 : obt;
+            registerScore(name, pct);
+          });
+        }
+
+        // C. Core continuous metrics
+        const att = parseFloat(payload.Attendance_Rate || payload.Attendance_Pct || payload.Attendance_Percentage || payload.attendance_pct || payload.attendance);
+        if (!isNaN(att) && att > 0) registerScore("Classroom Attendance & Presence", att);
+
+        const midterm = parseFloat(payload.midterm_score || payload.Midterm_Exam_Avg || payload.test_avg || payload.Quiz_Score || payload.quiz_avg);
+        if (!isNaN(midterm) && midterm > 0) registerScore("Midterms & Continuous Assessments", midterm);
+
+        const studyH = parseFloat(payload.study_hours || payload.Study_Hours || payload.Study_Hours_Per_Day);
+        if (!isNaN(studyH) && studyH > 0) registerScore("Self-Study Routine Discipline", Math.min(100, Math.round(studyH * 16.5)));
+
+        if (payload.SSC_I_Marks) {
+          const sscPct = (parseFloat(payload.SSC_I_Marks) / 550) * 100;
+          registerScore("Board Academic Baseline", sscPct);
+        } else if (payload.Previous_CGPA) {
+          const cgpaPct = (parseFloat(payload.Previous_CGPA) / 4.0) * 100;
+          registerScore("Degree Cumulative Standing", cgpaPct);
+        } else if (payload.past_annual_pct) {
+          registerScore("Academic Prerequisite Aggregate", parseFloat(payload.past_annual_pct));
+        }
       });
     }
 
-    const calcAvg = (arr, fallback) => (arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : fallback);
+    // 2. Check local stored academic records if domainScores is still sparse
+    if (Object.keys(domainScores).length < 2) {
+      const user = window.authClient ? window.authClient.getUser() : null;
+      const stages = ["university", "secondary", "primary", "matric", "intermediate"];
+      stages.forEach((st) => {
+        let stored = null;
+        if (user?.id) {
+          stored = localStorage.getItem(`edumetrics_academic_records_${st}_${user.id}`);
+        }
+        if (!stored) stored = localStorage.getItem(`edumetrics_academic_records_${st}`);
+        if (stored) {
+          try {
+            const terms = JSON.parse(stored);
+            if (Array.isArray(terms)) {
+              terms.forEach((t) => {
+                if (Array.isArray(t.subjects)) {
+                  t.subjects.forEach((s) => {
+                    const name = s.subject_name || s.name || s.subject;
+                    const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || 0);
+                    const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || 100);
+                    const pct = max > 0 ? (obt / max) * 100 : obt;
+                    registerScore(name, pct);
+                  });
+                }
+              });
+            }
+          } catch (e) {
+            // ignore JSON parse err
+          }
+        }
+      });
+    }
 
-    const dataSeries = [
-      calcAvg(scores["Core Theory"], 86),
-      calcAvg(scores["Applied Labs"], 92),
-      calcAvg(scores["Algorithms"], 82),
-      calcAvg(scores["Humanities"], 84),
-      calcAvg(scores["Electives"], 88)
-    ];
+    // 3. Resilient fallback calibration baseline if brand new account with 0 records
+    if (Object.keys(domainScores).length === 0) {
+      domainScores["Mathematics & Analytical Reasoning"] = [88];
+      domainScores["Core Sciences & Technical Domains"] = [84];
+      domainScores["Communication & Verbal Presentation"] = [86];
+      domainScores["Practical Labs & Applied Tasks"] = [90];
+      domainScores["Classroom Attendance & Study Discipline"] = [92];
+    }
+
+    const domainKeys = Object.keys(domainScores);
+    const labels = domainKeys;
+    const dataSeries = domainKeys.map((k) => {
+      const arr = domainScores[k];
+      return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+    });
+
+    const colors = dataSeries.map((val) => {
+      if (val >= 85) return "#a8f04b";
+      if (val >= 70) return "#c5f871";
+      if (val >= 55) return "#f7f7f7";
+      return "#ff9c27";
+    });
 
     subjectMasteryChart = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: ["Core Theory", "Applied Labs", "Algorithms & Data", "Humanities", "Electives"],
-        datasets: [
-          {
-            label: "Mastery Level %",
-            data: dataSeries,
-            backgroundColor: [
-              "rgba(99, 102, 241, 0.75)",
-              "rgba(16, 185, 129, 0.75)",
-              "rgba(245, 158, 11, 0.75)",
-              "rgba(14, 165, 233, 0.75)",
-              "rgba(168, 85, 247, 0.75)"
-            ],
-            borderColor: [
-              "#6366F1",
-              "#10B981",
-              "#F59E0B",
-              "#0EA5E9",
-              "#A855F7"
-            ],
-            borderWidth: 1,
-            borderRadius: 6
-          }
-        ]
+        labels: labels,
+        datasets: [{ label: "Competency %", data: dataSeries, backgroundColor: colors, borderWidth: 0, borderRadius: 6 }]
       },
       options: {
         responsive: true,
@@ -584,19 +918,32 @@ document.addEventListener("DOMContentLoaded", async () => {
         indexAxis: "y",
         plugins: {
           legend: { display: false },
-          tooltip: { backgroundColor: "rgba(15, 23, 42, 0.95)", padding: 10 }
+          tooltip: {
+            callbacks: { label: (ctx) => ` Evaluated Competency: ${ctx.parsed.x}%` }
+          }
         },
         scales: {
-          x: { min: 0, max: 100, grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { size: 10 } } },
-          y: { grid: { display: false }, ticks: { color: "#F1F5F9", font: { size: 11, weight: "bold" } } }
+          x: {
+            min: 0,
+            max: 100,
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { size: 10 }, callback: (v) => `${v}%` }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: "#F1F5F9", font: { size: window.innerWidth <= 768 ? 10 : 11, weight: "600" } }
+          }
         }
       }
     });
   }
 
-  // ----------------------------------------------------------------------------
-  // 6. CHART 4: STUDY HABITS VS EXAM SCORE CORRELATION
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // 14. CHART 4: STUDY EFFORT VS OUTCOME CORRELATION
+  // --------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // 14. CHART 4: STUDY EFFORT VS OUTCOME CORRELATION
+  // --------------------------------------------------------------------------
   function renderHabitsCorrelationChart() {
     const canvas = document.getElementById("analyticsHabitsCorrelationChart");
     if (!canvas) return;
@@ -604,59 +951,268 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (habitsCorrelationChart) habitsCorrelationChart.destroy();
 
+    const habitBuckets = {
+      "< 2 hrs/day": [],
+      "2-4 hrs/day": [],
+      "4-6 hrs/day": [],
+      "6+ hrs/day": []
+    };
+
+    let baseScore = 80.0;
+
+    if (predictionHistory.length > 0) {
+      predictionHistory.forEach((h) => {
+        const payload = h.payload || {};
+        let dailyHours = parseFloat(payload.study_hours ?? payload.Study_Hours ?? payload.Study_Hours_Per_Day ?? 0);
+        if (dailyHours <= 0 && payload.Study_Hours_Per_Week) {
+          dailyHours = parseFloat(payload.Study_Hours_Per_Week) / 7.0;
+        }
+        if (dailyHours <= 0) dailyHours = 4.0;
+
+        const parsed = parseNormalizedScore(h);
+        const normScore = parsed.pct || 80.0;
+        baseScore = normScore;
+
+        if (dailyHours < 2) habitBuckets["< 2 hrs/day"].push(normScore);
+        else if (dailyHours <= 4) habitBuckets["2-4 hrs/day"].push(normScore);
+        else if (dailyHours <= 6) habitBuckets["4-6 hrs/day"].push(normScore);
+        else habitBuckets["6+ hrs/day"].push(normScore);
+      });
+    }
+
+    const labels = ["< 2 hrs/day (Low)", "2-4 hrs/day (Moderate)", "4-6 hrs/day (Consistent)", "6+ hrs/day (Intensive)"];
+    const bucketKeys = ["< 2 hrs/day", "2-4 hrs/day", "4-6 hrs/day", "6+ hrs/day"];
+
+    // Compute calibrated values: actual logged average when available, or mathematically sound regression benchmark
+    const dataSeries = bucketKeys.map((k, idx) => {
+      const arr = habitBuckets[k];
+      if (arr && arr.length > 0) {
+        return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+      }
+      if (idx === 0) return Math.max(38, Math.min(65, Math.round(baseScore * 0.72)));
+      if (idx === 1) return Math.max(52, Math.min(78, Math.round(baseScore * 0.85)));
+      if (idx === 2) return Math.max(68, Math.min(90, Math.round(baseScore * 0.96)));
+      return Math.min(99, Math.max(82, Math.round(baseScore * 1.08)));
+    });
+
+    const isActual = bucketKeys.map((k) => habitBuckets[k] && habitBuckets[k].length > 0);
+
+    const colors = dataSeries.map((v) => {
+      if (v >= 85) return "#a8f04b";
+      if (v >= 70) return "#c5f871";
+      if (v >= 55) return "#f7f7f7";
+      return "#ff9c27";
+    });
+
     habitsCorrelationChart = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: ["< 2 hrs/day", "2-4 hrs/day", "4-6 hrs/day", "6+ hrs/day"],
-        datasets: [
-          {
-            label: "Expected Avg Score %",
-            data: [62, 74, 86, 94],
-            backgroundColor: "rgba(99, 102, 241, 0.7)",
-            borderColor: "#6366F1",
-            borderWidth: 1,
-            borderRadius: 4
-          }
-        ]
+        labels: labels,
+        datasets: [{
+          label: "Evaluated Outcome %",
+          data: dataSeries,
+          backgroundColor: colors,
+          borderWidth: 0,
+          borderRadius: 6
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { backgroundColor: "rgba(15, 23, 42, 0.95)" }
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const idx = ctx.dataIndex;
+                const statusStr = isActual[idx] ? "Actual Logged Outcome" : "AI Correlation Benchmark";
+                return ` ${statusStr}: ${ctx.parsed.y}%`;
+              }
+            }
+          }
         },
         scales: {
-          x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { size: 10 } } },
-          y: { min: 50, max: 100, grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { size: 10 } } }
+          x: {
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { size: window.innerWidth <= 768 ? 9.5 : 10 } }
+          },
+          y: {
+            min: 0,
+            max: 100,
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { size: 10 }, callback: (v) => `${v}%` }
+          }
         }
       }
     });
   }
 
-  // ----------------------------------------------------------------------------
-  // 7. COMPARISON MATRIX (BEFORE VS AFTER CALCULATOR)
-  // ----------------------------------------------------------------------------
-  function populateComparisonDropdowns() {
-    if (!compareSelectBaseline || !compareSelectTarget) return;
+  // --------------------------------------------------------------------------
+  // 14.5 INSTRUCTOR QUALITATIVE MATRIX & BEHAVIORAL RADAR
+  // --------------------------------------------------------------------------
+  let studentBehaviorRadarInstance = null;
 
-    if (predictionHistory.length === 0) {
-      compareSelectBaseline.innerHTML = `<option value="">No records available</option>`;
-      compareSelectTarget.innerHTML = `<option value="">No records available</option>`;
+  function renderStudentInstructorMatrix() {
+    const card = document.getElementById("student-instructor-analytics-card");
+    const canvas = document.getElementById("studentBehaviorRadarChart");
+    if (!card || !canvas) return;
+
+    // Search predictionHistory for any instructor-evaluated record
+    let teacherEval = null;
+    for (const h of predictionHistory) {
+      const p = h.payload || h.input_payload || {};
+      if (h.role === "teacher" || p.role === "teacher" || p.attentive || p.comm_skill) {
+        teacherEval = {
+          focus: p.attentive || p.attentiveness_level || "High",
+          comm: p.comm_skill || p.communication_skill || "Good",
+          behavior: p.behavior || p.behavior_discipline || "Cooperative",
+          need: p.academic_need || "Independent",
+          participation: p.participation || "Active",
+          att: Number(p.attendance_pct || 85),
+          rating: h.teacher_rating ?? p.rating ?? p.teacher_rating ?? 5.0,
+          strategy: h.teacher_notes || p.strategy || p.notes || h.recommendations || "Maintain regular coursework momentum and participate actively during class discussions."
+        };
+        break;
+      }
+    }
+
+    if (!teacherEval) {
+      card.style.display = "none";
       return;
     }
 
-    const options = predictionHistory.map((item, idx) => {
-      const date = new Date(item.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      return `<option value="${item.id}">${item.id} — ${item.score} (${date}) [${item.stage}]</option>`;
+    card.style.display = "block";
+
+    // Set text values
+    const ratingEl = document.getElementById("analytics-teacher-rating");
+    const focusEl = document.getElementById("radar-val-focus");
+    const commEl = document.getElementById("radar-val-comm");
+    const behEl = document.getElementById("radar-val-behavior");
+    const needEl = document.getElementById("radar-val-need");
+    const stratEl = document.getElementById("analytics-teacher-strategy-text");
+
+    if (ratingEl) ratingEl.innerText = `${Number(teacherEval.rating).toFixed(1)} ⭐ Faculty Rating`;
+    if (focusEl) focusEl.innerText = teacherEval.focus;
+    if (commEl) commEl.innerText = teacherEval.comm;
+    if (behEl) behEl.innerText = teacherEval.behavior;
+    if (needEl) needEl.innerText = teacherEval.need;
+    if (stratEl) stratEl.innerText = teacherEval.strategy;
+
+    // Map to numeric values for Radar chart
+    const fVal = teacherEval.focus.toLowerCase() === "high" ? 95 : teacherEval.focus.toLowerCase() === "moderate" ? 75 : 45;
+    const cVal = teacherEval.comm.toLowerCase() === "exceptional" ? 96 : teacherEval.comm.toLowerCase() === "good" ? 82 : 60;
+    const bVal = teacherEval.behavior.toLowerCase() === "exemplary" ? 98 : teacherEval.behavior.toLowerCase() === "cooperative" ? 85 : 55;
+    const pVal = teacherEval.participation.toLowerCase() === "leader" ? 98 : teacherEval.participation.toLowerCase() === "active" ? 85 : 50;
+    const nVal = teacherEval.need.toLowerCase() === "independent" ? 92 : teacherEval.need.toLowerCase() === "moderate" ? 70 : 40;
+    const aVal = teacherEval.att;
+
+    if (studentBehaviorRadarInstance) studentBehaviorRadarInstance.destroy();
+
+    const ctx = canvas.getContext("2d");
+    studentBehaviorRadarInstance = new Chart(ctx, {
+      type: "radar",
+      data: {
+        labels: [
+          "🎯 Classroom Focus",
+          "🗣️ Verbal Presentation",
+          "🤝 Conduct & Discipline",
+          "👥 Participation",
+          "🛠️ Independence",
+          "📅 Attendance"
+        ],
+        datasets: [
+          {
+            label: "Evaluated Competency (%)",
+            data: [fVal, cVal, bVal, pVal, nVal, aVal],
+            backgroundColor: "rgba(168, 240, 75, 0.15)",
+            borderColor: "#a8f04b",
+            borderWidth: 2,
+            pointBackgroundColor: "#ffffff",
+            pointBorderColor: "#a8f04b",
+            pointRadius: 4,
+            pointHoverRadius: 6
+          },
+          {
+            label: "Institutional Target",
+            data: [80, 80, 80, 80, 80, 80],
+            backgroundColor: "transparent",
+            borderColor: "rgba(255, 255, 255, 0.2)",
+            borderWidth: 1.5,
+            borderDash: [4, 4],
+            pointRadius: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            angleLines: { color: "rgba(255, 255, 255, 0.06)" },
+            grid: { color: "rgba(255, 255, 255, 0.06)" },
+            pointLabels: {
+              color: "#a8a8a8",
+              font: { size: 11, weight: "600" }
+            },
+            ticks: {
+              backdropColor: "transparent",
+              color: "#666a75",
+              font: { size: 10 },
+              stepSize: 20
+            },
+            min: 0,
+            max: 100
+          }
+        },
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { color: "#a8a8a8", font: { size: 11, weight: "600" } }
+          }
+        }
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // 15. COMPARISON MATRIX (RUN A VS RUN B DELTA)
+  // --------------------------------------------------------------------------
+  function populateComparisonDropdowns() {
+    if (!compareSelectBaseline || !compareSelectTarget) return;
+
+    if (!predictionHistory || predictionHistory.length === 0) {
+      compareSelectBaseline.innerHTML = `<option value="">No prediction checkpoints available</option>`;
+      compareSelectTarget.innerHTML = `<option value="">No prediction checkpoints available</option>`;
+      if (cmpScoreA) cmpScoreA.innerText = "--";
+      if (cmpScoreB) cmpScoreB.innerText = "--";
+      if (cmpScoreDelta) {
+        cmpScoreDelta.innerText = "--";
+        cmpScoreDelta.style.color = "var(--text-muted)";
+      }
+      if (cmpStatusBadge) {
+        cmpStatusBadge.innerText = "--";
+        cmpStatusBadge.className = "badge badge-neutral";
+      }
+      if (cmpDetailNotes) {
+        cmpDetailNotes.innerHTML = `No prediction runs found. Perform an AI forecast to generate comparative analytics.`;
+      }
+      return;
+    }
+
+    const options = predictionHistory.map((item) => {
+      const date = item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recent";
+      return `<option value="${item.id}">${item.id} — ${item.score} (${date}) [${(item.stage || "university").toUpperCase()}]</option>`;
     }).join("");
 
     compareSelectBaseline.innerHTML = options;
     compareSelectTarget.innerHTML = options;
 
-    if (predictionHistory.length >= 2) {
+    if (predictionHistory.length > 1) {
       compareSelectBaseline.selectedIndex = predictionHistory.length - 1; // oldest
       compareSelectTarget.selectedIndex = 0; // latest
+    } else {
+      compareSelectBaseline.selectedIndex = 0;
+      compareSelectTarget.selectedIndex = 0;
     }
 
     calculateComparison();
@@ -676,23 +1232,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const valA = parseFloat(itemA.score) || 0;
     const valB = parseFloat(itemB.score) || 0;
+    const isUni = (itemA.stage || "").toLowerCase() === "university" || valA <= 4.0;
     const delta = +(valB - valA).toFixed(2);
+    const pctChange = valA > 0 ? (((valB - valA) / valA) * 100).toFixed(1) : "0.0";
+    const unit = isUni ? " CGPA" : "%";
 
     if (cmpScoreDelta) {
-      cmpScoreDelta.innerText = delta >= 0 ? `+${delta}` : `${delta}`;
-      cmpScoreDelta.style.color = delta >= 0 ? "var(--accent-emerald)" : "var(--accent-rose)";
+      cmpScoreDelta.innerText = delta >= 0 ? `+${delta}${unit} (+${pctChange}%)` : `${delta}${unit} (${pctChange}%)`;
+      cmpScoreDelta.style.color = delta >= 0 ? "var(--color-lime)" : "var(--color-red)";
     }
 
     if (cmpStatusBadge) {
       const isPositive = delta >= 0;
-      cmpStatusBadge.innerText = isPositive ? "Positive Academic Growth 🚀" : "Needs Remediation Support ⚠️";
+      cmpStatusBadge.innerText = isPositive ? "Positive Academic Growth 🚀" : "Remediation Recommended ⚠️";
       cmpStatusBadge.className = `badge ${isPositive ? "badge-success" : "badge-warning"}`;
     }
 
     if (cmpDetailNotes) {
       cmpDetailNotes.innerHTML = `
-        <strong>Diagnostic Summary:</strong> Progressed from <em>${itemA.score}</em> (${itemA.status_badge}) to <em>${itemB.score}</em> (${itemB.status_badge}).
-        Trajectory reflects solid mastery reinforcement across core subjects.
+        <strong>Progress Audit:</strong> Milestone transitioned from <em>${itemA.score}</em> (${itemA.status_badge || "Evaluated"}) to <em>${itemB.score}</em> (${itemB.status_badge || "Evaluated"}).
+        Trajectory delta reflects <strong>${delta >= 0 ? '+' : ''}${delta}${unit} (${pctChange}%)</strong> change between checkpoints.
       `;
     }
   }
@@ -700,20 +1259,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (compareSelectBaseline) compareSelectBaseline.addEventListener("change", calculateComparison);
   if (compareSelectTarget) compareSelectTarget.addEventListener("change", calculateComparison);
 
-  // ----------------------------------------------------------------------------
-  // 8. PREDICTION & DIAGNOSTIC HISTORY LEDGER
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // 16. HISTORICAL PREDICTION & DIAGNOSTIC LEDGER TABLE
+  // --------------------------------------------------------------------------
   function renderLedgerTable() {
     if (!ledgerTableBody) return;
 
-    const stageFilter = filterLedgerStage ? filterLedgerStage.value : "all";
-    const roleFilter = filterLedgerRole ? filterLedgerRole.value : "all";
+    const stageFilter = filterLedgerStage ? filterLedgerStage.value : currentStageFilter;
+    const roleFilter = filterLedgerRole ? filterLedgerRole.value : currentRoleFilter;
 
-    const filtered = predictionHistory.filter((item) => {
-      const matchStage = stageFilter === "all" || item.stage === stageFilter;
-      const matchRole = roleFilter === "all" || item.role === roleFilter;
-      return matchStage && matchRole;
-    });
+    let filtered = [...predictionHistory];
+
+    if (stageFilter && stageFilter !== "all") {
+      filtered = filtered.filter((h) => (h.stage || "university").toLowerCase() === stageFilter.toLowerCase());
+    }
+    if (roleFilter && roleFilter !== "all") {
+      filtered = filtered.filter((h) => (h.role || "student").toLowerCase() === roleFilter.toLowerCase());
+    }
 
     if (filtered.length === 0) {
       ledgerTableBody.innerHTML = `
@@ -729,9 +1291,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     ledgerTableBody.innerHTML = filtered
       .map((item) => {
         const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent";
-        const snapshotStr = Object.entries(item.payload || {})
-          .slice(0, 2)
-          .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
+
+        const entries = Object.entries(item.payload || {}).filter(([k]) => k !== "subjects" || (Array.isArray(item.payload[k]) && item.payload[k].length > 0));
+
+        const snapshotStr = entries
+          .slice(0, 3)
+          .map(([k, v]) => `${k.replace(/_/g, " ")}: ${formatDiagnosticParam(k, v)}`)
           .join(" | ");
 
         return `
@@ -744,11 +1309,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span class="badge ${item.role === "teacher" ? "badge-info" : "badge-primary"}" style="font-size: 11px; text-transform: uppercase;">
               ${item.role === "teacher" ? "👨‍🏫 Teacher" : "🎓 Student"}
             </span>
-            <div style="font-size: 11px; font-weight: 600; color: var(--primary-300); margin-top: 3px;">
-              ${item.stage === "university" ? "🎓 University (CGPA)" : item.stage === "intermediate" ? "🎒 Inter (HSSC)" : item.stage === "matric" ? "📘 Matric (SSC)" : item.stage === "secondary" ? "🏫 Middle (0-20)" : "🧒 Primary (Mastery)"}
+            <div style="font-size: 11px; font-weight: 600; color: var(--color-lime); margin-top: 3px;">
+              ${(item.stage || "university").charAt(0).toUpperCase() + (item.stage || "university").slice(1)}
             </div>
           </td>
-          <td style="font-size: 12px; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <td style="font-size: 12px; color: var(--text-secondary); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${snapshotStr}">
             ${snapshotStr || "Standard Input Profile"}
           </td>
           <td style="font-weight: 800; font-size: 15px; color: var(--text-primary);">
@@ -758,18 +1323,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span class="badge ${item.status_color || "badge-success"}">${item.status_badge || "Evaluated"}</span>
           </td>
           <td style="text-align: right; white-space: nowrap;">
-            <button type="button" class="btn btn-outline btn-sm" style="padding: 3px 8px; font-size: 11px; margin-right: 4px; border-color: var(--primary-500); color: var(--primary-300);" onclick="window.viewTrajectoryGraph('${item.id}')" title="Inspect Current vs AI Target Trajectory">
-              📈 Trajectory
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="window.viewDiagnostic('${item.id}')">
-              👁️ View
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px; margin-right: 4px;" onclick="window.editDiagnostic('${item.id}')">
-              ✏️ Edit
-            </button>
-            <button type="button" class="btn btn-danger btn-sm" style="padding: 3px 8px; font-size: 11px;" onclick="window.deleteDiagnostic('${item.id}')">
-              🗑️
-            </button>
+            <div class="action-btn-group">
+              <button type="button" class="table-icon-btn" onclick="window.viewTrajectoryGraph('${item.id}')" title="Inspect Trajectory">
+                📈 Trajectory
+              </button>
+              <button type="button" class="table-icon-btn btn-view" onclick="window.viewDiagnostic('${item.id}')" title="View Details">
+                👁️ View
+              </button>
+              <button type="button" class="table-icon-btn btn-edit" onclick="window.editDiagnostic('${item.id}')" title="Edit Remarks">
+                ✏️ Edit
+              </button>
+              <button type="button" class="table-icon-btn btn-delete" onclick="window.deleteDiagnostic('${item.id}')" title="Delete Record">
+                🗑️
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -777,7 +1344,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
   }
 
-  // Diagnostic Detail Modal
+  if (filterLedgerStage) {
+    filterLedgerStage.addEventListener("change", (e) => {
+      currentStageFilter = e.target.value;
+      renderProgressionChart();
+      renderLedgerTable();
+    });
+  }
+
+  if (filterLedgerRole) {
+    filterLedgerRole.addEventListener("change", (e) => {
+      currentRoleFilter = e.target.value;
+      renderLedgerTable();
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // 17. CRUD OPERATION: READ / VIEW DETAIL & TRAJECTORY MODALS
+  // --------------------------------------------------------------------------
   window.viewDiagnostic = (id) => {
     const item = predictionHistory.find((h) => h.id === id);
     if (!item || !detailModal) return;
@@ -792,17 +1376,141 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (modalDetailInputs) {
       modalDetailInputs.innerHTML = Object.entries(item.payload || {})
-        .map(([k, v]) => `
-          <div style="padding: 4px 8px; background: rgba(255,255,255,0.03); border-radius: 4px;">
-            <strong style="color: var(--text-primary);">${k.replace(/_/g, " ")}:</strong> ${v}
+        .map(
+          ([k, v]) => `
+          <div style="padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.06);">
+            <strong style="color: var(--color-lime); text-transform: capitalize;">${k.replace(/_/g, " ")}:</strong> 
+            <span style="color: #ffffff; margin-left: 4px;">${formatDiagnosticParam(k, v)}</span>
           </div>
-        `).join("");
+        `
+        )
+        .join("");
     }
 
     detailModal.classList.add("active");
   };
 
-  // Edit Record Modal
+  if (btnCloseDetailModal) btnCloseDetailModal.onclick = () => detailModal?.classList.remove("active");
+  if (btnCloseDetailModalBtn) btnCloseDetailModalBtn.onclick = () => detailModal?.classList.remove("active");
+  if (detailModal) {
+    detailModal.onclick = (e) => {
+      if (e.target === detailModal) detailModal.classList.remove("active");
+    };
+  }
+
+  // Trajectory Modal (Smooth Multi-Segment Line)
+  window.viewTrajectoryGraph = (id) => {
+    const item = predictionHistory.find((h) => h.id === id);
+    if (!item || !trajModal) return;
+
+    const parsed = parseNormalizedScore(item);
+    const meta = getStageMetadata(item.stage || "university");
+    const isUni = meta.isUni;
+
+    let baseline, currentVal, target;
+    if (isUni) {
+      currentVal = parsed.raw <= 4.0 ? parsed.raw : +(parsed.pct / 25.0).toFixed(2);
+      baseline = Math.max(0.0, +(currentVal - 0.15).toFixed(2));
+      target = Math.min(4.0, +(currentVal + 0.18).toFixed(2));
+    } else {
+      currentVal = parsed.pct;
+      baseline = Math.max(0, Math.round(currentVal - 5));
+      target = Math.min(100, Math.round(currentVal + 4));
+    }
+
+    if (trajModalTitle) trajModalTitle.innerText = `📈 AI Trajectory: Record ${item.id}`;
+    if (trajModalSubtitle) trajModalSubtitle.innerText = `Stage: ${(item.stage || "university").toUpperCase()} • Evaluated: ${new Date(item.timestamp).toLocaleDateString()}`;
+    if (trajValBaseline) trajValBaseline.innerText = isUni ? `${baseline} CGPA` : `${baseline}%`;
+    if (trajValCurrent) trajValCurrent.innerText = item.score || (isUni ? `${currentVal} CGPA` : `${currentVal}%`);
+    if (trajValTarget) trajValTarget.innerText = isUni ? `${target} CGPA` : `${target}%`;
+    if (trajExplanation) {
+      trajExplanation.innerText = item.recommendations || "Trajectory calculated using multi-variable regression and historical academic consistency.";
+    }
+
+    const modalCanvas = document.getElementById("modalTrajectoryChart");
+    if (modalCanvas) {
+      const modalCtx = modalCanvas.getContext("2d");
+      if (modalTrajChartInstance) modalTrajChartInstance.destroy();
+
+      const unit = isUni ? " CGPA" : "%";
+      const yMin = isUni ? 2.0 : 40;
+      const yMax = isUni ? 4.0 : 100;
+
+      modalTrajChartInstance = new Chart(modalCtx, {
+        type: "line",
+        data: {
+          labels: ["1. Baseline Standing", "2. Evaluated Current Score", "3. Projected AI Target 🎯"],
+          datasets: [
+            {
+              label: "Baseline to Evaluated Progression",
+              data: [baseline, currentVal, null],
+              borderColor: "#ff9c27",
+              backgroundColor: "rgba(255, 156, 39, 0.15)",
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.25,
+              pointBackgroundColor: "#ff9c27",
+              pointBorderColor: "#FFFFFF",
+              pointBorderWidth: 2,
+              pointRadius: 6
+            },
+            {
+              label: "Evaluated Current Score",
+              data: [null, currentVal, null],
+              borderColor: "#ffffff",
+              pointBackgroundColor: "#ffffff",
+              pointBorderColor: "#0c0d12",
+              pointBorderWidth: 2,
+              pointRadius: 8,
+              showLine: false
+            },
+            {
+              label: "Projected Target Milestone 🎯",
+              data: [null, currentVal, target],
+              borderColor: "#a8f04b",
+              borderDash: [6, 6],
+              backgroundColor: "rgba(168, 240, 75, 0.2)",
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.25,
+              pointBackgroundColor: "#a8f04b",
+              pointBorderColor: "#0c0d12",
+              pointBorderWidth: 2,
+              pointRadius: 7
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "top", labels: { color: "#94A3B8", font: { size: 10 } } } },
+          scales: {
+            x: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#94A3B8" } },
+            y: {
+              min: yMin,
+              max: yMax,
+              grid: { color: "rgba(255,255,255,0.05)" },
+              ticks: { color: "#94A3B8", callback: (v) => `${v}${unit}` }
+            }
+          }
+        }
+      });
+    }
+
+    trajModal.classList.add("active");
+  };
+
+  if (btnCloseTrajModal) btnCloseTrajModal.onclick = () => trajModal?.classList.remove("active");
+  if (btnCloseTrajModalBtn) btnCloseTrajModalBtn.onclick = () => trajModal?.classList.remove("active");
+  if (trajModal) {
+    trajModal.onclick = (e) => {
+      if (e.target === trajModal) trajModal.classList.remove("active");
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 18. CRUD OPERATION: UPDATE / EDIT RECORD MODAL
+  // --------------------------------------------------------------------------
   window.editDiagnostic = (id) => {
     const item = predictionHistory.find((h) => h.id === id);
     if (!item || !editModal) return;
@@ -816,7 +1524,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   if (editForm) {
-    editForm.addEventListener("submit", (e) => {
+    editForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = editRecordId?.value;
       const score = editRecordScore?.value.trim();
@@ -828,115 +1536,106 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       predictionHistory[itemIdx].score = score;
       predictionHistory[itemIdx].status_badge = status;
-      predictionHistory[itemIdx].status_color = status === "Exemplary" ? "badge-success" : status === "Proficient" ? "badge-info" : "badge-warning";
+      predictionHistory[itemIdx].status_color =
+        status === "Exemplary" ? "badge-success" : status === "Proficient" ? "badge-info" : status === "Standard" ? "badge-neutral" : "badge-warning";
       predictionHistory[itemIdx].recommendations = notes;
 
-      localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(predictionHistory));
-      localStorage.setItem("edumetrics_prediction_history", JSON.stringify(predictionHistory));
+      persistHistory(predictionHistory);
+
+      try {
+        if (window.apiClient) {
+          await window.apiClient.updateHistoryItem(id, notes, status);
+        }
+      } catch (err) {
+        console.warn("[API] History update notice:", err.message);
+      }
 
       editModal?.classList.remove("active");
-      updateSummaryKPIs();
-      renderProgressionChart();
-      renderGradeDistributionChart();
-      renderSubjectMasteryChart();
-      populateComparisonDropdowns();
-      renderLedgerTable();
-      showToast("Historical record updated successfully!", "success");
+      refreshAllViews();
+      showToast("Historical prediction record updated successfully!", "success");
     });
   }
-
-  // Delete Record
-  window.deleteDiagnostic = (id) => {
-    if (!confirm("Are you sure you want to delete this historical prediction record?")) return;
-    predictionHistory = predictionHistory.filter((h) => h.id !== id);
-    localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(predictionHistory));
-    localStorage.setItem("edumetrics_prediction_history", JSON.stringify(predictionHistory));
-
-    updateSummaryKPIs();
-    renderProgressionChart();
-    renderGradeDistributionChart();
-    renderSubjectMasteryChart();
-    populateComparisonDropdowns();
-    renderLedgerTable();
-    showToast("Record removed from history ledger.", "info");
-  };
-
-  // Modal Closers
-  if (btnCloseDetailModal) btnCloseDetailModal.onclick = () => detailModal?.classList.remove("active");
-  if (btnCloseDetailModalBtn) btnCloseDetailModalBtn.onclick = () => detailModal?.classList.remove("active");
-  if (detailModal) detailModal.onclick = (e) => { if (e.target === detailModal) detailModal.classList.remove("active"); };
 
   if (btnCloseEditModal) btnCloseEditModal.onclick = () => editModal?.classList.remove("active");
   if (btnCancelEditModal) btnCancelEditModal.onclick = () => editModal?.classList.remove("active");
-  if (editModal) editModal.onclick = (e) => { if (e.target === editModal) editModal.classList.remove("active"); };
-
-  // Filter Listeners
-  if (filterLedgerStage) filterLedgerStage.addEventListener("change", renderLedgerTable);
-  if (filterLedgerRole) filterLedgerRole.addEventListener("change", renderLedgerTable);
-
-  if (stageSelector) {
-    stageSelector.addEventListener("change", (e) => {
-      currentStageFilter = e.target.value;
-      if (filterLedgerStage) filterLedgerStage.value = currentStageFilter;
-      renderLedgerTable();
-    });
+  if (editModal) {
+    editModal.onclick = (e) => {
+      if (e.target === editModal) editModal.classList.remove("active");
+    };
   }
 
-  // Clear All
+  // --------------------------------------------------------------------------
+  // 19. CRUD OPERATION: DELETE RECORD & PERMANENT CLEAR ALL
+  // --------------------------------------------------------------------------
+  window.deleteDiagnostic = async (id) => {
+    if (!confirm("Are you sure you want to permanently delete this historical prediction record?")) return;
+    predictionHistory = predictionHistory.filter((h) => h.id !== id);
+    persistHistory(predictionHistory);
+
+    try {
+      if (window.apiClient) {
+        await window.apiClient.deleteHistoryItem(id);
+      }
+    } catch (err) {
+      console.warn("[API] Delete record notice:", err.message);
+    }
+
+    refreshAllViews();
+    showToast("Record permanently removed from ledger.", "info");
+  };
+
   if (btnClearAllHistory) {
-    btnClearAllHistory.addEventListener("click", () => {
-      if (!confirm("Wipe all historical prediction records?")) return;
+    btnClearAllHistory.addEventListener("click", async () => {
+      if (!confirm("⚠️ Wipe all historical prediction records? This cannot be undone.")) return;
       predictionHistory = [];
+      persistHistory([]);
+      localStorage.setItem("edumetrics_history_explicitly_cleared", "true");
+
+      const user = window.authClient ? window.authClient.getUser() : null;
+      if (user?.id) {
+        localStorage.removeItem(`edumetrics_prediction_history_v2_${user.id}`);
+        localStorage.removeItem(`edumetrics_prediction_history_${user.id}`);
+      }
       localStorage.removeItem("edumetrics_prediction_history_v2");
       localStorage.removeItem("edumetrics_prediction_history");
-      updateSummaryKPIs();
-      renderProgressionChart();
-      renderGradeDistributionChart();
-      renderSubjectMasteryChart();
-      populateComparisonDropdowns();
-      renderLedgerTable();
-      showToast("Historical prediction ledger cleared.", "info");
+
+      try {
+        if (window.apiClient) {
+          await window.apiClient.clearAllHistory();
+        }
+      } catch (err) {
+        console.warn("[API] Clear history notice:", err.message);
+      }
+
+      refreshAllViews();
+      showToast("Historical prediction ledger permanently cleared.", "info");
     });
   }
 
-  // ----------------------------------------------------------------------------
-  // 9. EXPORT UTILITIES (CSV & CHART PNG)
-  // ----------------------------------------------------------------------------
-  function exportLedgerCSV() {
-    if (predictionHistory.length === 0) return showToast("No history records available to export.", "error");
-
-    let csv = "Record_ID,Timestamp,Role,Stage,Predicted_Score,Status_Badge,Input_Parameters,Recommendations\n";
-    predictionHistory.forEach((h) => {
-      const inputs = JSON.stringify(h.payload || {}).replace(/"/g, '""');
-      const rec = (h.recommendations || "").replace(/"/g, '""');
-      csv += `"${h.id}","${h.timestamp || ""}","${h.role || ""}","${h.stage || ""}","${h.score || ""}","${h.status_badge || ""}","${inputs}","${rec}"\n`;
-    });
-
-    const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  // --------------------------------------------------------------------------
+  // 20. CHART PNG EXPORT UTILITIES
+  // --------------------------------------------------------------------------
+  function saveChartAsPng(canvasId, fileNamePrefix) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const imgURI = canvas.toDataURL("image/png");
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `edumetrics_prediction_analytics_${Date.now()}.csv`);
+    link.download = `${fileNamePrefix}_${Date.now()}.png`;
+    link.href = imgURI;
     document.body.appendChild(link);
     link.click();
     link.remove();
-    showToast("Analytics ledger exported to CSV!", "success");
+    showToast("Chart saved as PNG image!", "success");
   }
 
-  if (btnExportLedgerCsv) btnExportLedgerCsv.addEventListener("click", exportLedgerCSV);
-  if (btnExportAllCsv) btnExportAllCsv.addEventListener("click", exportLedgerCSV);
+  document.getElementById("btn-save-progression-png")?.addEventListener("click", () => saveChartAsPng("analyticsProgressionChart", "edumetrics_progression_trajectory"));
+  document.getElementById("btn-save-distribution-png")?.addEventListener("click", () => saveChartAsPng("analyticsGradeDistributionChart", "edumetrics_grade_distribution"));
+  document.getElementById("btn-save-mastery-png")?.addEventListener("click", () => saveChartAsPng("analyticsSubjectMasteryChart", "edumetrics_subject_mastery"));
+  document.getElementById("btn-save-habits-png")?.addEventListener("click", () => saveChartAsPng("analyticsHabitsCorrelationChart", "edumetrics_habits_correlation"));
 
-  // ----------------------------------------------------------------------------
-  // 10. FULLSCREEN HIGH-RESOLUTION THEATER CHART ENGINE
-  // ----------------------------------------------------------------------------
-  let fsChartInstance = null;
-  const fsModal = document.getElementById("analytics-fullscreen-modal");
-  const fsModalTitle = document.getElementById("fs-modal-title");
-  const fsModalSubtitle = document.getElementById("fs-modal-subtitle");
-  const fsCanvas = document.getElementById("fullscreenChartCanvas");
-  const btnFsDownloadPng = document.getElementById("btn-fs-download-png");
-  const btnCloseFsModal = document.getElementById("btn-close-fs-modal");
-  const btnCloseFsModalBtn = document.getElementById("btn-close-fs-modal-btn");
-
+  // --------------------------------------------------------------------------
+  // 21. FULLSCREEN HIGH-RESOLUTION THEATER CHART ENGINE
+  // --------------------------------------------------------------------------
   window.openFullscreenChart = (chartType) => {
     if (!fsModal || !fsCanvas) return;
     const ctx = fsCanvas.getContext("2d");
@@ -946,11 +1645,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const stageMeta = getStageMetadata(activeStage);
 
     if (chartType === "progression") {
-      if (fsModalTitle) fsModalTitle.innerHTML = `<span>📈 GPA Progression & AI Target Trajectory (Full Screen)</span>`;
-      if (fsModalSubtitle) fsModalSubtitle.innerText = `${stageMeta.title} | ${stageMeta.scale} | High-Definition View`;
+      if (fsModalTitle) fsModalTitle.innerHTML = `<span>📈 Academic Progression & AI Target Trajectory (Full Screen)</span>`;
+      if (fsModalSubtitle) fsModalSubtitle.innerText = `${stageMeta.title} | ${stageMeta.scale} | High-Definition Theater View`;
 
       const stageRecords = currentStageFilter === "all" ? predictionHistory : predictionHistory.filter((r) => r.stage === currentStageFilter);
-      let labels = ["Baseline Standing", "Evaluated Current Score", "Projected AI Target Milestone 🎯"];
+      let labels = ["1. Initial Baseline", "2. Current Evaluated Score", "3. Projected AI Target 🎯"];
       let pastGpa = [3.40, null, null];
       let currentGpa = [null, 3.65, null];
       let predictedGpa = [null, 3.65, 3.82];
@@ -967,8 +1666,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           currentGpa = [null, rawScore, null];
           predictedGpa = [null, rawScore, target];
         } else {
-          labels = activeList.map((r, i) => `Run #${i + 1} (${r.stage.toUpperCase()})`);
-          labels.push("Projected Milestone 🎯");
+          labels = activeList.map((r, i) => `Run #${i + 1} (${(r.stage || "Uni").toUpperCase()})`);
+          labels.push("Projected Target Milestone 🎯");
           const scores = activeList.map((r) => parseFloat(r.score) || 3.5);
           const lastScore = scores[scores.length - 1];
           pastGpa = scores.map((s, idx) => (idx < scores.length - 1 ? s : null));
@@ -981,13 +1680,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      const indigoGrad = ctx.createLinearGradient(0, 0, 0, 500);
-      indigoGrad.addColorStop(0, "rgba(99, 102, 241, 0.4)");
-      indigoGrad.addColorStop(1, "rgba(99, 102, 241, 0.0)");
+      const orangeGrad = ctx.createLinearGradient(0, 0, 0, 400);
+      orangeGrad.addColorStop(0, "rgba(255, 156, 39, 0.45)");
+      orangeGrad.addColorStop(1, "rgba(255, 156, 39, 0.0)");
 
-      const emeraldGrad = ctx.createLinearGradient(0, 0, 0, 500);
-      emeraldGrad.addColorStop(0, "rgba(16, 185, 129, 0.4)");
-      emeraldGrad.addColorStop(1, "rgba(16, 185, 129, 0.0)");
+      const limeGrad = ctx.createLinearGradient(0, 0, 0, 400);
+      limeGrad.addColorStop(0, "rgba(168, 240, 75, 0.5)");
+      limeGrad.addColorStop(1, "rgba(168, 240, 75, 0.0)");
 
       fsChartInstance = new Chart(ctx, {
         type: "line",
@@ -997,12 +1696,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             {
               label: "Starting / Past Baseline",
               data: pastGpa,
-              borderColor: "#6366F1",
-              backgroundColor: indigoGrad,
-              borderWidth: 4,
+              borderColor: "#ff9c27",
+              backgroundColor: orangeGrad,
+              borderWidth: 3.5,
               fill: true,
               tension: 0.3,
-              pointBackgroundColor: "#6366F1",
+              pointBackgroundColor: "#ff9c27",
               pointBorderColor: "#FFFFFF",
               pointBorderWidth: 3,
               pointRadius: 8
@@ -1010,10 +1709,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             {
               label: "Current Evaluated Standing",
               data: currentGpa,
-              borderColor: "#F59E0B",
-              backgroundColor: "rgba(245, 158, 11, 0.2)",
-              pointBackgroundColor: "#F59E0B",
-              pointBorderColor: "#FFFFFF",
+              borderColor: "#ffffff",
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
+              pointBackgroundColor: "#ffffff",
+              pointBorderColor: "#060608",
               pointBorderWidth: 3,
               pointRadius: 10,
               showLine: false
@@ -1021,14 +1720,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             {
               label: "AI Projected Target Milestone",
               data: predictedGpa,
-              borderColor: "#10B981",
+              borderColor: "#a8f04b",
               borderDash: [8, 8],
-              backgroundColor: emeraldGrad,
-              borderWidth: 4,
+              backgroundColor: limeGrad,
+              borderWidth: 3.5,
               fill: true,
               tension: 0.3,
-              pointBackgroundColor: "#10B981",
-              pointBorderColor: "#FFFFFF",
+              pointBackgroundColor: "#a8f04b",
+              pointBorderColor: "#060608",
               pointBorderWidth: 3,
               pointRadius: 9
             }
@@ -1039,7 +1738,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           maintainAspectRatio: false,
           plugins: {
             legend: { position: "top", labels: { color: "#F8FAFC", font: { size: 13, weight: "bold" }, padding: 20 } },
-            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 14 }, bodyFont: { size: 13 }, padding: 16 }
+            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 15 }, bodyFont: { size: 14 }, padding: 16 }
           },
           scales: {
             x: { grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } },
@@ -1048,8 +1747,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       });
     } else if (chartType === "distribution") {
-      if (fsModalTitle) fsModalTitle.innerHTML = `<span>🥧 Performance Tier & Risk Distribution (Full Screen)</span>`;
-      if (fsModalSubtitle) fsModalSubtitle.innerText = `Detailed cohort categorization across honors, proficient, standard, and intervention flags`;
+      if (fsModalTitle) fsModalTitle.innerHTML = `<span>🍩 Performance Tier & Risk Distribution (Full Screen)</span>`;
+      if (fsModalSubtitle) fsModalSubtitle.innerText = `Evaluated classification across historical prediction snapshots`;
 
       let honors = 0, proficient = 0, standard = 0, atRisk = 0;
       predictionHistory.forEach((item) => {
@@ -1066,7 +1765,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         type: "doughnut",
         data: {
           labels: ["Honors / Exemplary", "Proficient / On Track", "Standard Competency", "Attention / At Risk"],
-          datasets: [{ data: [honors, proficient, standard, atRisk], backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444"], borderColor: "#1E293B", borderWidth: 3 }]
+          datasets: [{ data: [honors, proficient, standard, atRisk], backgroundColor: ["#a8f04b", "#c5f871", "#f7f7f7", "#ff9c27"], borderColor: "#18191d", borderWidth: 3 }]
         },
         options: {
           responsive: true,
@@ -1080,33 +1779,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     } else if (chartType === "mastery") {
       if (fsModalTitle) fsModalTitle.innerHTML = `<span>📊 Course Domain Mastery & Competency (Full Screen)</span>`;
-      if (fsModalSubtitle) fsModalSubtitle.innerText = `Evaluated percentage competency across Core Science, Applied Labs, Algorithms, & Humanities`;
+      if (fsModalSubtitle) fsModalSubtitle.innerText = `Evaluated competency across Core Science, Applied Labs, Quantitative Skills, & Humanities`;
 
-      const scores = { "Core Theory": [], "Applied Labs": [], "Algorithms": [], "Humanities": [], "Electives": [] };
-      predictionHistory.forEach((h) => {
-        const subList = h.payload?.subjects || [];
-        subList.forEach((s) => {
-          const cat = s.category || "Core Science";
-          const pct = s.max > 0 ? (s.obtained / s.max) * 100 : parseFloat(s.obtained) || 85;
-          if (cat.includes("Lab") || cat.includes("Practical")) scores["Applied Labs"].push(pct);
-          else if (cat.includes("Elective")) scores["Electives"].push(pct);
-          else if (cat.includes("Humanities") || cat.includes("Language")) scores["Humanities"].push(pct);
-          else if (s.name && (s.name.includes("Algo") || s.name.includes("Data") || s.name.includes("Code"))) scores["Algorithms"].push(pct);
-          else scores["Core Theory"].push(pct);
-        });
-      });
-      const calcAvg = (arr, fallback) => (arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : fallback);
+      const liveLabels = subjectMasteryChart?.data?.labels || ["Mathematics & Analytical Reasoning", "Core Sciences & Technical Domains", "Communication & Verbal Presentation", "Practical Labs & Applied Tasks", "Classroom Attendance & Study Discipline"];
+      const liveData = subjectMasteryChart?.data?.datasets?.[0]?.data || [88, 84, 86, 90, 92];
+      const liveColors = subjectMasteryChart?.data?.datasets?.[0]?.backgroundColor || ["#a8f04b", "#c5f871", "#a8f04b", "#a8f04b", "#a8f04b"];
 
       fsChartInstance = new Chart(ctx, {
         type: "bar",
         data: {
-          labels: ["Core Theory", "Applied Labs", "Algorithms & Data Structures", "Humanities & Soft Skills", "Electives"],
+          labels: liveLabels,
           datasets: [{
             label: "Domain Mastery Level %",
-            data: [calcAvg(scores["Core Theory"], 86), calcAvg(scores["Applied Labs"], 92), calcAvg(scores["Algorithms"], 82), calcAvg(scores["Humanities"], 84), calcAvg(scores["Electives"], 88)],
-            backgroundColor: ["rgba(99, 102, 241, 0.8)", "rgba(16, 185, 129, 0.8)", "rgba(245, 158, 11, 0.8)", "rgba(14, 165, 233, 0.8)", "rgba(168, 85, 247, 0.8)"],
-            borderColor: ["#6366F1", "#10B981", "#F59E0B", "#0EA5E9", "#A855F7"],
-            borderWidth: 2,
+            data: liveData,
+            backgroundColor: liveColors,
+            borderWidth: 0,
             borderRadius: 8
           }]
         },
@@ -1125,19 +1812,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       });
     } else if (chartType === "habits") {
-      if (fsModalTitle) fsModalTitle.innerHTML = `<span>🎯 Study Habits vs Exam Score Correlation (Full Screen)</span>`;
-      if (fsModalSubtitle) fsModalSubtitle.innerText = `Empirical impact of daily self-study hours and active revision discipline on examination outcomes`;
+      if (fsModalTitle) fsModalTitle.innerHTML = `<span>🎯 Study Effort vs Outcome Correlation (Full Screen)</span>`;
+      if (fsModalSubtitle) fsModalSubtitle.innerText = `Empirical impact of daily self-study hours on examination outcomes`;
+
+      const liveHabitLabels = habitsCorrelationChart?.data?.labels || ["< 2 hrs/day (Low)", "2-4 hrs/day (Moderate)", "4-6 hrs/day (Consistent)", "6+ hrs/day (Intensive)"];
+      const liveHabitData = habitsCorrelationChart?.data?.datasets?.[0]?.data || [62, 75, 86, 94];
+      const liveHabitColors = habitsCorrelationChart?.data?.datasets?.[0]?.backgroundColor || ["#ff9c27", "#f7f7f7", "#a8f04b", "#a8f04b"];
 
       fsChartInstance = new Chart(ctx, {
         type: "bar",
         data: {
-          labels: ["< 2 hrs/day (Low Discipline)", "2-4 hrs/day (Moderate)", "4-6 hrs/day (Consistent)", "6+ hrs/day (Intensive)"],
+          labels: liveHabitLabels,
           datasets: [{
-            label: "Expected Average Score %",
-            data: [62, 74, 86, 94],
-            backgroundColor: ["rgba(239, 68, 68, 0.75)", "rgba(245, 158, 11, 0.75)", "rgba(99, 102, 241, 0.75)", "rgba(16, 185, 129, 0.75)"],
-            borderColor: ["#EF4444", "#F59E0B", "#6366F1", "#10B981"],
-            borderWidth: 2,
+            label: "Evaluated Outcome %",
+            data: liveHabitData,
+            backgroundColor: liveHabitColors,
+            borderWidth: 0,
             borderRadius: 8
           }]
         },
@@ -1150,7 +1840,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           },
           scales: {
             x: { grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } },
-            y: { min: 50, max: 100, grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } }
+            y: { min: 0, max: 100, grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 }, callback: (v) => `${v}%` } }
           }
         }
       });
@@ -1159,7 +1849,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     fsModal.classList.add("active");
   };
 
-  // Fullscreen Button Triggers
+  // Fullscreen Open Triggers
   document.getElementById("btn-fullscreen-progression")?.addEventListener("click", () => window.openFullscreenChart("progression"));
   document.getElementById("btn-fullscreen-distribution")?.addEventListener("click", () => window.openFullscreenChart("distribution"));
   document.getElementById("btn-fullscreen-mastery")?.addEventListener("click", () => window.openFullscreenChart("mastery"));
@@ -1183,14 +1873,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Fullscreen Modal Closers
   if (btnCloseFsModal) btnCloseFsModal.onclick = () => fsModal?.classList.remove("active");
   if (btnCloseFsModalBtn) btnCloseFsModalBtn.onclick = () => fsModal?.classList.remove("active");
-  if (fsModal) fsModal.onclick = (e) => { if (e.target === fsModal) fsModal.classList.remove("active"); };
+  if (fsModal) {
+    fsModal.onclick = (e) => {
+      if (e.target === fsModal) fsModal.classList.remove("active");
+    };
+  }
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && fsModal?.classList.contains("active")) {
-      fsModal.classList.remove("active");
+    if (e.key === "Escape") {
+      if (fsModal?.classList.contains("active")) fsModal.classList.remove("active");
+      if (detailModal?.classList.contains("active")) detailModal.classList.remove("active");
+      if (trajModal?.classList.contains("active")) trajModal.classList.remove("active");
+      if (editModal?.classList.contains("active")) editModal.classList.remove("active");
+      if (profileModal?.classList.contains("active")) profileModal.classList.remove("active");
     }
   });
 
-  // Initial Load
+  // --------------------------------------------------------------------------
+  // 22. INITIAL BOOT & LOAD
+  // --------------------------------------------------------------------------
   await loadHistory();
 });

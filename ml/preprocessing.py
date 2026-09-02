@@ -69,30 +69,30 @@ def get_performance_badge(stage: str, score: float) -> Tuple[str, str, str]:
             )
 
     elif stage == "secondary":
-        # 20-point G3 scale
-        if score >= 16.0:
+        # Percentage scale (0 - 100%) for Class 5 to Class 8
+        if score >= 80.0:
             return (
                 "Exemplary",
                 "badge-success",
-                "Excellent mastery of secondary curriculum. Top quintile performance."
+                "Excellent mastery of secondary curriculum (Class 5-8). High probability of distinction in next grade."
             )
-        elif score >= 12.0:
+        elif score >= 65.0:
             return (
                 "On Track",
                 "badge-primary",
-                "Above average performance. Steady mastery of secondary school modules."
+                "Solid academic progress. Meeting standard middle school competency benchmarks."
             )
-        elif score >= 10.0:
+        elif score >= 50.0:
             return (
                 "At Risk",
                 "badge-warning",
-                "Borderline pass. Review fundamental coursework and improve attendance."
+                "Passing score range. Suggest reinforcing fundamental concepts before next term."
             )
         else:
             return (
                 "Critical Intervention Needed",
                 "badge-danger",
-                "Failing range. Mandatory academic intervention and parental consultation recommended."
+                "Significant academic gaps. Individualized remediation and parent-teacher consultation recommended."
             )
 
     elif stage == "primary":

@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Cohort Analytics & Visualizations | EduMetrics AI</title>
+  
+  <!-- Unified Futuristic Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js CDN & Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Unified Dark Futuristic Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/prediction.css">
+</head>
+<body>
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="app-viewport">
+    <!-- FLOATING DASHBOARD PANEL SHELL -->
+    <div class="dashboard-shell">
+      
+      <!-- 1. TOP NAVBAR -->
+      <header class="top-navbar">
+        <div class="navbar-brand-group">
+          <a href="teacher-dashboard.html" class="brand-logo-badge" title="EduMetrics Instructor Portal">
+            TP
+          </a>
+        </div>
+
+        <!-- Upper Right User Identity Block -->
+        <div class="navbar-user-block" id="user-profile-btn" title="Profile & Account Settings">
+          <div class="user-status-indicator"></div>
+          <div class="user-text-meta">
+            <div class="user-display-name" id="teacher-name">Instructor Portal</div>
+            <div class="user-subrole" id="teacher-id-code">TCH-2026-001</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- 2. SHELL BODY: LEFT UTILITY RAIL + MAIN CONTENT CANVAS -->
+      <div class="shell-body-wrapper">
+        <!-- Left Action Rail -->
+        <aside class="left-action-rail">
+          <div class="action-rail-stack">
+            <a href="teacher-dashboard.html" class="rail-icon-btn" title="Class Dashboard">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+              <span class="rail-label">Dashboard</span>
+            </a>
+            <a href="teacher-prediction.html" class="rail-icon-btn" title="Teacher Prediction Suite">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span class="rail-label">Forecast</span>
+            </a>
+            <a href="teacher-analytics.html" class="rail-icon-btn active" title="Cohort Analytics & Visualizations">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span class="rail-label">Analytics</span>
+            </a>
+            <button type="button" class="rail-icon-btn" id="rail-profile-btn" title="Profile & Account Settings">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span class="rail-label">Profile</span>
+            </button>
+            <button type="button" class="rail-icon-btn" id="logout-btn" title="Sign Out">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span class="rail-label">Logout</span>
+            </button>
+          </div>
+        </aside>
+
+        <!-- Main Content Canvas -->
+        <main class="main-content-canvas">
+          <!-- Top Row: Page Title & Global Actions -->
+          <div class="dashboard-top-row">
+            <div>
+              <h1 class="page-title-display" style="font-size: 32px; letter-spacing: 0.04em;">
+                COHORT ACADEMIC ANALYTICS & VISUALIZATIONS
+              </h1>
+              <p style="color: var(--text-muted); font-size: 13.5px; margin-top: 4px;">
+                Comprehensive cohort-level telemetry: academic benchmarks, behavioral matrix, communication scores, course mastery, and AI predictive risk stratification.
+              </p>
+            </div>
+            <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
+              <a href="teacher-prediction.html" class="btn btn-primary btn-sm">
+                <span>⚡ Evaluate Student</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="analytics-container">
+            
+            <!-- Quick Summary Stat Cards (4-Column Bento Strip) -->
+            <div class="kpi-quad-grid" style="margin-bottom: var(--space-6);">
+              <div class="card kpi-card">
+                <div class="kpi-label">Total Evaluated Cohort</div>
+                <div class="kpi-value-row">
+                  <div class="kpi-value" id="t-kpi-cohort-total">0</div>
+                  <div class="kpi-icon-container" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">👥</div>
+                </div>
+                <div class="kpi-meta" id="t-kpi-cohort-stages-meta">Across active education tiers</div>
+              </div>
+
+              <div class="card kpi-card">
+                <div class="kpi-label">Cohort Mean Score</div>
+                <div class="kpi-value-row">
+                  <div class="kpi-value" id="t-kpi-cohort-avg" style="color: var(--color-lime);">--</div>
+                  <div class="kpi-icon-container" style="background: rgba(168, 240, 75, 0.12); color: var(--color-lime);">🎯</div>
+                </div>
+                <div class="kpi-meta" id="t-kpi-cohort-gpa-meta">-- GPA equivalent</div>
+              </div>
+
+              <div class="card kpi-card">
+                <div class="kpi-label">Projected Pass & Mastery</div>
+                <div class="kpi-value-row">
+                  <div class="kpi-value" id="t-kpi-cohort-pass" style="color: var(--accent-emerald);">--</div>
+                  <div class="kpi-icon-container" style="background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald);">🏆</div>
+                </div>
+                <div class="kpi-meta" id="t-kpi-cohort-pass-meta">Meeting graduation benchmark</div>
+              </div>
+
+              <div class="card kpi-card">
+                <div class="kpi-label">Intervention Risk Needed</div>
+                <div class="kpi-value-row">
+                  <div class="kpi-value" id="t-kpi-cohort-risk" style="color: var(--accent-rose);">0</div>
+                  <div class="kpi-icon-container" style="background: rgba(244, 63, 94, 0.12); color: var(--accent-rose);">⚠️</div>
+                </div>
+                <div class="kpi-meta" id="t-kpi-cohort-risk-meta">Targeted pedagogical support</div>
+              </div>
+            </div>
+
+            <!-- Cohort Analytical Control & Filtering Toolbar -->
+            <div class="card" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-5); display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="t-filter-stage" style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Stage:</label>
+                <select id="t-filter-stage" class="form-select" style="padding: 6px 12px; font-size: 12.5px; min-width: 190px;">
+                  <option value="all" selected>All Education Levels</option>
+                  <option value="university">University Level</option>
+                  <option value="intermediate">Intermediate (HSSC)</option>
+                  <option value="matric">Matriculation (SSC)</option>
+                  <option value="secondary">Middle / Secondary</option>
+                  <option value="primary">Primary School</option>
+                </select>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="t-filter-risk" style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Risk Status:</label>
+                <select id="t-filter-risk" class="form-select" style="padding: 6px 12px; font-size: 12.5px; min-width: 180px;">
+                  <option value="all" selected>All Standing Levels</option>
+                  <option value="exemplary">Exemplary / Honors</option>
+                  <option value="on_track">On Track / Proficient</option>
+                  <option value="moderate">Moderate Attention</option>
+                  <option value="high_risk">High Risk / Remedial</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- ================================================================
+                 SECTION 1: 2-CHART PRIMARY ACADEMIC TELEMETRY
+                 ================================================================ -->
+            <div class="analytics-main-grid" style="margin-bottom: var(--space-6);">
+              
+              <!-- Chart 1: Student Score & Coursework Distribution -->
+              <div class="card chart-card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                      <span>Student Academic Performance & Coursework Distribution</span>
+                    </h2>
+                    <div class="card-subtitle">Comparative audit of predicted performance vs continuous coursework average</div>
+                  </div>
+                  <div style="display: flex; gap: var(--space-2); align-items: center;">
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-fs-scores" title="Fullscreen Theater">
+                      <span>⛶ Fullscreen</span>
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-png-scores" title="Save Chart as PNG">
+                      <span>🖼️ Save PNG</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Live High-Contrast Class Benchmark Bar -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; padding: 10px 14px; background: rgba(0,0,0,0.35); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); text-align: center;">
+                  <div>
+                    <div style="font-size: 10.5px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Cohort Top Score</div>
+                    <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);" id="cohort-top-score">--</div>
+                  </div>
+                  <div style="border-left: 1px solid rgba(255,255,255,0.08); border-right: 1px solid rgba(255,255,255,0.08);">
+                    <div style="font-size: 10.5px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Class Average</div>
+                    <div style="font-size: 16px; font-weight: 800; color: #ffffff;" id="cohort-mid-score">--</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 10.5px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Lowest Milestone</div>
+                    <div style="font-size: 16px; font-weight: 800; color: var(--accent-rose);" id="cohort-low-score">--</div>
+                  </div>
+                </div>
+
+                <div class="chart-canvas-wrapper" style="min-height: 300px;">
+                  <canvas id="tChartStudentScores"></canvas>
+                </div>
+              </div>
+
+              <!-- Chart 2: Cohort Grade & Risk Stratification -->
+              <div class="card chart-card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                      <span>Cohort Grade Standing & Risk Stratification</span>
+                    </h2>
+                    <div class="card-subtitle">Evaluated students categorized across calibrated academic performance bands</div>
+                  </div>
+                  <div style="display: flex; gap: var(--space-2); align-items: center;">
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-fs-risk" title="Fullscreen Theater">
+                      <span>⛶ Fullscreen</span>
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-png-risk" title="Save Chart as PNG">
+                      <span>🖼️ Save PNG</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="chart-canvas-wrapper" style="min-height: 300px;">
+                  <canvas id="tChartRiskDonut"></canvas>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-secondary);">
+                  <div>🟢 <strong style="color:var(--color-lime);">Exemplary:</strong> ≥80% (≥3.5 CGPA)</div>
+                  <div>🟢 <strong style="color:#10b981;">On Track:</strong> 70–79% (3.0–3.49)</div>
+                  <div>🟡 <strong style="color:#fb923c;">Moderate:</strong> 55–69% (2.5–2.99)</div>
+                  <div>🔴 <strong style="color:#f43f5e;">High Risk:</strong> &lt;55% (&lt;2.5 CGPA)</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- ================================================================
+                 SECTION 2: 2-CHART BEHAVIORAL & COURSEWORK MASTERY MATRIX
+                 ================================================================ -->
+            <div class="analytics-deep-grid" style="margin-bottom: var(--space-6);">
+              
+              <!-- Chart 3: Instructor Multi-Dimensional Behavioral Radar -->
+              <div class="card chart-card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      <span>Cohort Behavioral & Soft-Skills Radar Matrix</span>
+                    </h2>
+                    <div class="card-subtitle">Synthesis of instructor qualitative assessments: focus, presentation, discipline & attendance</div>
+                  </div>
+                  <div style="display: flex; gap: var(--space-2); align-items: center;">
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-fs-radar" title="Fullscreen Theater">
+                      <span>⛶ Fullscreen</span>
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-png-radar" title="Save Chart as PNG">
+                      <span>🖼️ Save PNG</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="chart-canvas-wrapper" style="min-height: 300px;">
+                  <canvas id="tChartBehaviorRadar"></canvas>
+                </div>
+
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; padding: 0 4px;" id="behavior-radar-caption">
+                  💡 Maps cohort averages across key behavioral competencies. Balanced polygon area signifies high engagement and self-directed academic discipline.
+                </div>
+              </div>
+
+              <!-- Chart 4: Coursework Pillar Mastery Breakdown -->
+              <div class="card chart-card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                      <span>Coursework Pillar Mastery: Theory vs Quizzes vs Assignments</span>
+                    </h2>
+                    <div class="card-subtitle">Continuous assessment audit revealing conceptual theory strengths vs practical assignment mastery</div>
+                  </div>
+                  <div style="display: flex; gap: var(--space-2); align-items: center;">
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-fs-mastery" title="Fullscreen Theater">
+                      <span>⛶ Fullscreen</span>
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-png-mastery" title="Save Chart as PNG">
+                      <span>🖼️ Save PNG</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="chart-canvas-wrapper" style="min-height: 300px;">
+                  <canvas id="tChartComponentMastery"></canvas>
+                </div>
+
+                <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 12px; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 11.5px;">
+                  <div>📝 <strong style="color:var(--color-lime);">Theory Exams:</strong> <span id="mastery-theory-val">--%</span></div>
+                  <div>⏱️ <strong style="color:var(--color-blue);">Quizzes & Tests:</strong> <span id="mastery-quiz-val">--%</span></div>
+                  <div>📁 <strong style="color:var(--color-orange);">Assignments:</strong> <span id="mastery-assign-val">--%</span></div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- ================================================================
+                 SECTION 3: EVALUATED COHORT MASTER DIAGNOSTIC LEDGER TABLE
+                 ================================================================ -->
+            <section class="card" style="margin-bottom: var(--space-6);">
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3); border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--space-4); margin-bottom: var(--space-4);">
+                <div>
+                  <h2 class="card-title" style="margin: 0;">
+                    <span>📋 Evaluated Cohort Diagnostic Ledger</span>
+                  </h2>
+                  <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Comprehensive roster of all individually evaluated students with AI forecasts and behavioral profiles.
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
+                  <span class="badge badge-neutral" id="ledger-count-badge">0 Students Recorded</span>
+                  <a href="teacher-prediction.html" class="btn btn-primary btn-sm" id="btn-add-cohort-student">
+                    <span>➕ Evaluate Student (Run AI)</span>
+                  </a>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="data-table" id="cohort-master-table">
+                  <thead>
+                    <tr>
+                      <th>Roll / ID</th>
+                      <th>Student Name</th>
+                      <th>Stage</th>
+                      <th>Coursework</th>
+                      <th>AI Prediction</th>
+                      <th>Standing Badge</th>
+                      <th>Behavioral Highlights</th>
+                      <th>Rating</th>
+                      <th style="text-align: right;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cohort-master-tbody">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULLSCREEN THEATER MODAL -->
+  <div class="modal-backdrop" id="analytics-fullscreen-modal">
+    <div class="modal-dialog" style="max-width: 1040px; height: 86vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding: var(--space-4) var(--space-6);">
+        <div>
+          <h2 class="modal-title" id="fs-modal-title" style="font-size: var(--font-size-lg); font-weight: 700; color: #ffffff; margin: 0;">
+            Cohort Analytical Chart
+          </h2>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="fs-modal-subtitle">
+            High-Resolution Visualization Theater
+          </div>
+        </div>
+        <div style="display: flex; gap: var(--space-2); align-items: center;">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-fs-download-png">
+            <span>🖼️ Download High-Res PNG</span>
+          </button>
+          <button class="btn-icon" id="btn-close-fs-modal" style="font-size: 20px;">&times;</button>
+        </div>
+      </div>
+
+      <div style="flex: 1; padding: var(--space-6); position: relative; min-height: 0; display: flex; flex-direction: column; background: radial-gradient(circle at center, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);">
+        <div style="flex: 1; width: 100%; position: relative; min-height: 380px;">
+          <canvas id="fullscreenChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <div style="padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--bg-card); display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 12px; color: var(--text-secondary);" id="fs-modal-note">
+          💡 Tip: Hover or tap on individual data points for exact academic metrics and confidence intervals.
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-close-fs-modal-btn">Exit Full Screen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Settings Modal -->
+  <div class="modal-backdrop" id="profile-settings-modal">
+    <div class="modal-dialog profile-settings-dialog">
+      <div class="profile-modal-header">
+        <div class="profile-header-meta">
+          <div class="profile-avatar-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-lime)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div>
+            <h2 class="profile-modal-title">Instructor Profile & Settings</h2>
+            <div class="profile-modal-subtitle">Manage instructor credentials, department, and account security</div>
+          </div>
+        </div>
+        <button type="button" class="profile-close-btn" id="btn-close-profile-modal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="profile-tabs-bar">
+        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
+          <span>Instructor Profile</span>
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
+          <span>Security</span>
+        </button>
+        <button type="button" class="modal-tab-btn danger-tab" data-tab="tab-profile-danger">
+          <span>Danger Zone</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: General Details -->
+      <div class="profile-tab-content active" id="tab-profile-general">
+        <form id="profile-details-form">
+          <div class="profile-section-card">
+            <div class="profile-section-heading">Instructor Identification</div>
+            
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+              <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
+              <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Dr. Muhammad Farooq" required>
+            </div>
+
+            <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+              <div class="form-group">
+                <label class="form-label" for="setting-studentid">
+                  Teacher ID Code <span class="badge-fixed-tag">🔒 Fixed</span>
+                </label>
+                <div class="fixed-input-wrapper">
+                  <input type="text" id="setting-studentid" class="form-input readonly-fixed-input" placeholder="TCH-2026-001" readonly>
+                </div>
+                <div class="field-hint-text">Faculty registration ID. Immutable.</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="setting-department">Department / Faculty</label>
+                <input type="text" id="setting-department" class="form-input" placeholder="e.g. Computer Science / AI">
+                <div class="field-hint-text">Your academic department.</div>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-2);">
+              <label class="form-label" for="setting-institution">Institution Name</label>
+              <input type="text" id="setting-institution" class="form-input" placeholder="e.g. Faculty of Engineering">
+              <div class="field-hint-text">Your registered university or college.</div>
+            </div>
+          </div>
+
+          <div class="profile-action-row" style="margin-top: var(--space-4);">
+            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
+              💾 Save Instructor Profile
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 2: Security -->
+      <div class="profile-tab-content" id="tab-profile-security" style="display: none;">
+        <form id="profile-security-form">
+          <div class="profile-section-card">
+            <div class="profile-section-heading">Password & Authentication</div>
+            
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+              <label class="form-label" for="setting-new-password">New Password</label>
+              <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password" value="">
+            </div>
+
+            <div class="form-group" style="margin-bottom: var(--space-2);">
+              <label class="form-label" for="setting-confirm-password">Confirm New Password</label>
+              <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter new password to confirm" required autocomplete="new-password" value="">
+            </div>
+          </div>
+
+          <div class="profile-action-row" style="margin-top: var(--space-4);">
+            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
+              🔒 Update Password Securely
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 3: Danger Zone -->
+      <div class="profile-tab-content" id="tab-profile-danger" style="display: none;">
+        <div class="danger-zone-card">
+          <div class="danger-zone-header">
+            <span class="danger-icon">⚠️</span>
+            <div>
+              <div class="danger-title">Permanent Instructor Account Deletion</div>
+              <div class="danger-desc">
+                Permanently deletes your instructor profile, credentials, and saved cohort analytics.
+              </div>
+            </div>
+          </div>
+
+          <div class="danger-warning-note">
+            This action cannot be undone. Your instructor account will be permanently removed from Supabase.
+          </div>
+
+          <button type="button" class="btn btn-danger" id="btn-delete-account-confirm" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
+            🗑️ Permanently Delete My Account
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 1: VIEW STUDENT DIAGNOSTIC DOSSIER (READ)
+       ====================================================================== -->
+  <div class="modal-backdrop" id="modal-view-cohort-student">
+    <div class="modal-dialog" style="max-width: 680px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="view-modal-student-name">Student Diagnostic Dossier</h2>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="view-modal-meta">Roll / ID: -- • Stage: --</div>
+        </div>
+        <button type="button" class="btn-icon" id="btn-close-view-modal">&times;</button>
+      </div>
+
+      <div style="padding: var(--space-5) var(--space-6); overflow-y: auto; flex: 1;">
+        <!-- Top Metrics Bento Grid -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: var(--space-5);">
+          <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 12px 14px;">
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">AI Projected Score</div>
+            <div style="font-family: var(--font-family-display); font-size: 24px; font-weight: 800; color: var(--color-lime);" id="view-diag-score">--</div>
+          </div>
+          <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 12px 14px;">
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">Forecasted Grade</div>
+            <div style="font-family: var(--font-family-display); font-size: 20px; font-weight: 800; color: var(--text-primary);" id="view-diag-grade">--</div>
+          </div>
+          <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 12px 14px;">
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">Coursework Avg</div>
+            <div style="font-family: var(--font-family-display); font-size: 24px; font-weight: 800; color: var(--color-blue);" id="view-diag-coursework">--</div>
+          </div>
+        </div>
+
+        <!-- Behavioral Telemetry Pills -->
+        <div style="margin-bottom: var(--space-5);">
+          <div style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
+            🧠 Instructor Qualitative & Behavioral Profile
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+            <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 10px 12px; display: flex; justify-content: space-between;">
+              <span style="font-size: 12px; color: var(--text-muted);">🎯 Classroom Focus:</span>
+              <strong style="color: var(--color-lime); font-size: 12.5px;" id="view-diag-focus">--</strong>
+            </div>
+            <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 10px 12px; display: flex; justify-content: space-between;">
+              <span style="font-size: 12px; color: var(--text-muted);">🗣️ Verbal Presentation:</span>
+              <strong style="color: var(--color-blue); font-size: 12.5px;" id="view-diag-comm">--</strong>
+            </div>
+            <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 10px 12px; display: flex; justify-content: space-between;">
+              <span style="font-size: 12px; color: var(--text-muted);">🤝 Conduct & Discipline:</span>
+              <strong style="color: var(--color-lime); font-size: 12.5px;" id="view-diag-behavior">--</strong>
+            </div>
+            <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 10px 12px; display: flex; justify-content: space-between;">
+              <span style="font-size: 12px; color: var(--text-muted);">🛠️ Support Need:</span>
+              <strong style="color: var(--color-orange); font-size: 12.5px;" id="view-diag-need">--</strong>
+            </div>
+            <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 10px 12px; display: flex; justify-content: space-between;">
+              <span style="font-size: 12px; color: var(--text-muted);">📅 Attendance Rate:</span>
+              <strong style="color: var(--text-primary); font-size: 12.5px;" id="view-diag-att">--%</strong>
+            </div>
+            <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 10px 12px; display: flex; justify-content: space-between;">
+              <span style="font-size: 12px; color: var(--text-muted);">⭐ Faculty Rating:</span>
+              <strong style="color: #facc15; font-size: 12.5px;" id="view-diag-rating">-- ⭐</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Evaluated Courses Breakdown Table -->
+        <div style="margin-bottom: var(--space-5);">
+          <div style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
+            📚 Evaluated Course Modules
+          </div>
+          <div class="table-responsive" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-input);">
+            <table class="data-table" style="font-size: 12px;">
+              <thead>
+                <tr>
+                  <th>Course Title</th>
+                  <th>Theory Exam</th>
+                  <th>Quiz Marks</th>
+                  <th>Assignments</th>
+                  <th style="text-align: right;">Total %</th>
+                </tr>
+              </thead>
+              <tbody id="view-diag-courses-tbody">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pedagogical Action Plan -->
+        <div style="background: var(--color-surface-base); border: 1px solid var(--color-lime-border); border-left: 4px solid var(--color-lime); border-radius: var(--radius-input); padding: 12px 16px;">
+          <div style="font-family: var(--font-family-display); font-size: 13.5px; font-weight: 800; text-transform: uppercase; color: var(--color-lime); margin-bottom: 4px;">
+            💡 Pedagogical Intervention Strategy & Action Plan
+          </div>
+          <div style="font-size: 12.5px; color: var(--text-primary); line-height: 1.6;" id="view-diag-strategy">
+            --
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--color-surface-base); display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-close-view-modal-bottom">Close</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-view-to-edit">✏️ Edit</button>
+          <a href="#" class="btn btn-primary btn-sm" id="btn-view-to-predict">⚡ Run AI</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 2: EDIT STUDENT EVALUATION (UPDATE)
+       ====================================================================== -->
+  <div class="modal-backdrop" id="modal-edit-cohort-student">
+    <div class="modal-dialog" style="max-width: 640px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">✏️ Edit Student Diagnostic Evaluation</h2>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Modify student academic records and re-calibrate forecasts</div>
+        </div>
+        <button type="button" class="btn-icon" id="btn-close-edit-modal">&times;</button>
+      </div>
+
+      <form id="edit-cohort-student-form" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <div style="padding: var(--space-5) var(--space-6); overflow-y: auto; flex: 1;">
+          <input type="hidden" id="edit-original-id">
+
+          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 14px; margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="edit-student-id">Student Roll / ID <span class="badge-fixed-tag">🔒 Fixed</span></label>
+              <input type="text" id="edit-student-id" class="form-input readonly-fixed-input" readonly>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-student-name">Student Full Name <span style="color: var(--color-lime);">*</span></label>
+              <input type="text" id="edit-student-name" class="form-input" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="edit-student-stage">Academic Stage <span style="color: var(--color-lime);">*</span></label>
+              <select id="edit-student-stage" class="form-select" required>
+                <option value="university">University</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="matric">Matriculation</option>
+                <option value="secondary">Secondary</option>
+                <option value="primary">Primary</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-attendance">Classroom Attendance (%) <span style="color: var(--color-lime);">*</span></label>
+              <input type="number" id="edit-attendance" class="form-input" min="0" max="100" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="edit-attentive">Classroom Focus</label>
+              <select id="edit-attentive" class="form-select">
+                <option value="High">High (Focused & vigilant)</option>
+                <option value="Moderate">Moderate (Attentive with occasional lapses)</option>
+                <option value="Low">Low (Easily distracted)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-comm-skill">Verbal & Presentation</label>
+              <select id="edit-comm-skill" class="form-select">
+                <option value="Exceptional">Exceptional (Clear & confident)</option>
+                <option value="Good">Good (Effective communicator)</option>
+                <option value="Developing">Developing (Average verbal delivery)</option>
+                <option value="Needs Support">Needs Support</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="edit-behavior">Discipline & Conduct</label>
+              <select id="edit-behavior" class="form-select">
+                <option value="Exemplary">Exemplary (Positive standard)</option>
+                <option value="Cooperative">Cooperative (Collaborative)</option>
+                <option value="Needs Guidance">Needs Guidance</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-academic-need">Academic Support Need</label>
+              <select id="edit-academic-need" class="form-select">
+                <option value="Independent">Independent Learner</option>
+                <option value="Moderate">Moderate Support</option>
+                <option value="High">Intensive Remedial Support</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: var(--space-4);">
+            <div class="form-group">
+              <label class="form-label" for="edit-rating">Instructor Rating</label>
+              <select id="edit-rating" class="form-select">
+                <option value="5.0">⭐⭐⭐⭐⭐ 5.0 (Exemplary)</option>
+                <option value="4.0">⭐⭐⭐⭐ 4.0 (Proficient)</option>
+                <option value="3.0">⭐⭐⭐ 3.0 (Capable)</option>
+                <option value="2.0">⭐⭐ 2.0 (Needs Support)</option>
+                <option value="1.0">⭐ 1.0 (At Risk)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-predicted-score">Calibrated Score / CGPA</label>
+              <input type="number" step="0.01" id="edit-predicted-score" class="form-input" placeholder="e.g. 3.65 or 82.5">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-strategy">Pedagogical Notes / Strategy</label>
+            <textarea id="edit-strategy" class="form-input" rows="2" placeholder="Enter instructional action plan or notes..."></textarea>
+          </div>
+        </div>
+
+        <div style="padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--color-surface-base); display: flex; justify-content: flex-end; gap: var(--space-3);">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-edit-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-edit-student">
+            <span>💾 Save & Recalculate Cohort</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 3: DELETE STUDENT EVALUATION (DELETE)
+       ====================================================================== -->
+  <div class="modal-backdrop" id="modal-delete-cohort-student">
+    <div class="modal-dialog" style="max-width: 460px;">
+      <div class="modal-header" style="border-bottom: 1px solid rgba(248, 113, 113, 0.2);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 20px;">🗑️</span>
+          <h2 class="modal-title" style="color: var(--color-red);">Delete Evaluation Record</h2>
+        </div>
+        <button type="button" class="btn-icon" id="btn-close-delete-modal">&times;</button>
+      </div>
+
+      <div style="padding: var(--space-5) var(--space-6);">
+        <p style="font-size: 14px; color: var(--text-primary); margin: 0 0 12px 0;">
+          Are you sure you want to permanently remove the evaluation record for:
+        </p>
+        <div style="background: var(--color-control); border: 1px solid var(--border-control); border-radius: var(--radius-input); padding: 12px 14px; margin-bottom: 14px;">
+          <div style="font-weight: 800; color: #ffffff; font-size: 15px;" id="delete-target-name">Student Name</div>
+          <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-family-mono); margin-top: 2px;" id="delete-target-id">ID: --</div>
+        </div>
+        <p style="font-size: 12.5px; color: var(--text-secondary); margin: 0; line-height: 1.5;">
+          This will permanently delete this student's forecast from your cohort database and automatically re-calibrate all cohort metrics, averages, and charts.
+        </p>
+      </div>
+
+      <div style="padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--color-surface-base); display: flex; justify-content: flex-end; gap: var(--space-3);">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-delete-modal">Cancel</button>
+        <button type="button" class="btn btn-danger btn-sm" id="btn-confirm-delete-student">
+          <span>🗑️ Confirm Delete</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="js/supabase-client.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/teacher-analytics.js"></script>
+</body>
+</html>

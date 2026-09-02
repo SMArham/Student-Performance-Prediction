@@ -46,8 +46,7 @@ class SupabaseAuthClient {
             user_metadata: {
               full_name: "Muhammad Ali",
               role: "student",
-              stage: "university",
-              avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli"
+              stage: "university"
             }
           },
           "student@example.com": {
@@ -57,8 +56,7 @@ class SupabaseAuthClient {
             user_metadata: {
               full_name: "Muhammad Ali",
               role: "student",
-              stage: "university",
-              avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli"
+              stage: "university"
             }
           },
           "arham@university.edu": {
@@ -68,8 +66,7 @@ class SupabaseAuthClient {
             user_metadata: {
               full_name: "Syed Muhammad Arham",
               role: "student",
-              stage: "university",
-              avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Arham"
+              stage: "university"
             }
           }
         };
@@ -100,17 +97,26 @@ class SupabaseAuthClient {
   async signUp(email, password, metadata = {}) {
     const cleanEmail = (email || "").trim().toLowerCase();
     const cleanName = metadata.full_name || cleanEmail.split("@")[0] || "Student";
-    const avatarUrl = metadata.avatar_url || (window.getSmartAvatar ? window.getSmartAvatar(cleanName, metadata.gender) : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanName)}`);
+
+    const autoId = metadata.student_id || metadata.id_code || (metadata.role === "teacher" ? `TCH-2026-${Math.floor(100 + Math.random() * 900)}` : `STU-2026-${Math.floor(100 + Math.random() * 900)}`);
+    const programName = metadata.program || metadata.major || "Software Engineering";
+    const institutionName = metadata.institution_name || metadata.institution || "Faculty of Engineering";
 
     const userObj = {
       id: "usr-" + Math.random().toString(36).substring(2, 9),
       email: cleanEmail,
       user_metadata: {
+        ...metadata,
         full_name: cleanName,
         role: metadata.role || "student",
         stage: metadata.stage || "university",
-        gender: metadata.gender || "auto",
-        avatar_url: avatarUrl
+        gender: metadata.gender || "male",
+        institution_name: institutionName,
+        institution: institutionName,
+        program: programName,
+        major: programName,
+        student_id: autoId,
+        id_code: autoId
       }
     };
 
@@ -137,13 +143,20 @@ class SupabaseAuthClient {
 
         if (!error && data?.user) {
           userObj.id = data.user.id;
+          const mergedUser = {
+            ...data.user,
+            user_metadata: {
+              ...userObj.user_metadata,
+              ...(data.user.user_metadata || {})
+            }
+          };
           if (data.session) {
             localStorage.setItem("sp_auth_token", data.session.access_token);
           } else {
             localStorage.setItem("sp_auth_token", "supabase-token-" + data.user.id);
           }
-          localStorage.setItem("sp_auth_user", JSON.stringify({ ...data.user, user_metadata: userObj.user_metadata }));
-          return data;
+          localStorage.setItem("sp_auth_user", JSON.stringify(mergedUser));
+          return { ...data, user: mergedUser };
         }
       } catch (supabaseErr) {
         console.warn("[Auth] Live Supabase signup fallback to local registry:", supabaseErr);
@@ -159,6 +172,8 @@ class SupabaseAuthClient {
 
   async signIn(email, password) {
     const cleanEmail = (email || "").trim().toLowerCase();
+    const registry = this.getAccountsRegistry();
+    const existingAccount = registry[cleanEmail];
 
     // 1. 1-Click Demo student shortcut
     if (cleanEmail === "demo.student@university.edu" || cleanEmail.includes("demo")) {
@@ -169,7 +184,13 @@ class SupabaseAuthClient {
           full_name: "Muhammad Ali",
           role: "student",
           stage: "university",
-          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=MuhammadAli"
+          gender: "male",
+          program: "Software Engineering",
+          major: "Software Engineering",
+          institution_name: "Faculty of Engineering",
+          institution: "Faculty of Engineering",
+          student_id: "STU-2026-101",
+          id_code: "STU-2026-101"
         }
       };
       const token = "demo-token-001";
@@ -187,9 +208,16 @@ class SupabaseAuthClient {
         });
 
         if (!error && data?.session) {
+          const combinedUser = {
+            ...data.user,
+            user_metadata: {
+              ...(existingAccount?.user_metadata || {}),
+              ...(data.user?.user_metadata || {})
+            }
+          };
           localStorage.setItem("sp_auth_token", data.session.access_token);
-          localStorage.setItem("sp_auth_user", JSON.stringify(data.user));
-          return data;
+          localStorage.setItem("sp_auth_user", JSON.stringify(combinedUser));
+          return { ...data, user: combinedUser };
         }
       } catch (err) {
         console.warn("[Auth] Supabase cloud login notice:", err);
@@ -197,9 +225,6 @@ class SupabaseAuthClient {
     }
 
     // 3. Check persistent registered accounts registry
-    const registry = this.getAccountsRegistry();
-    const existingAccount = registry[cleanEmail];
-
     if (existingAccount) {
       if (existingAccount.password && existingAccount.password !== password) {
         throw new Error("Incorrect password for this student account. Please check your password or use 'Forgot Password'.");
@@ -208,10 +233,18 @@ class SupabaseAuthClient {
       const loggedUser = {
         id: existingAccount.id || ("usr-" + Math.random().toString(36).substring(2, 9)),
         email: cleanEmail,
-        user_metadata: existingAccount.user_metadata || {
+        user_metadata: {
           full_name: cleanEmail.split("@")[0],
           role: "student",
-          stage: "university"
+          stage: "university",
+          gender: "male",
+          program: "Software Engineering",
+          major: "Software Engineering",
+          institution_name: "Faculty of Engineering",
+          institution: "Faculty of Engineering",
+          student_id: `STU-2026-${Math.floor(100 + Math.random() * 900)}`,
+          id_code: `STU-2026-${Math.floor(100 + Math.random() * 900)}`,
+          ...(existingAccount.user_metadata || {})
         }
       };
 
@@ -229,7 +262,13 @@ class SupabaseAuthClient {
         full_name: cleanEmail.split("@")[0].replace(/[\._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
         role: "student",
         stage: "university",
-        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`
+        gender: "male",
+        program: "Software Engineering",
+        major: "Software Engineering",
+        institution_name: "Faculty of Engineering",
+        institution: "Faculty of Engineering",
+        student_id: `STU-2026-${Math.floor(100 + Math.random() * 900)}`,
+        id_code: `STU-2026-${Math.floor(100 + Math.random() * 900)}`
       }
     };
 

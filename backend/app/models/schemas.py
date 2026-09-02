@@ -152,7 +152,7 @@ class StudentInfo(BaseModel):
     user_id: str
     full_name: str
     email: str
-    avatar_url: str
+    avatar_url: Optional[str] = None
     role: str
     stage: str
     student_id_code: str
@@ -183,11 +183,17 @@ class ProgressionChartData(BaseModel):
 class HistoryItem(BaseModel):
     id: str
     stage: str
-    model_name: str
-    model_version: str
+    role: Optional[str] = "student"
+    model_name: Optional[str] = "Predictor"
+    model_version: Optional[str] = "v1.0.0"
+    score: Optional[str] = None
+    formatted_score: Optional[str] = None
     predicted_score: float
-    status_badge: str
-    status_color: str
+    predicted_grade: Optional[str] = None
+    status_badge: str = "Evaluated"
+    status_color: str = "badge-success"
+    payload: Optional[Dict[str, Any]] = None
+    recommendations: Optional[str] = None
     created_at: str
 
 
@@ -213,3 +219,161 @@ class ModelRegistryItem(BaseModel):
     target: str
     features: Dict[str, List[str]]
     trained_at: str
+
+
+# ------------------------------------------------------------------------------
+# Student Management & CRUD Schemas (Teacher Portal)
+# ------------------------------------------------------------------------------
+class StudentCreateRequest(BaseModel):
+    roll_no: str = Field("STU-101", description="Student Roll No / Seat ID")
+    student_name: str = Field("Muhammad Ali", description="Full name of student")
+    email: Optional[str] = Field(None, description="Student email address")
+    stage: str = Field("university", description="Education stage")
+    class_section: str = Field("Section A", description="Class / Section code")
+    subject: str = Field("General Coursework", description="Subject / Program")
+    attendance_pct: float = Field(88.0, ge=0.0, le=100.0, description="Attendance percentage")
+    quiz_test_pct: float = Field(82.0, ge=0.0, le=100.0, description="Quiz and test average %")
+    assignment_pct: float = Field(85.0, ge=0.0, le=100.0, description="Assignment score %")
+    midterm_score: float = Field(78.0, ge=0.0, le=100.0, description="Midterm examination score %")
+    gender: str = Field("male", description="Gender (male/female)")
+    notes: Optional[str] = Field(None, description="Instructor observations and remarks")
+
+
+class StudentUpdateRequest(BaseModel):
+    roll_no: Optional[str] = None
+    student_name: Optional[str] = None
+    email: Optional[str] = None
+    stage: Optional[str] = None
+    class_section: Optional[str] = None
+    subject: Optional[str] = None
+    attendance_pct: Optional[float] = Field(None, ge=0.0, le=100.0)
+    quiz_test_pct: Optional[float] = Field(None, ge=0.0, le=100.0)
+    assignment_pct: Optional[float] = Field(None, ge=0.0, le=100.0)
+    midterm_score: Optional[float] = Field(None, ge=0.0, le=100.0)
+    gender: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class StudentRecord(BaseModel):
+    id: str
+    instructor_id: Optional[str] = None
+    teacher_id: Optional[str] = None
+    roll_no: Optional[str] = "STU-001"
+    student_id_code: Optional[str] = "STU-001"
+    student_name: str
+    email: Optional[str] = None
+    stage: str = "university"
+    class_section: Optional[str] = "Section A"
+    subject: Optional[str] = "General Coursework"
+    attendance_pct: float = 85.0
+    quiz_test_pct: Optional[float] = 80.0
+    assignment_pct: Optional[float] = 80.0
+    midterm_score: Optional[float] = 75.0
+    avg_marks: Optional[float] = 80.0
+    study_hours: Optional[float] = 4.0
+    risk_level: Optional[str] = "Low Risk"
+    predicted_score: Optional[float] = None
+    predicted_grade: Optional[str] = None
+    status_badge: Optional[str] = "Evaluated"
+    status_color: Optional[str] = "badge-success"
+    gender: Optional[str] = "male"
+    notes: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class StudentListResponse(BaseModel):
+    success: bool = True
+    count: int
+    students: List[StudentRecord]
+
+
+class BatchPredictionStudentItem(BaseModel):
+    id: Optional[str] = None
+    roll_no: str
+    student_name: str
+    attendance_pct: float = Field(85.0, ge=0.0, le=100.0)
+    quiz_test_pct: float = Field(80.0, ge=0.0, le=100.0)
+    assignment_pct: float = Field(80.0, ge=0.0, le=100.0)
+    midterm_score: float = Field(75.0, ge=0.0, le=100.0)
+    gender: Optional[str] = "male"
+
+
+class BatchPredictionRequest(BaseModel):
+    stage: str = Field("university", description="Education stage")
+    class_name: str = Field("Section A", description="Class name")
+    subject: str = Field("Computer Science", description="Course name")
+    students: List[BatchPredictionStudentItem]
+
+
+class BatchPredictionResponse(BaseModel):
+    success: bool = True
+    total_evaluated: int
+    class_average: float
+    high_achievers_count: int
+    at_risk_count: int
+    grade_distribution: Dict[str, int]
+    results: List[Dict[str, Any]]
+
+
+class HistoryUpdateRequest(BaseModel):
+    notes: Optional[str] = None
+    status_badge: Optional[str] = None
+
+
+# ------------------------------------------------------------------------------
+# Academic Terms & Historical Semesters Schemas (CRUD)
+# ------------------------------------------------------------------------------
+class AcademicSubjectItem(BaseModel):
+    id: Optional[str] = None
+    subject_name: str
+    subject_category: str = "Theory"  # "Theory" | "Lab"
+    obtained_marks: float = Field(..., ge=0.0)
+    total_marks: float = Field(100.0, gt=0.0)
+    credits: Optional[float] = 3.0
+    grade: Optional[str] = None
+
+
+class AcademicTermCreate(BaseModel):
+    stage: str = Field("university", description="Stage: university, intermediate, secondary, primary")
+    term_name: str = Field(..., description="e.g. Semester 1, Semester 2, Class 6, Class 10 (SSC)")
+    term_order: Optional[int] = 1
+    attendance_pct: Optional[float] = Field(90.0, ge=0.0, le=100.0)
+    study_hours: Optional[float] = Field(4.5, ge=0.0)
+    subjects: List[AcademicSubjectItem] = []
+
+
+class AcademicTermUpdate(BaseModel):
+    term_name: Optional[str] = None
+    term_order: Optional[int] = None
+    attendance_pct: Optional[float] = None
+    study_hours: Optional[float] = None
+    subjects: Optional[List[AcademicSubjectItem]] = None
+
+
+class AcademicTermResponse(BaseModel):
+    id: str
+    stage: str
+    term_name: str
+    term_order: int
+    attendance_pct: float
+    study_hours: float
+    gpa: float
+    cgpa: float
+    total_obtained: float
+    total_max: float
+    percentage: float
+    subjects: List[AcademicSubjectItem]
+    created_at: str
+
+
+class AcademicTermsListResponse(BaseModel):
+    success: bool = True
+    count: int
+    stage: str
+    cumulative_cgpa: float
+    average_attendance: float
+    total_terms_logged: int
+    terms: List[AcademicTermResponse]
+
+

@@ -9,145 +9,180 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================================
   // 1. GLOBAL STATE MANAGEMENT
   // ============================================================================
-  let currentRole = "student"; // 'student' | 'teacher'
+  const currentUser = window.authClient ? window.authClient.getUser() : null;
+  const userMeta = currentUser?.user_metadata || {};
+  if (userMeta.role === "teacher") {
+    window.location.href = "teacher-prediction.html";
+    return;
+  }
+
+  let currentRole = "student";
   let currentStudentStep = 1;  // 1 to 5
   let currentStage = "university"; // 'university' | 'intermediate' | 'matric' | 'secondary' | 'primary'
-  let currentTeacherTool = "individual"; // 'individual' | 'class' | 'upload'
-  let pendingRoleSwitch = null;
   let hasUnsavedFormData = false;
   let activeStudentPrediction = null;
 
-  // Sync Profile & Smart Avatar for Sidebar
+  // Sync Profile Identity
   function syncUserProfile() {
-    const currentUser = window.authClient ? window.authClient.getUser() : null;
-    const meta = currentUser?.user_metadata || {};
-    const displayName = meta.full_name || "Muhammad Ali";
-    const gender = meta.gender || "auto";
-    const studentAvatarEl = document.getElementById("student-avatar");
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const meta = user?.user_metadata || userMeta;
+    const displayName = meta.full_name || (user?.email ? user.email.split("@")[0] : "Muhammad Ali");
     const studentNameEl = document.getElementById("student-name");
     const studentIdCodeEl = document.getElementById("student-id-code");
 
-    function getAvatar(name, gen) {
-      if (typeof window.getSmartAvatar === "function") return window.getSmartAvatar(name, gen);
-      const isFemale = gen === "female" || ["fatima", "ayesha", "sara", "sana", "maryam", "zainab", "hira", "anum", "mahnoor", "noor", "alishba", "dua", "zoya", "kinza", "rabia", "sadia", "laiba", "eman"].some(fn => (name || "").toLowerCase().includes(fn));
-      return isFemale 
-        ? `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
-        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&clothingColor=262e33,3c4f5c,5199e4,25557c,3c443c`;
-    }
-
     if (studentNameEl) studentNameEl.innerText = displayName;
-    if (studentAvatarEl) studentAvatarEl.src = meta.avatar_url || getAvatar(displayName, gender);
-    if (studentIdCodeEl) studentIdCodeEl.innerText = meta.student_id || "SE-2023-049";
+    if (studentIdCodeEl) studentIdCodeEl.innerText = meta.student_id || meta.id_code || "STU-2026-001";
+
+    const words = displayName.trim().split(/\s+/);
+    const initials = words.length > 1
+      ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+      : displayName.slice(0, 2).toUpperCase();
+    const avatarEl = document.getElementById("navbar-user-avatar");
+    if (avatarEl) avatarEl.innerText = initials || "SP";
   }
 
   syncUserProfile();
 
-  // Presets for Academic Subjects by Stage
+  // Initial Academic Subjects Store by Stage (Starts strictly empty for new users)
   const defaultSubjectsStore = {
-    university: [
-      { id: "sub-1", name: "Data Structures & Algorithms", category: "Core Science", term: "Semester 3", obtained: 88, max: 100, credits: 3 },
-      { id: "sub-2", name: "Database Management Systems", category: "Core Science", term: "Semester 3", obtained: 82, max: 100, credits: 3 },
-      { id: "sub-3", name: "Probability & Statistics", category: "General", term: "Semester 3", obtained: 79, max: 100, credits: 3 },
-      { id: "sub-4", name: "Software Engineering Principles", category: "Core Science", term: "Semester 3", obtained: 91, max: 100, credits: 3 }
-    ],
-    intermediate: [
-      { id: "sub-1", name: "Physics (Theory & Practical)", category: "Core Science", term: "HSSC-I", obtained: 74, max: 85, credits: 0 },
-      { id: "sub-2", name: "Chemistry / Computer Science", category: "Core Science", term: "HSSC-I", obtained: 78, max: 85, credits: 0 },
-      { id: "sub-3", name: "Mathematics / Biology", category: "Core Science", term: "HSSC-I", obtained: 89, max: 100, credits: 0 },
-      { id: "sub-4", name: "English Compulsory", category: "Humanities", term: "HSSC-I", obtained: 82, max: 100, credits: 0 }
-    ],
-    matric: [
-      { id: "sub-1", name: "Mathematics (Algebra & Geometry)", category: "Core Science", term: "SSC-I", obtained: 68, max: 75, credits: 0 },
-      { id: "sub-2", name: "Physics", category: "Core Science", term: "SSC-I", obtained: 65, max: 75, credits: 0 },
-      { id: "sub-3", name: "Chemistry", category: "Core Science", term: "SSC-I", obtained: 62, max: 75, credits: 0 },
-      { id: "sub-4", name: "English", category: "Humanities", term: "SSC-I", obtained: 66, max: 75, credits: 0 }
-    ],
-    secondary: [
-      { id: "sub-1", name: "General Science", category: "Core Science", term: "Current Term", obtained: 16, max: 20, credits: 0 },
-      { id: "sub-2", name: "Mathematics", category: "Core Science", term: "Current Term", obtained: 17, max: 20, credits: 0 },
-      { id: "sub-3", name: "English & Social Studies", category: "Humanities", term: "Current Term", obtained: 15, max: 20, credits: 0 }
-    ],
-    primary: [
-      { id: "sub-1", name: "Basic Mathematics & Numbers", category: "Core Science", term: "Current Term", obtained: 88, max: 100, credits: 0 },
-      { id: "sub-2", name: "Reading Comprehension & Phonics", category: "Humanities", term: "Current Term", obtained: 92, max: 100, credits: 0 },
-      { id: "sub-3", name: "General Knowledge & Science", category: "General", term: "Current Term", obtained: 85, max: 100, credits: 0 }
-    ]
+    university: [],
+    intermediate: [],
+    matric: [],
+    secondary: [],
+    primary: []
   };
 
-  // Stage Preset Suggestions for Modal
-  const subjectPresetOptions = {
+  // Stage Preset Suggestions for Modal (Pakistani Curriculum)
+  const stageSubjectPresets = {
     university: [
       "Custom Subject / Course...",
       "Data Structures & Algorithms",
+      "Calculus & Analytical Geometry",
       "Object Oriented Programming",
       "Database Systems",
-      "Linear Algebra & Differential Eq",
       "Computer Networks",
       "Operating Systems",
       "Artificial Intelligence Principles",
-      "Software Quality Assurance"
+      "Software Engineering",
+      "Linear Algebra & Differential Equations",
+      "Technical & Business Report Writing"
     ],
     intermediate: [
       "Custom Subject / Course...",
-      "Physics (Part 1 / 2)",
-      "Chemistry (Part 1 / 2)",
-      "Mathematics (Calculus & Analytic)",
-      "Biology (Botany & Zoology)",
-      "Computer Science (C / Python)",
+      "Mathematics (Pre-Engineering / ICS)",
+      "Biology (Pre-Medical)",
+      "Physics (Theory & Practical)",
+      "Chemistry (Theory & Practical)",
+      "Computer Science (Theory & Practical)",
       "English Compulsory",
       "Urdu Compulsory",
-      "Islamic Studies / Pak Studies"
+      "Islamic Education / Pakistan Studies",
+      "Principles of Accounting (I.Com)",
+      "Principles of Economics (I.Com)",
+      "Business Mathematics (I.Com)",
+      "Statistics (General Science)"
     ],
     matric: [
       "Custom Subject / Course...",
-      "Mathematics (SSC)",
-      "Physics (SSC)",
-      "Chemistry (SSC)",
-      "Biology (SSC)",
-      "Computer Science (SSC)",
-      "English Literature & Grammar",
-      "Urdu Literature",
-      "Pakistan Studies"
+      "Mathematics (Science Group)",
+      "Physics (Theory & Practical)",
+      "Chemistry (Theory & Practical)",
+      "Biology (Theory & Practical)",
+      "Computer Science (Theory & Practical)",
+      "English Compulsory",
+      "Urdu Compulsory",
+      "Islamiyat Compulsory / Ethics",
+      "Pakistan Studies",
+      "General Science (Arts Group)",
+      "General Mathematics (Arts Group)"
     ],
     secondary: [
       "Custom Subject / Course...",
-      "General Mathematics",
+      "Mathematics",
       "General Science",
-      "English Language",
-      "Social Studies / History",
-      "Computer Fundamentals",
-      "Art & Design"
+      "English",
+      "Urdu",
+      "Social Studies (History & Geography)",
+      "Computer Education",
+      "Islamiyat / Moral Education"
     ],
     primary: [
       "Custom Subject / Course...",
-      "Basic Mathematics & Arithmetic",
-      "Reading & Creative Writing",
-      "Environmental Studies & Science",
-      "Social Skills & Drawing"
+      "English",
+      "Urdu",
+      "Mathematics",
+      "General Knowledge & Science",
+      "Islamiyat / Ethics"
     ]
   };
 
-  // Live in-memory subjects store with LocalStorage persistence
-  let subjectsStore = {};
-  try {
-    const saved = localStorage.getItem("edumetrics_subjects_store_v2");
-    if (saved) {
-      subjectsStore = JSON.parse(saved);
-    } else {
-      subjectsStore = JSON.parse(JSON.stringify(defaultSubjectsStore));
-    }
-  } catch (e) {
-    subjectsStore = JSON.parse(JSON.stringify(defaultSubjectsStore));
+  // Stage Assessment Periods (Pakistani Academic Terms)
+  const stageAssessmentPeriods = {
+    university: [
+      "Midterm Examination",
+      "Final Terminal Examination",
+      "Sessional Assessments / Quizzes"
+    ],
+    intermediate: [
+      "Part 1 (11th Grade Annual)",
+      "Part 2 (12th Grade Annual)",
+      "Send-Up Exam / Pre-Board",
+      "Mid-Term Evaluation",
+      "Monthly Assessment"
+    ],
+    matric: [
+      "9th Class Annual (Part 1)",
+      "10th Class Annual (Part 2)",
+      "Pre-Board / Send-Up",
+      "Mid-Term Test",
+      "Monthly Test"
+    ],
+    secondary: [
+      "1st Term Examination",
+      "Mid-Term Examination (25/50 Marks)",
+      "Final Term Examination",
+      "Monthly Test Series"
+    ],
+    primary: [
+      "First Term Assessment",
+      "Mid-Term Assessment (25 Marks)",
+      "Final Term Assessment",
+      "Classroom Monthly Quiz"
+    ]
+  };
+
+  // Get active user-isolated subjects storage key
+  function getActiveUserSubjectsKey() {
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const uid = user?.id || (user?.email ? user.email.replace(/[^a-zA-Z0-9]/g, "_") : "guest");
+    return "edumetrics_subjects_store_v3_" + uid;
   }
 
-  // Teacher Class Roster In-Memory Data
-  let classRoster = [
-    { roll: "01", name: "Ayesha Malik", attendance: 92, test: 88, assignment: 95, midterm: "A" },
-    { roll: "02", name: "Bilal Tariq", attendance: 84, test: 76, assignment: 80, midterm: "B" },
-    { roll: "03", name: "Danish Ahmed", attendance: 65, test: 54, assignment: 60, midterm: "D" },
-    { roll: "04", name: "Fatima Noor", attendance: 95, test: 94, assignment: 98, midterm: "A+" },
-    { roll: "05", name: "Hamza Khan", attendance: 72, test: 68, assignment: 70, midterm: "C" }
-  ];
+  function loadSubjectsStore() {
+    try {
+      const key = getActiveUserSubjectsKey();
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+      return JSON.parse(JSON.stringify(defaultSubjectsStore));
+    } catch (e) {
+      return JSON.parse(JSON.stringify(defaultSubjectsStore));
+    }
+  }
+
+  // Live in-memory subjects store with User-Isolated LocalStorage persistence
+  let subjectsStore = loadSubjectsStore();
+
+  function persistSubjects() {
+    try {
+      const key = getActiveUserSubjectsKey();
+      localStorage.setItem(key, JSON.stringify(subjectsStore));
+    } catch (e) {}
+  }
+
+  // Teacher Class Roster In-Memory Data (Starts strictly empty for teacher)
+  let classRoster = [];
 
   let uploadedCsvData = [];
 
@@ -226,17 +261,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const positiveFactorsList = document.getElementById("positive-factors-list");
   const growthFactorsList = document.getElementById("growth-factors-list");
   const resultRecommendationText = document.getElementById("result-recommendation-text");
-
-  // What-If Simulator Elements
-  const simSliderStudy = document.getElementById("sim-slider-study");
-  const simSliderAtt = document.getElementById("sim-slider-att");
-  const simSliderAssign = document.getElementById("sim-slider-assign");
-  const simValStudy = document.getElementById("sim-val-study");
-  const simValAtt = document.getElementById("sim-val-att");
-  const simValAssign = document.getElementById("sim-val-assign");
-  const simScenarioCurrent = document.getElementById("sim-scenario-current");
-  const simScenarioSimulated = document.getElementById("sim-scenario-simulated");
-  const simScenarioBest = document.getElementById("sim-scenario-best");
 
   // Teacher Elements
   const toolBtnIndividual = document.getElementById("tool-btn-individual");
@@ -495,95 +519,212 @@ document.addEventListener("DOMContentLoaded", () => {
     // 3. Populate Step 4: Dynamic Assessment Fields
     renderStep4AssessmentFields(stage);
 
-    // 4. Adapt & Render Academic Subjects CRUD Table
+    // 4. Adapt & Render Academic Subjects CRUD Table & Multi-Semester History
     renderSubjectsTable();
     updateSubjectPresetOptions();
+    loadAcademicTerms(stage);
   }
 
   function renderStep2AcademicFields(stage) {
     if (!dynamicAcademicFields) return;
     let html = "";
+    const uniManagerCard = document.getElementById("university-semesters-manager-card");
+    const managerCardTitle = document.getElementById("manager-card-title");
+    const managerCardSubtitle = document.getElementById("manager-card-subtitle");
+    const managerCurrentClassContainer = document.getElementById("manager-current-class-container");
+    const managerCurrentClassSelect = document.getElementById("manager_current_class_select");
+    const managerTargetClassContainer = document.getElementById("manager-target-class-container");
+    const managerTargetClassSelect = document.getElementById("manager_target_class_select");
+    const kpiTitle1 = document.getElementById("kpi-title-1");
+    const kpiSub1 = document.getElementById("kpi-standing-sub");
+    const kpiTitle2 = document.getElementById("kpi-title-2");
+    const kpiSub2 = document.getElementById("kpi-sub-2");
+    const kpiTitle3 = document.getElementById("kpi-title-3");
+    const kpiSub3 = document.getElementById("kpi-sub-3");
+    const kpiTitle4 = document.getElementById("kpi-title-4");
+    const kpiSub4 = document.getElementById("kpi-sub-4");
 
-    if (stage === "university") {
+    if (stage === "university" || stage === "secondary" || stage === "primary") {
+      if (uniManagerCard) uniManagerCard.style.display = "block";
+
+      if (stage === "university") {
+        if (managerCardTitle) managerCardTitle.innerHTML = `<span>🏛️ Academic Semesters & Coursework Ledger</span>`;
+        if (managerCardSubtitle) managerCardSubtitle.innerText = `Add your academic semesters, attendance, credit hours, and enrolled courses. Everything is calculated automatically into your cumulative GPA and performance profile.`;
+        if (managerCurrentClassContainer) managerCurrentClassContainer.style.display = "none";
+        if (managerTargetClassContainer) managerTargetClassContainer.style.display = "none";
+        if (kpiTitle1) kpiTitle1.innerText = "Current Standing";
+        if (kpiSub1) kpiSub1.innerText = "Active Semester";
+        if (kpiTitle2) kpiTitle2.innerText = "Latest Semester GPA";
+        if (kpiSub2) kpiSub2.innerText = "Last Term GPA";
+        if (kpiTitle3) kpiTitle3.innerText = "Cumulative CGPA";
+        if (kpiSub3) kpiSub3.innerText = "Overall Standing";
+        if (kpiTitle4) kpiTitle4.innerText = "Average Attendance";
+        if (kpiSub4) kpiSub4.innerText = "Lecture Presence";
+      } else if (stage === "secondary") {
+        if (managerCardTitle) managerCardTitle.innerHTML = `<span>🏫 Secondary Classes & Subject Coursework Ledger (Classes 5 to 8 / 9)</span>`;
+        if (managerCardSubtitle) managerCardSubtitle.innerText = `Select your Current Class and Target Forecast Class, then log your completed classes and subjects with obtained marks.`;
+        
+        if (managerCurrentClassContainer) {
+          managerCurrentClassContainer.style.display = "flex";
+          if (managerCurrentClassSelect) {
+            managerCurrentClassSelect.innerHTML = `
+              <option value="Class 5">Class 5</option>
+              <option value="Class 6">Class 6</option>
+              <option value="Class 7" selected>Class 7</option>
+              <option value="Class 8">Class 8</option>
+            `;
+          }
+        }
+
+        if (managerTargetClassContainer) {
+          managerTargetClassContainer.style.display = "flex";
+          if (managerTargetClassSelect) {
+            managerTargetClassSelect.innerHTML = `
+              <option value="Class 6">Class 6</option>
+              <option value="Class 7">Class 7</option>
+              <option value="Class 8" selected>Class 8</option>
+              <option value="Class 9 / Matric">Class 9 / Matric</option>
+            `;
+          }
+        }
+        if (kpiTitle1) kpiTitle1.innerText = "Logged Classes";
+        if (kpiSub1) kpiSub1.innerText = "Completed Levels";
+        if (kpiTitle2) kpiTitle2.innerText = "Latest Class Score";
+        if (kpiSub2) kpiSub2.innerText = "Last Grade %";
+        if (kpiTitle3) kpiTitle3.innerText = "Cumulative Aggregate";
+        if (kpiSub3) kpiSub3.innerText = "Historical %";
+        if (kpiTitle4) kpiTitle4.innerText = "Average Attendance";
+        if (kpiSub4) kpiSub4.innerText = "Classroom Presence";
+      } else if (stage === "primary") {
+        if (managerCardTitle) managerCardTitle.innerHTML = `<span>🌱 Primary School Classes & Skills Ledger (Classes 1 to 4 / 5)</span>`;
+        if (managerCardSubtitle) managerCardSubtitle.innerText = `Select your Current Primary Grade and Target Grade, then log your completed classes with learning subjects & marks.`;
+        
+        if (managerCurrentClassContainer) {
+          managerCurrentClassContainer.style.display = "flex";
+          if (managerCurrentClassSelect) {
+            managerCurrentClassSelect.innerHTML = `
+              <option value="Class 1">Class 1</option>
+              <option value="Class 2">Class 2</option>
+              <option value="Class 3" selected>Class 3</option>
+              <option value="Class 4">Class 4</option>
+              <option value="Class 5">Class 5</option>
+            `;
+          }
+        }
+
+        if (managerTargetClassContainer) {
+          managerTargetClassContainer.style.display = "flex";
+          if (managerTargetClassSelect) {
+            managerTargetClassSelect.innerHTML = `
+              <option value="Class 2">Class 2</option>
+              <option value="Class 3">Class 3</option>
+              <option value="Class 4" selected>Class 4</option>
+              <option value="Class 5">Class 5</option>
+            `;
+          }
+        }
+        if (kpiTitle1) kpiTitle1.innerText = "Logged Grades";
+        if (kpiSub1) kpiSub1.innerText = "Completed Primary";
+        if (kpiTitle2) kpiTitle2.innerText = "Latest Grade Score";
+        if (kpiSub2) kpiSub2.innerText = "Last Term %";
+        if (kpiTitle3) kpiTitle3.innerText = "Cumulative Aggregate";
+        if (kpiSub3) kpiSub3.innerText = "Overall Mastery %";
+        if (kpiTitle4) kpiTitle4.innerText = "Average Attendance";
+        if (kpiSub4) kpiSub4.innerText = "School Presence";
+      }
+      html = "";
+    } else {
+      if (uniManagerCard) uniManagerCard.style.display = "none";
+    }
+
+    if (stage === "intermediate") {
       html = `
-        <div class="form-grid-3col">
-          <div class="form-group">
-            <label class="form-label" for="f_uni_cgpa">Current / Baseline CGPA (0.00 - 4.00) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" step="0.01" min="0.0" max="4.0" id="f_uni_cgpa" class="form-input" placeholder="e.g. 3.55" required>
+        <div class="card" style="padding: var(--space-4); border: 1px solid rgba(0, 212, 255, 0.35); background: rgba(0, 212, 255, 0.05); margin-bottom: var(--space-4); border-radius: 8px;">
+          <div style="font-weight: 800; color: var(--color-cyan); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+            <span>🎯 Select Your Intermediate Forecasting Target:</span>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="f_uni_semester">Current Semester</label>
-            <select id="f_uni_semester" class="form-select">
-              <option value="1">Semester 1 (Freshman)</option>
-              <option value="2">Semester 2</option>
-              <option value="3">Semester 3 (Sophomore)</option>
-              <option value="4" selected>Semester 4</option>
-              <option value="5">Semester 5 (Junior)</option>
-              <option value="6">Semester 6</option>
-              <option value="7">Semester 7 (Senior)</option>
-              <option value="8">Semester 8 (Final Year)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="f_uni_credits">Enrolled Credit Hours</label>
-            <input type="number" id="f_uni_credits" class="form-input" min="3" max="24" placeholder="e.g. 15">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+            <label class="inter-target-card" id="card-target-hssc1" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--color-cyan); border-radius: 6px; cursor: pointer; background: rgba(0, 212, 255, 0.1);">
+              <input type="radio" name="f_inter_target_level" id="target_hssc1" value="hssc1" checked style="margin-top: 3px;">
+              <div>
+                <div style="font-weight: 700; color: #ffffff; font-size: 13.5px;">Forecast 1st Year (11th Class)</div>
+                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">Provide <strong>9th & 10th (Matric)</strong> marks ➔ AI predicts <strong>1st Year Board Score</strong></div>
+              </div>
+            </label>
+            <label class="inter-target-card" id="card-target-hssc2" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.04);">
+              <input type="radio" name="f_inter_target_level" id="target_hssc2" value="hssc2" style="margin-top: 3px;">
+              <div>
+                <div style="font-weight: 700; color: #ffffff; font-size: 13.5px;">Forecast 2nd Year & Total Intermediate (1100)</div>
+                <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">Provide <strong>9th, 10th (Matric) & 1st Year</strong> marks ➔ AI predicts <strong>2nd Year & Total HSSC (1100)</strong></div>
+              </div>
+            </label>
           </div>
         </div>
-        <div class="form-grid-3col" style="margin-top: var(--space-4);">
-          <div class="form-group">
-            <label class="form-label" for="f_uni_att">Lecture Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_uni_att" class="form-input" min="0" max="100" placeholder="e.g. 85" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="f_uni_midterm">Midterm Exam Average (%)</label>
-            <input type="number" id="f_uni_midterm" class="form-input" min="0" max="100" placeholder="e.g. 80">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="f_uni_backlogs">Past Backlogs / Failed Courses</label>
-            <input type="number" id="f_uni_backlogs" class="form-input" min="0" max="10" placeholder="e.g. 0">
-          </div>
-        </div>
-      `;
-    } else if (stage === "intermediate") {
-      html = `
+
         <div class="form-grid-3col">
           <div class="form-group">
             <label class="form-label" for="f_inter_group">Academic Group <span style="color:var(--accent-rose)">*</span></label>
-            <select id="f_inter_group" class="form-select">
-              <option value="Pre-Engineering" selected>Pre-Engineering</option>
-              <option value="Pre-Medical">Pre-Medical</option>
-              <option value="ICS">ICS (Computer Science)</option>
-              <option value="I.Com">I.Com (Commerce)</option>
-              <option value="Humanities">Humanities / Arts</option>
+            <select id="f_inter_group" class="form-select" required>
+              <option value="" disabled>-- Select Intermediate Group --</option>
+              <option value="Pre-Engineering" selected>Pre-Engineering (Math, Physics, Chemistry)</option>
+              <option value="Pre-Medical">Pre-Medical (Biology, Physics, Chemistry)</option>
+              <option value="ICS">ICS (Computer Science & Mathematics)</option>
+              <option value="I.Com">I.Com (Commerce & Principles of Accounting)</option>
+              <option value="General Science">General Science & Statistics</option>
+              <option value="Humanities">Humanities & Arts</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="f_inter_ssc">Matric (10th) Overall Marks (out of 1100) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_inter_ssc" class="form-input" min="0" max="1100" placeholder="e.g. 940" required>
+            <label class="form-label" for="f_inter_ssc1">9th Class (SSC-I) Marks (out of 550) <span style="color:var(--accent-rose)">*</span></label>
+            <input type="number" id="f_inter_ssc1" class="form-input" min="0" max="550" placeholder="e.g. 470" value="470" required>
           </div>
           <div class="form-group">
-            <label class="form-label" for="f_inter_hssc1">1st Year (11th) Marks (out of 550) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_inter_hssc1" class="form-input" min="0" max="550" placeholder="e.g. 440" required>
+            <label class="form-label" for="f_inter_ssc2">10th Class (SSC-II) Marks (out of 550) <span style="color:var(--accent-rose)">*</span></label>
+            <input type="number" id="f_inter_ssc2" class="form-input" min="0" max="550" placeholder="e.g. 485" value="485" required>
           </div>
         </div>
+
         <div class="form-grid-3col" style="margin-top: var(--space-4);">
           <div class="form-group">
+            <label class="form-label" for="f_inter_ssc">Total Matric Marks (out of 1100) <span style="color:var(--accent-rose)">*</span></label>
+            <input type="number" id="f_inter_ssc" class="form-input" min="0" max="1100" placeholder="e.g. 955" value="955" required style="background: rgba(255,255,255,0.06); font-weight: 700; color: #ffffff;">
+            <small style="color:var(--text-muted);font-size:11px;">Auto-calculated from 9th + 10th or enter directly</small>
+          </div>
+
+          <div class="form-group" id="f_inter_hssc1_group" style="display: none;">
+            <label class="form-label" for="f_inter_hssc1">1st Year (11th) Board Marks (out of 550) <span style="color:var(--accent-rose)">*</span></label>
+            <input type="number" id="f_inter_hssc1" class="form-input" min="0" max="550" placeholder="e.g. 465" value="465">
+            <small style="color:var(--color-cyan);font-size:11px;">Required for 2nd Year (12th) & Total forecast</small>
+          </div>
+
+          <div class="form-group" id="f_inter_hssc1_placeholder_group">
+            <label class="form-label" style="color: var(--text-muted);">1st Year (11th) Status</label>
+            <div style="padding: 9px 12px; background: rgba(168, 240, 75, 0.08); border: 1px dashed var(--color-lime); border-radius: 6px; font-size: 12px; color: var(--color-lime); font-weight: 600;">
+              ⚡ Will be predicted by AI from your 9th & 10th Matric performance!
+            </div>
+          </div>
+
+          <div class="form-group">
             <label class="form-label" for="f_inter_att">College Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_inter_att" class="form-input" min="0" max="100" placeholder="e.g. 85" required>
+            <input type="number" id="f_inter_att" class="form-input" min="0" max="100" placeholder="e.g. 88" value="88" required>
+          </div>
+        </div>
+
+        <div class="form-grid-3col" style="margin-top: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="f_inter_study">Daily Study Hours</label>
+            <input type="number" step="0.5" id="f_inter_study" class="form-input" min="1" max="16" placeholder="e.g. 5.0" value="5.0">
           </div>
           <div class="form-group">
-            <label class="form-label" for="f_inter_college_type">Institution Type</label>
-            <select id="f_inter_college_type" class="form-select">
-              <option value="Private" selected>Private College / Institute</option>
-              <option value="Government">Government Higher Secondary</option>
-            </select>
+            <label class="form-label" for="f_inter_midterm">College Midterms / Send-Up Exam (%)</label>
+            <input type="number" id="f_inter_midterm" class="form-input" min="0" max="100" placeholder="e.g. 82" value="82">
           </div>
           <div class="form-group">
             <label class="form-label" for="f_inter_lab">Practical / Lab Competency</label>
             <select id="f_inter_lab" class="form-select">
-              <option value="Excellent" selected>Excellent (Consistent hands-on practice)</option>
+              <option value="Excellent" selected>Excellent (Consistent hands-on practicals)</option>
               <option value="Good">Good (Satisfactory experiments)</option>
-              <option value="Needs Work">Needs Work (Irregular lab practice)</option>
+              <option value="Needs Work">Needs Work (Theory only / Irregular lab)</option>
             </select>
           </div>
         </div>
@@ -593,18 +734,26 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-grid-3col">
           <div class="form-group">
             <label class="form-label" for="f_matric_ssc1">9th Class (SSC-I) Marks (out of 550) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_matric_ssc1" class="form-input" min="0" max="550" placeholder="e.g. 465" required>
+            <input type="number" id="f_matric_ssc1" class="form-input" min="0" max="550" placeholder="e.g. 465" value="465" required>
           </div>
           <div class="form-group">
-            <label class="form-label" for="f_matric_expected">Expected 10th (SSC-II) Target Marks</label>
-            <input type="number" id="f_matric_expected" class="form-input" min="0" max="550" placeholder="e.g. 480">
+            <label class="form-label" for="f_matric_group">Matriculation Group <span style="color:var(--accent-rose)">*</span></label>
+            <select id="f_matric_group" class="form-select" required>
+              <option value="Science (Computer Science)" selected>Science with Computer Science</option>
+              <option value="Science (Biology)">Science with Biology</option>
+              <option value="Arts / Humanities">Arts & General Science</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label" for="f_matric_att">School Attendance (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_matric_att" class="form-input" min="0" max="100" placeholder="e.g. 90" required>
+            <input type="number" id="f_matric_att" class="form-input" min="0" max="100" placeholder="e.g. 90" value="90" required>
           </div>
         </div>
-        <div class="form-grid-2col" style="margin-top: var(--space-4);">
+        <div class="form-grid-3col" style="margin-top: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="f_matric_study">Daily Study Hours</label>
+            <input type="number" step="0.5" id="f_matric_study" class="form-input" min="1" max="16" placeholder="e.g. 4.5" value="4.5">
+          </div>
           <div class="form-group">
             <label class="form-label" for="f_matric_past_papers">Past Paper Practice Frequency</label>
             <select id="f_matric_past_papers" class="form-select">
@@ -623,44 +772,66 @@ document.addEventListener("DOMContentLoaded", () => {
             </select>
           </div>
         </div>
-      `;
-    } else if (stage === "secondary") {
-      html = `
-        <div class="form-grid-3col">
-          <div class="form-group">
-            <label class="form-label" for="f_sec_g1">Period 1 Grade / Quiz Average (out of 20) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_sec_g1" class="form-input" min="0" max="20" placeholder="e.g. 16" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="f_sec_g2">Period 2 Grade / Midterm (out of 20) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_sec_g2" class="form-input" min="0" max="20" placeholder="e.g. 17" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="f_sec_absences">Class Absences (Days) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_sec_absences" class="form-input" min="0" max="50" placeholder="e.g. 3" required>
-          </div>
-        </div>
-      `;
-    } else if (stage === "primary") {
-      html = `
-        <div class="form-grid-3col">
-          <div class="form-group">
-            <label class="form-label" for="f_prim_math">Basic Mathematics Score (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_prim_math" class="form-input" min="0" max="100" placeholder="e.g. 86" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="f_prim_read">Reading & Literacy Score (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_prim_read" class="form-input" min="0" max="100" placeholder="e.g. 90" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="f_prim_att">Attendance Track (%) <span style="color:var(--accent-rose)">*</span></label>
-            <input type="number" id="f_prim_att" class="form-input" min="0" max="100" placeholder="e.g. 94" required>
-          </div>
+        <div style="margin-top: var(--space-3); padding: 10px 14px; background: rgba(0, 212, 255, 0.08); border: 1px dashed var(--color-cyan); border-radius: 6px; font-size: 12px; color: var(--color-cyan); font-weight: 600;">
+          ⚡ 10th Class (SSC-II) Board Marks & Combined Matric Total (1100) will be accurately predicted by AI!
         </div>
       `;
     }
 
     dynamicAcademicFields.innerHTML = html;
+
+    if (stage === "intermediate") {
+      const targetRadios = document.querySelectorAll('input[name="f_inter_target_level"]');
+      const hssc1Group = document.getElementById("f_inter_hssc1_group");
+      const hssc1Placeholder = document.getElementById("f_inter_hssc1_placeholder_group");
+      const cardTarget1 = document.getElementById("card-target-hssc1");
+      const cardTarget2 = document.getElementById("card-target-hssc2");
+
+      const updateTargetUi = () => {
+        const selected = document.querySelector('input[name="f_inter_target_level"]:checked')?.value || "hssc1";
+        if (selected === "hssc1") {
+          if (hssc1Group) hssc1Group.style.display = "none";
+          if (hssc1Placeholder) hssc1Placeholder.style.display = "block";
+          if (cardTarget1) {
+            cardTarget1.style.borderColor = "var(--color-cyan)";
+            cardTarget1.style.background = "rgba(0, 212, 255, 0.1)";
+          }
+          if (cardTarget2) {
+            cardTarget2.style.borderColor = "rgba(255,255,255,0.15)";
+            cardTarget2.style.background = "rgba(255,255,255,0.04)";
+          }
+        } else {
+          if (hssc1Group) hssc1Group.style.display = "block";
+          if (hssc1Placeholder) hssc1Placeholder.style.display = "none";
+          if (cardTarget1) {
+            cardTarget1.style.borderColor = "rgba(255,255,255,0.15)";
+            cardTarget1.style.background = "rgba(255,255,255,0.04)";
+          }
+          if (cardTarget2) {
+            cardTarget2.style.borderColor = "var(--color-cyan)";
+            cardTarget2.style.background = "rgba(0, 212, 255, 0.1)";
+          }
+        }
+      };
+
+      targetRadios.forEach((r) => r.addEventListener("change", updateTargetUi));
+      updateTargetUi();
+
+      const ssc1Input = document.getElementById("f_inter_ssc1");
+      const ssc2Input = document.getElementById("f_inter_ssc2");
+      const sscTotalInput = document.getElementById("f_inter_ssc");
+
+      const syncMatricTotal = () => {
+        const v1 = parseFloat(ssc1Input?.value) || 0;
+        const v2 = parseFloat(ssc2Input?.value) || 0;
+        if (sscTotalInput && (v1 > 0 || v2 > 0)) {
+          sscTotalInput.value = Math.min(1100, Math.round(v1 + v2));
+        }
+      };
+
+      if (ssc1Input) ssc1Input.addEventListener("input", syncMatricTotal);
+      if (ssc2Input) ssc2Input.addEventListener("input", syncMatricTotal);
+    }
   }
 
   function renderStep3HabitsFields(stage) {
@@ -674,7 +845,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-group">
           <label class="form-label" for="f_revision_freq">Revision Frequency</label>
           <select id="f_revision_freq" class="form-select">
-            <option value="Daily" selected>Daily Routine Review</option>
+            <option value="" disabled selected>-- Select Revision Frequency --</option>
+            <option value="Daily">Daily Routine Review</option>
             <option value="Weekly">Weekly Topic Consolidation</option>
             <option value="BeforeExams">Only Right Before Exams</option>
           </select>
@@ -682,7 +854,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-group">
           <label class="form-label" for="f_assignment_disc">Homework & Assignment Discipline</label>
           <select id="f_assignment_disc" class="form-select">
-            <option value="Always" selected>Consistently On-Time (100%)</option>
+            <option value="" disabled selected>-- Select Discipline --</option>
+            <option value="Always">Consistently On-Time (100%)</option>
             <option value="Mostly">Mostly On-Time (80-90%)</option>
             <option value="Irregular">Occasional Delays (&lt;70%)</option>
           </select>
@@ -692,7 +865,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-group">
           <label class="form-label" for="f_ai_tools">Educational & AI Tools Usage</label>
           <select id="f_ai_tools" class="form-select">
-            <option value="Frequent" selected>Frequent (Concept explanation & problem solving)</option>
+            <option value="" disabled selected>-- Select Digital Tools Usage --</option>
+            <option value="Frequent">Frequent (Concept explanation & problem solving)</option>
             <option value="Occasional">Occasional (Quick lookup)</option>
             <option value="None">None / Traditional Textbooks Only</option>
           </select>
@@ -700,7 +874,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-group">
           <label class="form-label" for="f_tuition">Extra Tuition / Academy / Mentorship</label>
           <select id="f_tuition" class="form-select">
-            <option value="Yes" selected>Yes (Enrolled in coaching / tutoring)</option>
+            <option value="" disabled selected>-- Select Coaching Option --</option>
+            <option value="Yes">Yes (Enrolled in coaching / tutoring)</option>
             <option value="No">No (Self-study only)</option>
           </select>
         </div>
@@ -712,37 +887,36 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderStep4AssessmentFields(stage) {
     if (!dynamicAssessmentFields) return;
     let html = `
-      <div class="form-grid-2col" style="margin-bottom: var(--space-4);">
-        <div class="form-group">
-          <label class="form-label" for="f_attentive_level">Classroom Focus & Attentiveness</label>
-          <select id="f_attentive_level" class="form-select">
-            <option value="High" selected>High (Actively engaged & attentive)</option>
-            <option value="Moderate">Moderate (Good engagement with occasional lapses)</option>
-            <option value="Low">Low (Easily distracted / needs refocusing)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="f_comm_skill">Communication & Verbal Presentation</label>
-          <select id="f_comm_skill" class="form-select">
-            <option value="Excellent" selected>Exceptional (Articulate, clear & confident)</option>
-            <option value="Good">Good (Clear communicator)</option>
-            <option value="Developing">Developing (Average confidence)</option>
-            <option value="Needs Support">Needs Support</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-grid-3col">
+      <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
         <div class="form-group">
           <label class="form-label" for="f_self_motivation">Academic Motivation (1 - 10)</label>
-          <input type="number" id="f_self_motivation" class="form-input" min="1" max="10" placeholder="e.g. 9">
+          <input type="number" id="f_self_motivation" class="form-input" min="1" max="10" placeholder="e.g. 9" value="9">
         </div>
         <div class="form-group">
-          <label class="form-label" for="f_self_confidence">Exam Confidence (1 - 10)</label>
-          <input type="number" id="f_self_confidence" class="form-input" min="1" max="10" placeholder="e.g. 8">
+          <label class="form-label" for="f_self_confidence">Exam & Target Confidence (1 - 10)</label>
+          <input type="number" id="f_self_confidence" class="form-input" min="1" max="10" placeholder="e.g. 8" value="8">
         </div>
         <div class="form-group">
-          <label class="form-label" for="f_self_consistency">Study Consistency (1 - 10)</label>
-          <input type="number" id="f_self_consistency" class="form-input" min="1" max="10" placeholder="e.g. 9">
+          <label class="form-label" for="f_self_consistency">Study Routine Consistency (1 - 10)</label>
+          <input type="number" id="f_self_consistency" class="form-input" min="1" max="10" placeholder="e.g. 9" value="9">
+        </div>
+      </div>
+      <div class="form-grid-2col">
+        <div class="form-group">
+          <label class="form-label" for="f_learning_goal">Personal Academic Target / Goal</label>
+          <select id="f_learning_goal" class="form-select">
+            <option value="distinction" selected>🎯 Aiming for Top Distinction / A+ Grade</option>
+            <option value="high_pass">📈 Target Strong Grade Improvement (A/B)</option>
+            <option value="steady">🛡️ Maintain Consistent High Standing</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="f_exam_prep">Preferred Exam Prep Method</label>
+          <select id="f_exam_prep" class="form-select">
+            <option value="past_papers" selected>📝 Past Papers & Self-Testing</option>
+            <option value="summary_notes">📑 Chapter Notes & Flashcards</option>
+            <option value="group_study">👥 Peer Discussion & Review Sessions</option>
+          </select>
         </div>
       </div>
     `;
@@ -757,33 +931,35 @@ document.addEventListener("DOMContentLoaded", () => {
     let errors = [];
 
     if (step === 2) {
-      if (currentStage === "university") {
-        const cgpa = parseFloat(document.getElementById("f_uni_cgpa")?.value);
-        const att = parseFloat(document.getElementById("f_uni_att")?.value);
-        if (isNaN(cgpa) || cgpa < 0.0 || cgpa > 4.0) errors.push("Current CGPA must be between 0.00 and 4.00.");
-        if (isNaN(att) || att < 0 || att > 100) errors.push("Attendance must be between 0% and 100%.");
+      if (currentStage === "university" || currentStage === "secondary" || currentStage === "primary") {
+        if (!loggedTerms || loggedTerms.length === 0) {
+          const unit = currentStage === "university" ? "semester" : currentStage === "secondary" ? "class (e.g. Class 6)" : "primary grade";
+          showToast(`Please click '+ Add ${currentStage === 'university' ? 'Semester' : 'Class Record'}' to log at least one completed ${unit} with subjects before proceeding.`, "info");
+          if (btnAddSemester) btnAddSemester.click();
+          return false;
+        }
       } else if (currentStage === "intermediate") {
+        const targetLevel = document.querySelector('input[name="f_inter_target_level"]:checked')?.value || "hssc1";
+        const ssc1 = parseFloat(document.getElementById("f_inter_ssc1")?.value);
+        const ssc2 = parseFloat(document.getElementById("f_inter_ssc2")?.value);
         const ssc = parseFloat(document.getElementById("f_inter_ssc")?.value);
-        const hssc1 = parseFloat(document.getElementById("f_inter_hssc1")?.value);
         const att = parseFloat(document.getElementById("f_inter_att")?.value);
-        if (isNaN(ssc) || ssc < 0 || ssc > 1100) errors.push("Matric marks must be between 0 and 1100.");
-        if (isNaN(hssc1) || hssc1 < 0 || hssc1 > 550) errors.push("1st Year marks must be between 0 and 550.");
+
+        if (!isNaN(ssc1) && (ssc1 < 0 || ssc1 > 550)) errors.push("9th Class marks must be between 0 and 550.");
+        if (!isNaN(ssc2) && (ssc2 < 0 || ssc2 > 550)) errors.push("10th Class marks must be between 0 and 550.");
+        if (isNaN(ssc) || ssc < 0 || ssc > 1100) errors.push("Total Matric marks must be between 0 and 1100.");
+
+        if (targetLevel === "hssc2") {
+          const hssc1 = parseFloat(document.getElementById("f_inter_hssc1")?.value);
+          if (isNaN(hssc1) || hssc1 < 0 || hssc1 > 550) errors.push("Please enter your 1st Year (11th) marks (0 to 550) to forecast 2nd Year & Total.");
+        }
+
         if (isNaN(att) || att < 0 || att > 100) errors.push("Attendance must be between 0% and 100%.");
       } else if (currentStage === "matric") {
         const ssc1 = parseFloat(document.getElementById("f_matric_ssc1")?.value);
         const att = parseFloat(document.getElementById("f_matric_att")?.value);
         if (isNaN(ssc1) || ssc1 < 0 || ssc1 > 550) errors.push("9th class marks must be between 0 and 550.");
         if (isNaN(att) || att < 0 || att > 100) errors.push("Attendance must be between 0% and 100%.");
-      } else if (currentStage === "secondary") {
-        const g1 = parseFloat(document.getElementById("f_sec_g1")?.value);
-        const g2 = parseFloat(document.getElementById("f_sec_g2")?.value);
-        if (isNaN(g1) || g1 < 0 || g1 > 20) errors.push("Period 1 score must be between 0 and 20.");
-        if (isNaN(g2) || g2 < 0 || g2 > 20) errors.push("Period 2 score must be between 0 and 20.");
-      } else if (currentStage === "primary") {
-        const math = parseFloat(document.getElementById("f_prim_math")?.value);
-        const read = parseFloat(document.getElementById("f_prim_read")?.value);
-        if (isNaN(math) || math < 0 || math > 100) errors.push("Math score must be between 0 and 100.");
-        if (isNaN(read) || read < 0 || read > 100) errors.push("Reading score must be between 0 and 100.");
       }
     } else if (step === 3) {
       const studyHours = parseFloat(document.getElementById("f_study_hours")?.value);
@@ -799,61 +975,109 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderStudentReview() {
     if (!studentReviewContainer) return;
-    const subjects = subjectsStore[currentStage] || [];
     const studyHours = document.getElementById("f_study_hours")?.value || "4.5";
     const revision = document.getElementById("f_revision_freq")?.value || "Daily";
     const focus = document.getElementById("f_attentive_level")?.value || "High";
     const motivation = document.getElementById("f_self_motivation")?.value || "9";
+    const stageName = currentStage.charAt(0).toUpperCase() + currentStage.slice(1);
+    const scaleText = currentStage === "university" ? "0.00 – 4.00 CGPA Scale" : currentStage === "intermediate" ? "1100 Marks & Percentage Scale" : "0 – 100% Percentage Scale";
+
+    const totalLoggedCourses = loggedTerms.reduce((sum, t) => sum + (t.subjects?.length || 0), 0);
 
     let academicSummary = "";
     if (currentStage === "university") {
-      academicSummary = `CGPA: ${document.getElementById("f_uni_cgpa")?.value || "3.55"} / 4.00 | Attendance: ${document.getElementById("f_uni_att")?.value || "88"}% | Semester: ${document.getElementById("f_uni_semester")?.value || "4"}`;
+      let cumCgpa = "0.00";
+      let avgAtt = "85";
+      const semCount = loggedTerms.length || 1;
+      const semStanding = `Semester ${semCount} (${semCount === 1 ? 'Freshman' : semCount === 2 ? 'Sophomore' : semCount <= 4 ? 'Junior' : 'Senior'})`;
+      
+      if (loggedTerms.length > 0) {
+        let totalObt = 0;
+        let totalMax = 0;
+        let attSum = 0;
+        loggedTerms.forEach((t) => {
+          attSum += parseFloat(t.attendance_pct || 85.0);
+          (t.subjects || []).forEach((s) => {
+            totalObt += parseFloat(s.obtained_marks || 0);
+            totalMax += parseFloat(s.total_marks || 100);
+          });
+        });
+        avgAtt = (attSum / loggedTerms.length).toFixed(1);
+        const overallPct = totalMax > 0 ? (totalObt / totalMax) * 100 : 0;
+        cumCgpa = (Math.min(4.0, (overallPct / 100.0) * 4.0)).toFixed(2);
+      }
+      academicSummary = `${semStanding} | Cumulative CGPA: ${cumCgpa} | Avg Attendance: ${avgAtt}%`;
     } else if (currentStage === "intermediate") {
-      academicSummary = `Group: ${document.getElementById("f_inter_group")?.value || "Pre-Eng"} | 1st Year Marks: ${document.getElementById("f_inter_hssc1")?.value || "440"}/550 | Attendance: ${document.getElementById("f_inter_att")?.value || "85"}%`;
+      const targetLevel = document.querySelector('input[name="f_inter_target_level"]:checked')?.value || "hssc1";
+      const sscTotal = document.getElementById("f_inter_ssc")?.value || "955";
+      const grp = document.getElementById("f_inter_group")?.value || "Pre-Engineering";
+      if (targetLevel === "hssc1") {
+        academicSummary = `Group: ${grp} | Matric: ${sscTotal}/1100 ➔ Target: 1st Year (11th)`;
+      } else {
+        const hssc1 = document.getElementById("f_inter_hssc1")?.value || "465";
+        academicSummary = `Group: ${grp} | 1st Year: ${hssc1}/550 | Matric: ${sscTotal}/1100 ➔ Target: 2nd Year & Total`;
+      }
     } else if (currentStage === "matric") {
-      academicSummary = `9th Marks: ${document.getElementById("f_matric_ssc1")?.value || "465"}/550 | Attendance: ${document.getElementById("f_matric_att")?.value || "90"}%`;
+      academicSummary = `9th Marks: ${document.getElementById("f_matric_ssc1")?.value || "465"}/550 | Att: ${document.getElementById("f_matric_att")?.value || "90"}%`;
     } else if (currentStage === "secondary") {
-      academicSummary = `Period 1: ${document.getElementById("f_sec_g1")?.value || "16"}/20 | Period 2: ${document.getElementById("f_sec_g2")?.value || "17"}/20`;
+      let totalObt = 0, totalMax = 0, attSum = 0;
+      loggedTerms.forEach(t => {
+        attSum += parseFloat(t.attendance_pct || 90);
+        (t.subjects || []).forEach(s => {
+          totalObt += parseFloat(s.obtained_marks || 0);
+          totalMax += parseFloat(s.total_marks || 100);
+        });
+      });
+      const avgAtt = loggedTerms.length > 0 ? (attSum / loggedTerms.length).toFixed(1) : "90.0";
+      const cumPct = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(1) : "85.0";
+      const curCls = document.getElementById("manager_current_class_select")?.value || "Class 7";
+      const tgtCls = document.getElementById("manager_target_class_select")?.value || "Class 8";
+      const classNames = loggedTerms.map(t => t.term_name).join(", ") || `${loggedTerms.length} Classes`;
+      academicSummary = `Current: ${curCls} ➔ Target: ${tgtCls} | Logged: ${classNames} (${cumPct}%) | Att: ${avgAtt}%`;
     } else {
-      academicSummary = `Math: ${document.getElementById("f_prim_math")?.value || "86"}% | Reading: ${document.getElementById("f_prim_read")?.value || "90"}%`;
+      let totalObt = 0, totalMax = 0, attSum = 0;
+      loggedTerms.forEach(t => {
+        attSum += parseFloat(t.attendance_pct || 94);
+        (t.subjects || []).forEach(s => {
+          totalObt += parseFloat(s.obtained_marks || 0);
+          totalMax += parseFloat(s.total_marks || 100);
+        });
+      });
+      const avgAtt = loggedTerms.length > 0 ? (attSum / loggedTerms.length).toFixed(1) : "94.0";
+      const cumPct = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(1) : "88.0";
+      const curCls = document.getElementById("manager_current_class_select")?.value || "Class 3";
+      const tgtCls = document.getElementById("manager_target_class_select")?.value || "Class 4";
+      const classNames = loggedTerms.map(t => t.term_name).join(", ") || `${loggedTerms.length} Grades`;
+      academicSummary = `Current: ${curCls} ➔ Target: ${tgtCls} | Logged: ${classNames} (${cumPct}%) | Att: ${avgAtt}%`;
     }
 
     studentReviewContainer.innerHTML = `
-      <div class="review-summary-box">
-        <div class="review-section-title">1. Target Education Level</div>
-        <div class="review-grid">
-          <div class="review-data-item">
-            <span class="review-data-label">Selected Level</span>
-            <span class="review-data-value" style="color: var(--primary-400);">${currentStage.toUpperCase()}</span>
+      <div class="review-bento-grid">
+        <div class="review-bento-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+            <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">1. Target Education Tier</span>
+            <span class="badge badge-primary" style="font-size: 11px;">${stageName}</span>
           </div>
-          <div class="review-data-item">
-            <span class="review-data-label">Grading Standard</span>
-            <span class="review-data-value">${currentStage === "university" ? "4.00 CGPA Scale" : currentStage === "secondary" ? "20-Point Scale" : "Percentage & Board Marks"}</span>
-          </div>
+          <div style="font-size: 17px; font-weight: 800; color: #ffffff; margin-bottom: 4px;">${stageName} Level</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">${scaleText}</div>
         </div>
 
-        <div class="review-section-title">2. Academic Record & Enrolled Courses</div>
-        <div class="review-grid">
-          <div class="review-data-item">
-            <span class="review-data-label">Academic Baseline</span>
-            <span class="review-data-value">${academicSummary}</span>
+        <div class="review-bento-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+            <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">2. Academic Standing & Courses</span>
+            <span class="badge badge-info" style="font-size: 11px;">${loggedTerms.length} ${currentStage === 'university' ? 'Terms' : currentStage === 'secondary' ? 'Classes' : 'Grades'} (${totalLoggedCourses} Courses)</span>
           </div>
-          <div class="review-data-item">
-            <span class="review-data-label">Enrolled Subjects</span>
-            <span class="review-data-value">${subjects.length} Subjects Logged (${kpiAggregatePct?.innerText || "0%"} Avg)</span>
-          </div>
+          <div style="font-size: 13.5px; font-weight: 700; color: var(--color-lime); margin-bottom: 4px;">${academicSummary}</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Coursework Aggregate: <strong>${kpiCumulativeCgpa?.innerText || "0.00"}</strong></div>
         </div>
 
-        <div class="review-section-title">3. Habits & Self-Assessment Indicators</div>
-        <div class="review-grid">
-          <div class="review-data-item">
-            <span class="review-data-label">Daily Study Routine</span>
-            <span class="review-data-value">${studyHours} Hours/Day (${revision} Revision)</span>
+        <div class="review-bento-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+            <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em;">3. Habits & Self-Assessment</span>
+            <span class="badge badge-success" style="font-size: 11px;">${motivation}/10 Motivation</span>
           </div>
-          <div class="review-data-item">
-            <span class="review-data-label">Classroom Focus</span>
-            <span class="review-data-value">${focus} Focus | Motivation: ${motivation}/10</span>
-          </div>
+          <div style="font-size: 13.5px; font-weight: 700; color: var(--color-orange); margin-bottom: 4px;">${studyHours} hrs/day (${revision} Revision)</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Exam Confidence: <strong>${document.getElementById("f_self_confidence")?.value || "8"}/10</strong></div>
         </div>
       </div>
     `;
@@ -894,7 +1118,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         activeStudentPrediction = result;
         renderStudentResults(result);
-        initWhatIfSimulator(result.score || 3.65);
         showToast("AI Academic Forecast successfully generated!", "success");
 
         // Save prediction record to historical records
@@ -905,7 +1128,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } finally {
         if (submitPredictBtn) {
           submitPredictBtn.classList.remove("btn-loading");
-          submitPredictBtn.innerHTML = `<span>⚡ Run AI Forecast Model</span>`;
+          submitPredictBtn.innerHTML = `<span>⚡ Run AI</span>`;
         }
       }
     });
@@ -925,32 +1148,146 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     if (currentStage === "university") {
-      payload.Previous_CGPA = parseFloat(document.getElementById("f_uni_cgpa")?.value || 3.55);
-      payload.Attendance_Pct = parseFloat(document.getElementById("f_uni_att")?.value || 88);
+      let cumCgpa = 3.50;
+      let avgAtt = 85.0;
+      let totalCredits = 18;
+      let latestMidterm = 80.0;
+      let totalBacklogs = 0;
+      let currentSemNum = 1;
+
+      if (loggedTerms && loggedTerms.length > 0) {
+        currentSemNum = loggedTerms.length;
+        let totalObt = 0;
+        let totalMax = 0;
+        let attSum = 0;
+        let crSum = 0;
+
+        loggedTerms.forEach((t) => {
+          attSum += parseFloat(t.attendance_pct || 85.0);
+          crSum += parseFloat(t.credit_hours || 18);
+          totalBacklogs += parseInt(t.backlogs || 0);
+          if (t.midterm_score) latestMidterm = parseFloat(t.midterm_score);
+          (t.subjects || []).forEach((s) => {
+            totalObt += parseFloat(s.obtained_marks || 0);
+            totalMax += parseFloat(s.total_marks || 100);
+          });
+        });
+
+        avgAtt = +(attSum / loggedTerms.length).toFixed(1);
+        totalCredits = crSum || 18;
+        const overallPct = totalMax > 0 ? (totalObt / totalMax) * 100 : 0;
+        cumCgpa = +(Math.min(4.0, (overallPct / 100.0) * 4.0)).toFixed(2);
+      }
+
+      payload.Previous_CGPA = cumCgpa;
+      payload.Attendance_Pct = avgAtt;
       payload.Study_Hours_Per_Day = payload.study_hours;
-      payload.Semester = parseInt(document.getElementById("f_uni_semester")?.value || 4);
-      payload.Credit_Hours = parseInt(document.getElementById("f_uni_credits")?.value || 15);
+      payload.Semester = currentSemNum;
+      payload.Credit_Hours = totalCredits;
+      payload.Midterm_Exam_Avg = latestMidterm;
+      payload.Backlogs_Failed_Courses = totalBacklogs;
+      payload.logged_terms = loggedTerms;
     } else if (currentStage === "intermediate") {
-      payload.SSC_I_Marks = parseFloat(document.getElementById("f_inter_ssc")?.value || 940) / 2;
-      payload.SSC_II_Marks = payload.SSC_I_Marks;
-      payload.HSSC_I_Marks = parseFloat(document.getElementById("f_inter_hssc1")?.value || 440);
-      payload.Attendance_Rate = parseFloat(document.getElementById("f_inter_att")?.value || 85);
-      payload.Subject_Group = document.getElementById("f_inter_group")?.value || "Pre-Engineering";
-      payload.Study_Hours = payload.study_hours;
+      const targetLevel = document.querySelector('input[name="f_inter_target_level"]:checked')?.value || "hssc1";
+      const ssc1 = parseFloat(document.getElementById("f_inter_ssc1")?.value || 470);
+      const ssc2 = parseFloat(document.getElementById("f_inter_ssc2")?.value || 485);
+      const sscTotal = parseFloat(document.getElementById("f_inter_ssc")?.value || (ssc1 + ssc2));
+      const hssc1 = parseFloat(document.getElementById("f_inter_hssc1")?.value || 460);
+      const att = parseFloat(document.getElementById("f_inter_att")?.value || 88);
+      const studyH = parseFloat(document.getElementById("f_inter_study")?.value || payload.study_hours || 5.0);
+      const midterm = parseFloat(document.getElementById("f_inter_midterm")?.value || 82);
+      const group = document.getElementById("f_inter_group")?.value || "Pre-Engineering";
+      const lab = document.getElementById("f_inter_lab")?.value || "Excellent";
+
+      payload.target_level = targetLevel;
+      payload.SSC_I_Marks = ssc1;
+      payload.SSC_II_Marks = ssc2;
+      payload.SSC_Total_Marks = sscTotal;
+      payload.HSSC_I_Marks = hssc1;
+      payload.Attendance_Rate = att;
+      payload.Study_Hours = studyH;
+      payload.Midterm_Exam_Avg = midterm;
+      payload.Subject_Group = group;
+      payload.Lab_Competency = lab;
     } else if (currentStage === "matric") {
-      payload.SSC_I_Marks = parseFloat(document.getElementById("f_matric_ssc1")?.value || 465);
-      payload.SSC_II_Marks = payload.SSC_I_Marks;
+      const ssc1 = parseFloat(document.getElementById("f_matric_ssc1")?.value || 465);
+      const att = parseFloat(document.getElementById("f_matric_att")?.value || 90);
+      const studyH = parseFloat(document.getElementById("f_matric_study")?.value || payload.study_hours || 4.5);
+      const grp = document.getElementById("f_matric_group")?.value || "Science (Computer Science)";
+      const pastPapers = document.getElementById("f_matric_past_papers")?.value || "Daily";
+      const mockPerf = document.getElementById("f_matric_mock")?.value || "A+ Grade";
+
+      payload.SSC_I_Marks = ssc1;
+      payload.SSC_II_Marks = ssc1;
       payload.HSSC_I_Marks = 400;
-      payload.Attendance_Rate = parseFloat(document.getElementById("f_matric_att")?.value || 90);
-      payload.Study_Hours = payload.study_hours;
+      payload.Attendance_Rate = att;
+      payload.Study_Hours = studyH;
+      payload.Matric_Group = grp;
+      payload.Past_Paper_Practice = pastPapers;
+      payload.Mock_Performance = mockPerf;
     } else if (currentStage === "secondary") {
-      payload.G1 = parseInt(document.getElementById("f_sec_g1")?.value || 16);
-      payload.G2 = parseInt(document.getElementById("f_sec_g2")?.value || 17);
-      payload.absences = parseInt(document.getElementById("f_sec_absences")?.value || 3);
+      let totalObt = 0, totalMax = 0, attSum = 0;
+      let lastClassPct = 85.0;
+      if (loggedTerms && loggedTerms.length > 0) {
+        loggedTerms.forEach((t, idx) => {
+          attSum += parseFloat(t.attendance_pct || 90);
+          let tObt = 0, tMax = 0;
+          (t.subjects || []).forEach(s => {
+            tObt += parseFloat(s.obtained_marks || 0);
+            tMax += parseFloat(s.total_marks || 100);
+          });
+          if (tMax > 0) {
+            const pct = (tObt / tMax) * 100;
+            totalObt += tObt;
+            totalMax += tMax;
+            if (idx === loggedTerms.length - 1) lastClassPct = pct;
+          }
+        });
+      }
+      const cumPct = totalMax > 0 ? +(totalObt / totalMax * 100).toFixed(1) : lastClassPct;
+      const avgAtt = loggedTerms.length > 0 ? +(attSum / loggedTerms.length).toFixed(1) : 90.0;
+
+      payload.current_class = document.getElementById("manager_current_class_select")?.value || (loggedTerms[loggedTerms.length - 1]?.term_name || "Class 7");
+      payload.target_class = document.getElementById("manager_target_class_select")?.value || "Class 8";
+      payload.past_annual_pct = cumPct;
+      payload.latest_class_pct = lastClassPct;
+      payload.Attendance_Rate = avgAtt;
+      payload.study_hours = parseFloat(document.getElementById("f_study_hours")?.value || 4.5);
+      payload.logged_terms = loggedTerms;
+      payload.G1 = Math.round((cumPct / 100) * 20);
+      payload.G2 = payload.G1;
+      payload.absences = Math.max(0, Math.round((100 - avgAtt) / 5));
       payload.studytime = Math.min(4, Math.max(1, Math.round(payload.study_hours / 2.5)));
     } else if (currentStage === "primary") {
-      payload.Enrolment_score = parseFloat(document.getElementById("f_prim_math")?.value || 86);
-      payload.Learning_score = parseFloat(document.getElementById("f_prim_read")?.value || 90);
+      let totalObt = 0, totalMax = 0, attSum = 0;
+      let lastGradePct = 88.0;
+      if (loggedTerms && loggedTerms.length > 0) {
+        loggedTerms.forEach((t, idx) => {
+          attSum += parseFloat(t.attendance_pct || 94);
+          let tObt = 0, tMax = 0;
+          (t.subjects || []).forEach(s => {
+            tObt += parseFloat(s.obtained_marks || 0);
+            tMax += parseFloat(s.total_marks || 100);
+          });
+          if (tMax > 0) {
+            const pct = (tObt / tMax) * 100;
+            totalObt += tObt;
+            totalMax += tMax;
+            if (idx === loggedTerms.length - 1) lastGradePct = pct;
+          }
+        });
+      }
+      const cumPct = totalMax > 0 ? +(totalObt / totalMax * 100).toFixed(1) : lastGradePct;
+      const avgAtt = loggedTerms.length > 0 ? +(attSum / loggedTerms.length).toFixed(1) : 94.0;
+
+      payload.current_class = document.getElementById("manager_current_class_select")?.value || (loggedTerms[loggedTerms.length - 1]?.term_name || "Class 3");
+      payload.target_class = document.getElementById("manager_target_class_select")?.value || "Class 4";
+      payload.past_annual_pct = cumPct;
+      payload.latest_grade_pct = lastGradePct;
+      payload.Attendance_Rate = avgAtt;
+      payload.logged_terms = loggedTerms;
+      payload.Enrolment_score = cumPct;
+      payload.Learning_score = cumPct;
       payload.Retention_score = 90.0;
     }
 
@@ -963,57 +1300,312 @@ document.addEventListener("DOMContentLoaded", () => {
     let grade = "Grade A (Excellent)";
     let min_ci = 3.42;
     let max_ci = 3.88;
-    let pass_prob = 94;
+    let risk_level = "LOW";
+    let status_badge = "On Track";
+    let status_color = "badge-success";
+    let forecastedSemGpa = 3.65;
+    let projectedCumulativeCgpa = 3.60;
 
     if (stage === "university") {
-      const base = payload.Previous_CGPA || 3.55;
-      const boost = (payload.Attendance_Pct > 85 ? 0.15 : 0) + (payload.study_hours > 4 ? 0.12 : -0.1);
-      score = Math.min(4.0, Math.max(1.0, +(base + boost).toFixed(2)));
-      formatted_score = `${score.toFixed(2)} CGPA`;
-      min_ci = +(score - 0.21).toFixed(2);
-      max_ci = Math.min(4.0, +(score + 0.19).toFixed(2));
-      grade = score >= 3.6 ? "Grade A+ (Exemplary)" : score >= 3.0 ? "Grade B+ (Proficient)" : "Grade C";
-    } else if (stage === "intermediate" || stage === "matric") {
-      const marks = stage === "intermediate" ? (payload.HSSC_I_Marks || 440) * 2 : (payload.SSC_I_Marks || 465) * 2;
-      const pct = Math.min(99, Math.max(40, Math.round((marks / 1100) * 100 + (payload.study_hours > 4 ? 4 : 0))));
-      score = pct;
-      formatted_score = `${pct}% (${Math.round((pct / 100) * 1100)} / 1100)`;
-      min_ci = pct - 4;
-      max_ci = Math.min(100, pct + 4);
-      grade = pct >= 80 ? "Grade A1 (Exceptional)" : pct >= 70 ? "Grade A (First Division)" : "Grade B";
+      const baseCgpa = payload.Previous_CGPA || 3.50;
+      const latestSemGpa = (payload.logged_terms && payload.logged_terms.length > 0)
+        ? (payload.logged_terms[payload.logged_terms.length - 1].gpa || baseCgpa)
+        : baseCgpa;
+      
+      const studyBoost = ((payload.study_hours || 4.5) - 4.0) * 0.05;
+      const attBoost = ((payload.Attendance_Pct || 85.0) - 80.0) * 0.005;
+      const midBoost = (((payload.Midterm_Exam_Avg || 80.0) - 75.0) / 100.0) * 0.25;
+      const backlogPenalty = (payload.Backlogs_Failed_Courses || 0) * 0.12;
+
+      forecastedSemGpa = +(Math.min(4.0, Math.max(1.0, latestSemGpa + studyBoost + attBoost + midBoost - backlogPenalty))).toFixed(2);
+      const nTerms = (payload.logged_terms && payload.logged_terms.length > 0) ? payload.logged_terms.length : 1;
+      projectedCumulativeCgpa = +(((baseCgpa * nTerms) + forecastedSemGpa) / (nTerms + 1)).toFixed(2);
+
+      score = forecastedSemGpa;
+      formatted_score = `${forecastedSemGpa.toFixed(2)} Next Sem GPA`;
+      min_ci = Math.max(0.0, +(forecastedSemGpa - 0.18).toFixed(2));
+      max_ci = Math.min(4.0, +(forecastedSemGpa + 0.16).toFixed(2));
+      grade = forecastedSemGpa >= 3.7 ? "Grade A+ (Exemplary)" : forecastedSemGpa >= 3.3 ? "Grade A (Very Good)" : forecastedSemGpa >= 3.0 ? "Grade B+ (Good)" : forecastedSemGpa >= 2.5 ? "Grade B (Satisfactory)" : forecastedSemGpa >= 2.0 ? "Grade C (Passing)" : "Grade F (Probation)";
+      risk_level = forecastedSemGpa >= 3.0 ? "LOW" : forecastedSemGpa >= 2.3 ? "MEDIUM" : "HIGH";
+      status_badge = forecastedSemGpa >= 3.6 ? "Exemplary" : forecastedSemGpa >= 3.0 ? "On Track" : forecastedSemGpa >= 2.3 ? "At Risk" : "Critical Intervention Needed";
+      status_color = forecastedSemGpa >= 3.6 ? "badge-success" : forecastedSemGpa >= 3.0 ? "badge-primary" : forecastedSemGpa >= 2.3 ? "badge-warning" : "badge-danger";
+    } else if (stage === "intermediate") {
+      const targetLevel = payload.target_level || "hssc1";
+      const ssc1 = parseFloat(payload.SSC_I_Marks || 470);
+      const ssc2 = parseFloat(payload.SSC_II_Marks || 485);
+      const sscTotal = parseFloat(payload.SSC_Total_Marks || (ssc1 + ssc2));
+      const sscPct = (sscTotal / 1100.0) * 100.0;
+      const att = parseFloat(payload.Attendance_Rate || 88.0);
+      const studyH = parseFloat(payload.Study_Hours || payload.study_hours || 5.0);
+      const midterm = parseFloat(payload.Midterm_Exam_Avg || 82.0);
+      const group = payload.Subject_Group || "Pre-Engineering";
+
+      const groupPenalty = group.includes("Engineering") ? -1.0 : group.includes("Medical") ? -0.8 : group.includes("ICS") ? -0.3 : 0.5;
+      const habitBoost = ((studyH - 4.0) * 1.2) + ((att - 80.0) * 0.25) + (((midterm - 75.0) / 100.0) * 8.0) + groupPenalty;
+
+      if (targetLevel === "hssc1") {
+        const predHssc1Pct = +(Math.min(100.0, Math.max(30.0, sscPct + habitBoost))).toFixed(1);
+        const predHssc1Marks = Math.min(550, Math.max(150, Math.round((predHssc1Pct / 100.0) * 550)));
+        const proj2YearTotal = Math.min(1100, predHssc1Marks * 2);
+
+        score = predHssc1Marks;
+        formatted_score = `${predHssc1Marks} / 550 (${predHssc1Pct}%) Forecasted 1st Year`;
+        min_ci = Math.max(0, predHssc1Marks - 18);
+        max_ci = Math.min(550, predHssc1Marks + 18);
+        grade = predHssc1Pct >= 80 ? "Grade A-1 (Exceptional)" : predHssc1Pct >= 70 ? "Grade A (Excellent)" : predHssc1Pct >= 60 ? "Grade B (Very Good)" : predHssc1Pct >= 50 ? "Grade C (Good / Passing)" : "Grade D / Needs Support";
+        risk_level = predHssc1Pct >= 70 ? "LOW" : predHssc1Pct >= 55 ? "MEDIUM" : "HIGH";
+        status_badge = predHssc1Pct >= 80 ? "Exemplary" : predHssc1Pct >= 65 ? "On Track" : predHssc1Pct >= 50 ? "At Risk" : "Critical Intervention Needed";
+        status_color = predHssc1Pct >= 80 ? "badge-success" : predHssc1Pct >= 65 ? "badge-primary" : predHssc1Pct >= 50 ? "badge-warning" : "badge-danger";
+
+        return {
+          stage,
+          target_level: "hssc1",
+          score: predHssc1Marks,
+          predicted_score: predHssc1Marks,
+          forecasted_1st_year: `${predHssc1Marks} / 550`,
+          projected_2year_total: `${proj2YearTotal} / 1100`,
+          formatted_score,
+          predicted_grade: grade,
+          grade,
+          risk_level,
+          status_badge,
+          status_color,
+          confidence_interval_low: min_ci,
+          confidence_interval_high: max_ci,
+          confidence_interval: { lower: min_ci, upper: max_ci },
+          feature_contributions: {
+            top_positive_factors: [
+              `Matric Foundation: ${sscTotal}/1100 (${sscPct.toFixed(1)}%) strong base for 11th board`,
+              `College Attendance: ${att}% regular lecture presence`,
+              `Independent Study: ${studyH} hrs/day structured routine`,
+              `Academic Stream: ${group} enrolled`
+            ],
+            growth_areas: [
+              `Solve 11th class 5-year past board papers for ${group} core topics`,
+              `Prioritize numerical problem sets & theory concept memorization`
+            ]
+          },
+          recommendation: `Strong performance predicted in 1st Year (11th). Maintain consistent study hours for top board position.`
+        };
+      } else {
+        const hssc1 = parseFloat(payload.HSSC_I_Marks || 460);
+        const hssc1Pct = (hssc1 / 550.0) * 100.0;
+        const basePct = (hssc1Pct * 0.70) + (sscPct * 0.30);
+        const predHssc2Pct = +(Math.min(100.0, Math.max(30.0, basePct + habitBoost))).toFixed(1);
+        const predHssc2Marks = Math.min(550, Math.max(150, Math.round((predHssc2Pct / 100.0) * 550)));
+        const finalTotal = Math.min(1100, Math.max(200, Math.round(hssc1 + predHssc2Marks)));
+        const finalPct = +((finalTotal / 1100.0) * 100.0).toFixed(1);
+
+        score = finalTotal;
+        formatted_score = `${finalTotal} / 1100 (${finalPct}%) Final Intermediate`;
+        min_ci = Math.max(0, finalTotal - 32);
+        max_ci = Math.min(1100, finalTotal + 32);
+        grade = finalPct >= 80 ? "Grade A-1 (Exceptional)" : finalPct >= 70 ? "Grade A (Excellent)" : finalPct >= 60 ? "Grade B (Very Good)" : finalPct >= 50 ? "Grade C (Good / Passing)" : "Grade D / Needs Support";
+        risk_level = finalPct >= 70 ? "LOW" : finalPct >= 55 ? "MEDIUM" : "HIGH";
+        status_badge = finalPct >= 80 ? "Exemplary" : finalPct >= 65 ? "On Track" : finalPct >= 50 ? "At Risk" : "Critical Intervention Needed";
+        status_color = finalPct >= 80 ? "badge-success" : finalPct >= 65 ? "badge-primary" : finalPct >= 50 ? "badge-warning" : "badge-danger";
+
+        return {
+          stage,
+          target_level: "hssc2",
+          score: finalTotal,
+          predicted_score: finalTotal,
+          forecasted_2nd_year: `${predHssc2Marks} / 550`,
+          final_intermediate_total: `${finalTotal} / 1100`,
+          formatted_score,
+          predicted_grade: grade,
+          grade,
+          risk_level,
+          status_badge,
+          status_color,
+          confidence_interval_low: min_ci,
+          confidence_interval_high: max_ci,
+          confidence_interval: { lower: min_ci, upper: max_ci },
+          feature_contributions: {
+            top_positive_factors: [
+              `1st Year Board Score: ${hssc1}/550 (${hssc1Pct.toFixed(1)}%) proven intermediate benchmark`,
+              `Matric Baseline: ${sscTotal}/1100 (${sscPct.toFixed(1)}%) strong background`,
+              `College Attendance: ${att}% consistent presence`,
+              `Daily Independent Study: ${studyH} hrs/day`
+            ],
+            growth_areas: [
+              `Focus on 2nd Year high-weightage topics and board model papers`,
+              `Prepare for MDCAT / ECAT / Entry Test parallel to board exams`
+            ]
+          },
+          recommendation: `Excellent trajectory for 2nd Year and overall Intermediate completion. Maintain rigorous mock practice.`
+        };
+      }
+    } else if (stage === "matric") {
+      const ssc1 = parseFloat(payload.SSC_I_Marks || 465);
+      const studyH = parseFloat(payload.Study_Hours || payload.study_hours || 4.5);
+      const att = parseFloat(payload.Attendance_Rate || 90);
+      const ssc1Pct = (ssc1 / 550.0) * 100.0;
+      const habitBoost = ((studyH - 4.0) * 1.5) + ((att - 85.0) * 0.35);
+      const predSsc2Pct = +(Math.min(100.0, Math.max(30.0, ssc1Pct + habitBoost))).toFixed(1);
+      const predSsc2Marks = Math.min(550, Math.max(150, Math.round((predSsc2Pct / 100.0) * 550)));
+      const totalMarks = Math.min(1100, Math.max(200, Math.round(ssc1 + predSsc2Marks)));
+      const pct = +((totalMarks / 1100) * 100).toFixed(1);
+      score = totalMarks;
+      formatted_score = `${totalMarks} / 1100 (${pct}%) Final Matric (SSC)`;
+      min_ci = Math.max(0, totalMarks - 30);
+      max_ci = Math.min(1100, totalMarks + 30);
+      grade = pct >= 80 ? "Grade A-1 (Exceptional)" : pct >= 70 ? "Grade A (Excellent)" : pct >= 60 ? "Grade B (Very Good)" : pct >= 50 ? "Grade C (Good / Passing)" : pct >= 40 ? "Grade D (Fair)" : "Grade F / Fail";
+      risk_level = pct >= 65 ? "LOW" : pct >= 50 ? "MEDIUM" : "HIGH";
+      status_badge = pct >= 80 ? "Exemplary" : pct >= 65 ? "On Track" : pct >= 50 ? "At Risk" : "Critical Intervention Needed";
+      status_color = pct >= 80 ? "badge-success" : pct >= 65 ? "badge-primary" : pct >= 50 ? "badge-warning" : "badge-danger";
+
+      return {
+        stage,
+        score: totalMarks,
+        predicted_score: totalMarks,
+        forecasted_10th_marks: `${predSsc2Marks} / 550`,
+        final_matric_total: `${totalMarks} / 1100`,
+        formatted_score,
+        predicted_grade: grade,
+        grade,
+        risk_level,
+        status_badge,
+        status_color,
+        confidence_interval_low: min_ci,
+        confidence_interval_high: max_ci,
+        confidence_interval: { lower: min_ci, upper: max_ci },
+        feature_contributions: {
+          top_positive_factors: [
+            `9th Class Board Foundation: ${ssc1}/550 (${ssc1Pct.toFixed(1)}%) baseline logged`,
+            `School Attendance: ${att}% regular presence`,
+            `Daily Independent Study: ${studyH} hrs/day routine`
+          ],
+          growth_areas: [
+            `Focus on 10th Class 5-year past board questions for Sciences & Mathematics`,
+            `Take regular monthly mock tests to build speed and accuracy`
+          ]
+        },
+        recommendation: `Solid trajectory predicted for 10th class board examinations. Maintain structured daily revisions.`
+      };
     } else if (stage === "secondary") {
-      const g1 = payload.G1 || 16;
-      const g2 = payload.G2 || 17;
-      score = +((g1 * 0.4 + g2 * 0.6) + (payload.study_hours > 3 ? 0.8 : 0)).toFixed(1);
-      formatted_score = `${score} / 20`;
-      min_ci = +(score - 1.2).toFixed(1);
-      max_ci = Math.min(20, +(score + 1.2).toFixed(1));
-      grade = score >= 16 ? "Distinction (Level 5)" : score >= 14 ? "Proficient (Level 4)" : "Developing";
+      const tgtClass = payload.target_class || "Class 9 / Matric";
+      const cumPct = parseFloat(payload.past_annual_pct || 85.0);
+      const studyH = parseFloat(payload.study_hours || 4.0);
+      const att = parseFloat(payload.Attendance_Rate || 90.0);
+      const termsCount = payload.logged_terms?.length || 1;
+
+      const habitBoost = ((studyH - 3.0) * 1.2) + ((att - 85.0) * 0.2) + Math.min(2.0, (termsCount - 1) * 0.5);
+      const predTgtPct = +(Math.min(100.0, Math.max(25.0, cumPct + habitBoost))).toFixed(1);
+
+      score = predTgtPct;
+      formatted_score = `${predTgtPct}% in ${tgtClass}`;
+      min_ci = Math.max(0, +(predTgtPct - 3.2).toFixed(1));
+      max_ci = Math.min(100, +(predTgtPct + 3.2).toFixed(1));
+      grade = predTgtPct >= 85 ? "Grade A+ (Distinction)" : predTgtPct >= 75 ? "Grade A (Excellent)" : predTgtPct >= 65 ? "Grade B (Good)" : predTgtPct >= 50 ? "Grade C (Satisfactory)" : "Grade D / Needs Support";
+      risk_level = predTgtPct >= 70 ? "LOW" : predTgtPct >= 55 ? "MEDIUM" : "HIGH";
+      status_badge = predTgtPct >= 85 ? "Exemplary" : predTgtPct >= 70 ? "On Track" : predTgtPct >= 55 ? "At Risk" : "Critical Intervention Needed";
+      status_color = predTgtPct >= 85 ? "badge-success" : predTgtPct >= 70 ? "badge-primary" : predTgtPct >= 55 ? "badge-warning" : "badge-danger";
+
+      const loggedClassNames = (payload.logged_terms || []).map(t => t.term_name).join(", ") || `${termsCount} Classes Logged`;
+
+      return {
+        stage,
+        target_class: tgtClass,
+        score: predTgtPct,
+        predicted_score: predTgtPct,
+        past_final_percentage: `${cumPct}% (${loggedClassNames})`,
+        forecasted_target_percentage: `${predTgtPct}% (${tgtClass})`,
+        formatted_score,
+        predicted_grade: grade,
+        grade,
+        risk_level,
+        status_badge,
+        status_color,
+        confidence_interval_low: min_ci,
+        confidence_interval_high: max_ci,
+        confidence_interval: { lower: min_ci, upper: max_ci },
+        feature_contributions: {
+          top_positive_factors: [
+            `Historical Multi-Class Aggregate: ${cumPct}% recorded across ${termsCount} classes`,
+            `School Attendance: ${att}% presence logged`,
+            `Daily Independent Study: ${studyH} hrs/day routine`
+          ],
+          growth_areas: [
+            `Maintain rigorous practice in Mathematics & Sciences for ${tgtClass}`,
+            `Solve model assessment papers ahead of final examinations`
+          ]
+        },
+        recommendation: `Solid academic progression forecasted for ${tgtClass} based on your multi-class coursework profile.`
+      };
     } else {
-      const math = payload.Enrolment_score || 86;
-      const read = payload.Learning_score || 90;
-      score = +((math + read) / 2).toFixed(1);
-      formatted_score = `${score}% Mastery`;
-      min_ci = +(score - 3.5).toFixed(1);
-      max_ci = Math.min(100, +(score + 3.5).toFixed(1));
-      grade = score >= 85 ? "Advanced Mastery" : "Standard Competency";
+      const tgtClass = payload.target_class || "Class 4";
+      const cumPct = parseFloat(payload.past_annual_pct || 88.0);
+      const att = parseFloat(payload.Attendance_Rate || 94.0);
+      const termsCount = payload.logged_terms?.length || 1;
+
+      const attBoost = (att - 90.0) * 0.15;
+      const predTgtPct = +(Math.min(100.0, Math.max(30.0, cumPct + attBoost))).toFixed(1);
+
+      score = predTgtPct;
+      formatted_score = `${predTgtPct}% in ${tgtClass}`;
+      min_ci = Math.max(0, +(predTgtPct - 2.8).toFixed(1));
+      max_ci = Math.min(100, +(predTgtPct + 2.8).toFixed(1));
+      grade = predTgtPct >= 85 ? "Level 4 (Advanced Mastery)" : predTgtPct >= 70 ? "Level 3 (Proficient)" : predTgtPct >= 50 ? "Level 2 (Developing)" : "Level 1 (Beginning)";
+      risk_level = predTgtPct >= 70 ? "LOW" : predTgtPct >= 50 ? "MEDIUM" : "HIGH";
+      status_badge = predTgtPct >= 85 ? "Exemplary" : predTgtPct >= 70 ? "On Track" : predTgtPct >= 50 ? "At Risk" : "Critical Intervention Needed";
+      status_color = predTgtPct >= 85 ? "badge-success" : predTgtPct >= 70 ? "badge-primary" : predTgtPct >= 50 ? "badge-warning" : "badge-danger";
+
+      const loggedClassNames = (payload.logged_terms || []).map(t => t.term_name).join(", ") || `${termsCount} Grades Logged`;
+
+      return {
+        stage,
+        target_class: tgtClass,
+        score: predTgtPct,
+        predicted_score: predTgtPct,
+        past_final_percentage: `${cumPct}% (${loggedClassNames})`,
+        forecasted_target_percentage: `${predTgtPct}% (${tgtClass})`,
+        formatted_score,
+        predicted_grade: grade,
+        grade,
+        risk_level,
+        status_badge,
+        status_color,
+        confidence_interval_low: min_ci,
+        confidence_interval_high: max_ci,
+        confidence_interval: { lower: min_ci, upper: max_ci },
+        feature_contributions: {
+          top_positive_factors: [
+            `Primary Foundation: ${cumPct}% mastery aggregate recorded`,
+            `Attendance: ${att}% consistent presence in school`,
+            `Multi-Subject Breadth: ${termsCount} primary grade records logged`
+          ],
+          growth_areas: [
+            `Encourage regular reading and mental arithmetic exercises for ${tgtClass}`,
+            `Reinforce creative writing and interactive projects`
+          ]
+        },
+        recommendation: `High developmental readiness for ${tgtClass}. Continue positive learning reinforcement.`
+      };
     }
 
     return {
       score,
+      predicted_score: score,
       formatted_score,
+      predicted_grade: grade,
       grade,
-      risk_level: score >= (stage === "university" ? 3.2 : 75) ? "LOW" : "MEDIUM",
+      risk_level,
+      status_badge,
+      status_color,
+      confidence_interval_low: min_ci,
+      confidence_interval_high: max_ci,
       confidence_interval: { lower: min_ci, upper: max_ci },
       feature_contributions: {
         top_positive_factors: [
-          `Attendance Track: High attendance reinforces steady academic performance`,
-          `Classroom Attentiveness: Maintains sharp focus and active engagement in core lectures`,
-          `Assignment Consistency: High homework and project submission discipline`
+          `Board Examination Track: Solid foundational benchmark logged`,
+          `High Classroom Attentiveness: Maintains sharp focus and active engagement in core lectures`,
+          `Assignment Consistency: High homework and project submission discipline`,
+          `Strong Communication Skills: Articulates ideas and questions effectively`
         ],
         growth_areas: [
-          `Target dedicated weekend revision for high-weightage topics`,
-          `Maintain strict problem-solving consistency across complex modules`
+          `Focus on past 5-year board exam questions for targeted marks enhancement`,
+          `Target dedicated weekend revision for high-weightage topics`
         ]
       },
       recommendation: `Model suggests strong academic momentum. Prioritize structured weekly revision to maximize final assessment scores.`
@@ -1024,23 +1616,125 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!studentResultCard) return;
 
     if (resultPredictedVal) resultPredictedVal.innerText = res.formatted_score || `${res.score}`;
-    if (resultGradeVal) resultGradeVal.innerText = res.grade || "Grade A (Excellent)";
+    
+    // Resolve Grade correctly
+    const gradeText = res.predicted_grade || res.grade || "Grade A (Excellent)";
+    if (resultGradeVal) resultGradeVal.innerText = gradeText;
+
+    // Dual Projection Pill rendering for University, Intermediate, Matric, Secondary, Primary
+    const dualProjectionContainer = document.getElementById("result-dual-projection");
+    if (dualProjectionContainer) {
+      if (currentStage === "university") {
+        const nextGpa = res.forecasted_semester_gpa || res.score || (res.predicted_score ? parseFloat(res.predicted_score) : 3.65);
+        const projCgpa = res.projected_cumulative_cgpa || +(Math.min(4.0, (typeof nextGpa === 'number' ? nextGpa : parseFloat(nextGpa)) * 0.98)).toFixed(2);
+        dualProjectionContainer.innerHTML = `
+          <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 Next Semester Forecast</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${typeof nextGpa === 'number' ? nextGpa.toFixed(2) : nextGpa} GPA</div>
+          </div>
+          <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎓 Projected Cumulative</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${typeof projCgpa === 'number' ? projCgpa.toFixed(2) : projCgpa} CGPA</div>
+          </div>
+        `;
+      } else if (currentStage === "intermediate") {
+        if (res.target_level === "hssc1") {
+          dualProjectionContainer.innerHTML = `
+            <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 1st Year (11th) Forecast</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${res.forecasted_1st_year || res.score + ' / 550'}</div>
+            </div>
+            <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎓 Projected 2-Year Total</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${res.projected_2year_total || (res.score * 2) + ' / 1100'}</div>
+            </div>
+          `;
+        } else {
+          dualProjectionContainer.innerHTML = `
+            <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 2nd Year (12th) Forecast</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${res.forecasted_2nd_year || '485 / 550'}</div>
+            </div>
+            <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🏛️ Final Intermediate Total</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${res.final_intermediate_total || res.score + ' / 1100'}</div>
+            </div>
+          `;
+        }
+      } else if (currentStage === "matric") {
+        dualProjectionContainer.innerHTML = `
+          <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 10th Class Forecast</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${res.forecasted_10th_marks || '480 / 550'}</div>
+          </div>
+          <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🏛️ Final Matric Total</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${res.final_matric_total || res.score + ' / 1100'}</div>
+          </div>
+        `;
+      } else if (currentStage === "secondary" || currentStage === "primary") {
+        dualProjectionContainer.innerHTML = `
+          <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">📘 Previous Class Final</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${res.past_final_percentage || '85.0%'}</div>
+          </div>
+          <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 Target Class Forecast</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${res.forecasted_target_percentage || res.score + '%'}</div>
+          </div>
+        `;
+      } else {
+        dualProjectionContainer.innerHTML = "";
+      }
+    }
+
     if (resultStatusBadge && resultStatusText) {
-      const isHigh = (res.risk_level || "LOW") === "LOW";
-      resultStatusBadge.className = isHigh ? "badge badge-success" : "badge badge-warning";
-      resultStatusText.innerText = isHigh ? "On Track / Low Risk" : "Attention Needed";
+      const badgeText = res.status_badge || "On Track / Low Risk";
+      const colorClass = res.status_color || "badge-success";
+      resultStatusBadge.className = `badge ${colorClass}`;
+      resultStatusText.innerText = badgeText;
     }
 
     // Model Meta
     if (resultModelMeta) {
-      resultModelMeta.innerText = `Model: ${currentStage.toUpperCase()} AI Multi-Factor Engine (v2.1.0)`;
+      resultModelMeta.innerText = `Model: ${currentStage.toUpperCase()} AI Multi-Factor Engine (${res.model_version || "v2.2.0"})`;
     }
 
     // Confidence / Reliability Interval
-    const ci = res.confidence_interval || { lower: 3.4, upper: 3.8 };
-    if (resultCiRange) resultCiRange.innerText = `[${ci.lower} — ${ci.upper}]`;
-    if (ciMinLabel) ciMinLabel.innerText = currentStage === "university" ? "0.00" : currentStage === "secondary" ? "0" : "0%";
-    if (ciMaxLabel) ciMaxLabel.innerText = currentStage === "university" ? "4.00" : currentStage === "secondary" ? "20" : "100%";
+    let ciLow = res.confidence_interval_low !== undefined ? res.confidence_interval_low : res.confidence_interval?.lower;
+    let ciHigh = res.confidence_interval_high !== undefined ? res.confidence_interval_high : res.confidence_interval?.upper;
+
+    if (ciLow === undefined || ciHigh === undefined) {
+      if (currentStage === "university") {
+        ciLow = Math.max(0, +(parseFloat(res.predicted_score || res.score || 3.5) - 0.18).toFixed(2));
+        ciHigh = Math.min(4.0, +(parseFloat(res.predicted_score || res.score || 3.5) + 0.16).toFixed(2));
+      } else if (currentStage === "intermediate") {
+        const raw = parseFloat(res.predicted_score || res.score || (res.target_level === "hssc1" ? 480 : 960));
+        const span = res.target_level === "hssc1" ? 18 : 32;
+        const maxLim = res.target_level === "hssc1" ? 550 : 1100;
+        ciLow = Math.max(0, Math.round(raw - span));
+        ciHigh = Math.min(maxLim, Math.round(raw + span));
+      } else if (currentStage === "matric") {
+        const raw = parseFloat(res.predicted_score || res.score || 950);
+        ciLow = Math.max(0, Math.round(raw - 30));
+        ciHigh = Math.min(1100, Math.round(raw + 30));
+      } else if (currentStage === "secondary") {
+        const raw = parseFloat(res.predicted_score || res.score || 88);
+        ciLow = Math.max(0, +(raw - 3.5).toFixed(1));
+        ciHigh = Math.min(100, +(raw + 3.5).toFixed(1));
+      } else {
+        const raw = parseFloat(res.predicted_score || res.score || 85);
+        ciLow = Math.max(0, +(raw - 3.0).toFixed(1));
+        ciHigh = Math.min(100, +(raw + 3.0).toFixed(1));
+      }
+    }
+
+    const unit = currentStage === "university" ? " CGPA" : (currentStage === "intermediate" || currentStage === "matric") ? " Marks" : "%";
+    if (resultCiRange) resultCiRange.innerText = `[${ciLow} — ${ciHigh}${unit}]`;
+    if (ciMinLabel) ciMinLabel.innerText = currentStage === "university" ? "0.00" : (currentStage === "intermediate" || currentStage === "matric") ? "0" : "0%";
+    if (ciMaxLabel) {
+      ciMaxLabel.innerText = currentStage === "university" ? "4.00" : currentStage === "intermediate" ? (res.target_level === "hssc1" ? "550" : "1100") : currentStage === "matric" ? "1100" : "100%";
+    }
 
     // Explainable AI (XAI) Feature Weight Bars
     if (xaiBarsContainer) {
@@ -1081,6 +1775,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (resultRecommendationText) {
       resultRecommendationText.innerText = res.recommendation || "Maintain consistent daily study blocks and focus on continuous revision.";
+    }
+
+    // Populate Faculty Instructor Qualitative Evaluation (if available)
+    const teacherCard = document.getElementById("student-teacher-evaluation-card");
+    if (teacherCard) {
+      const tp = res.teacher_payload || res.input_payload || res.payload || {};
+      const tFocus = res.attentive || tp.attentive || tp.attentiveness_level;
+      const tComm = res.comm_skill || tp.comm_skill || tp.communication_skill;
+      const tBeh = res.behavior || tp.behavior || tp.behavior_discipline;
+      const tNeed = res.academic_need || tp.academic_need;
+      const tRating = res.teacher_rating ?? tp.rating ?? tp.teacher_rating;
+      const tStrategy = res.teacher_notes || tp.strategy || tp.notes;
+
+      if (tFocus || tComm || tRating !== undefined || res.role === "teacher") {
+        teacherCard.style.display = "block";
+        const fEl = document.getElementById("student-teacher-focus");
+        const cEl = document.getElementById("student-teacher-comm");
+        const bEl = document.getElementById("student-teacher-behavior");
+        const nEl = document.getElementById("student-teacher-need");
+        const rEl = document.getElementById("student-teacher-rating-badge");
+        const sEl = document.getElementById("student-teacher-strategy");
+        const mEl = document.getElementById("student-teacher-meta");
+
+        if (fEl) fEl.innerText = tFocus || "High";
+        if (cEl) cEl.innerText = tComm || "Good";
+        if (bEl) bEl.innerText = tBeh || "Cooperative";
+        if (nEl) nEl.innerText = tNeed || "Independent";
+        if (rEl) rEl.innerText = `${Number(tRating || 5.0).toFixed(1)} ⭐ Faculty Rating`;
+        if (sEl) sEl.innerText = tStrategy || res.recommendation || "Student demonstrates dependable academic readiness. Maintain coursework momentum.";
+        if (mEl && (tp.teacher_name || res.teacher_name)) {
+          mEl.innerText = `Evaluated by: ${tp.teacher_name || res.teacher_name}`;
+        }
+      } else {
+        teacherCard.style.display = "none";
+      }
     }
 
     // Voice Speech Audio Guidance
@@ -1129,7 +1858,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnCopySummary = document.getElementById("btn-copy-summary");
     if (btnCopySummary) {
       btnCopySummary.onclick = () => {
-        const summaryText = `🎓 EduMetrics AI - Academic Prediction Report\nStage: ${currentStage.toUpperCase()}\nPredicted Score: ${res.formatted_score || res.score}\nGrade: ${res.grade}\nRisk Level: ${res.risk_level}\nAI Recommendation: ${res.recommendation}\nDate: ${new Date().toLocaleDateString()}`;
+        const summaryText = `🎓 EduMetrics AI - Academic Prediction Report\nStage: ${currentStage.toUpperCase()}\nPredicted Score: ${res.formatted_score || res.score}\nGrade: ${gradeText}\nRisk Level: ${res.risk_level || "LOW"}\nAI Recommendation: ${res.recommendation}\nDate: ${new Date().toLocaleDateString()}`;
         navigator.clipboard.writeText(summaryText).then(() => {
           showToast("Summary copied to clipboard!", "success");
         }).catch(() => {
@@ -1143,77 +1872,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ============================================================================
-  // 9. WHAT-IF SIMULATOR ENGINE
-  // ============================================================================
-  function initWhatIfSimulator(baseScore) {
-    if (!simSliderStudy || !simSliderAtt || !simSliderAssign) return;
-
-    function updateSimulation() {
-      const study = parseFloat(simSliderStudy.value);
-      const att = parseFloat(simSliderAtt.value);
-      const assign = parseFloat(simSliderAssign.value);
-
-      if (simValStudy) simValStudy.innerText = `${study}h/day`;
-      if (simValAtt) simValAtt.innerText = `${att}%`;
-      if (simValAssign) simValAssign.innerText = `${assign}%`;
-
-      let simScore = baseScore;
-      if (currentStage === "university") {
-        const delta = (study - 4.5) * 0.04 + (att - 88) * 0.005 + (assign - 90) * 0.003;
-        simScore = Math.min(4.0, Math.max(1.0, +(baseScore + delta).toFixed(2)));
-        if (simScenarioCurrent) simScenarioCurrent.innerText = `${baseScore.toFixed(2)} CGPA`;
-        if (simScenarioSimulated) simScenarioSimulated.innerText = `${simScore.toFixed(2)} CGPA`;
-        if (simScenarioBest) simScenarioBest.innerText = `${Math.min(4.0, baseScore + 0.28).toFixed(2)} CGPA`;
-      } else {
-        const delta = (study - 4.5) * 1.5 + (att - 88) * 0.2 + (assign - 90) * 0.15;
-        simScore = Math.min(100, Math.max(30, Math.round(baseScore + delta)));
-        if (simScenarioCurrent) simScenarioCurrent.innerText = `${baseScore}%`;
-        if (simScenarioSimulated) simScenarioSimulated.innerText = `${simScore}%`;
-        if (simScenarioBest) simScenarioBest.innerText = `${Math.min(100, baseScore + 6)}%`;
-      }
-    }
-
-    // Quick Preset Handlers
-    const btnPresetBalanced = document.getElementById("btn-sim-preset-balanced");
-    const btnPresetCram = document.getElementById("btn-sim-preset-cram");
-    const btnPresetHonors = document.getElementById("btn-sim-preset-honors");
-
-    if (btnPresetBalanced) {
-      btnPresetBalanced.onclick = () => {
-        simSliderStudy.value = 4.5;
-        simSliderAtt.value = 88;
-        simSliderAssign.value = 90;
-        updateSimulation();
-        showToast("Loaded Balanced Routine Preset", "info");
-      };
-    }
-    if (btnPresetCram) {
-      btnPresetCram.onclick = () => {
-        simSliderStudy.value = 6.5;
-        simSliderAtt.value = 95;
-        simSliderAssign.value = 95;
-        updateSimulation();
-        showToast("Loaded Exam Sprint Preset", "info");
-      };
-    }
-    if (btnPresetHonors) {
-      btnPresetHonors.onclick = () => {
-        simSliderStudy.value = 8.0;
-        simSliderAtt.value = 98;
-        simSliderAssign.value = 100;
-        updateSimulation();
-        showToast("Loaded Dean's List Honors Preset", "success");
-      };
-    }
-
-    simSliderStudy.oninput = updateSimulation;
-    simSliderAtt.oninput = updateSimulation;
-    simSliderAssign.oninput = updateSimulation;
-    updateSimulation();
-  }
-
-  // ============================================================================
-  // 10. SUBJECT / COURSE CRUD MANAGER (PRESERVED & STAGE-ADAPTED)
+  // 9. SUBJECT / COURSE CRUD MANAGER (PRESERVED & STAGE-ADAPTED)
   // ============================================================================
   function renderSubjectsTable() {
     if (!subjectsTableBody) return;
@@ -1242,11 +1901,13 @@ document.addEventListener("DOMContentLoaded", () => {
           <td style="color: var(--text-secondary); font-size:12px;">${sub.term || "Current"}</td>
           <td style="font-weight: 700; color: var(--text-primary);">${sub.obtained}</td>
           <td style="color: var(--text-muted);">${sub.max}</td>
-          <td style="font-weight: 600; color: ${parseFloat(pct) >= 80 ? "var(--accent-emerald)" : "var(--accent-amber)"};">${pct}%</td>
+          <td style="font-weight: 600; color: ${parseFloat(pct) >= 80 ? "var(--color-lime)" : "var(--color-orange)"};">${pct}%</td>
           <td><span class="badge ${parseFloat(pct) >= 80 ? "badge-success" : "badge-warning"}">${grade}</span></td>
           <td style="text-align: right;">
-            <button type="button" class="subject-action-btn" onclick="window.editSubject('${sub.id}')">✏️ Edit</button>
-            <button type="button" class="subject-action-btn delete" onclick="window.deleteSubject('${sub.id}')">🗑️</button>
+            <div class="action-btn-group">
+              <button type="button" class="table-icon-btn btn-edit" onclick="window.editSubject('${sub.id}')">✏️ Edit</button>
+              <button type="button" class="table-icon-btn btn-delete" onclick="window.deleteSubject('${sub.id}')">🗑️</button>
+            </div>
           </td>
         </tr>
       `;
@@ -1306,9 +1967,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateSubjectPresetOptions() {
-    if (!subjectPresetSelect) return;
-    const presets = subjectPresetOptions[currentStage] || subjectPresetOptions.university;
-    subjectPresetSelect.innerHTML = presets.map((p) => `<option value="${p}">${p}</option>`).join("");
+    if (subjectPresetSelect) {
+      const presets = stageSubjectPresets[currentStage] || stageSubjectPresets.university;
+      subjectPresetSelect.innerHTML = presets.map((p) => `<option value="${p}">${p}</option>`).join("");
+    }
+    if (subjectTermSelect) {
+      const periods = stageAssessmentPeriods[currentStage] || stageAssessmentPeriods.university;
+      subjectTermSelect.innerHTML = periods.map((p) => `<option value="${p}">${p}</option>`).join("");
+    }
   }
 
   if (subjectPresetSelect) {
@@ -1338,8 +2004,8 @@ document.addEventListener("DOMContentLoaded", () => {
     subjectEntryForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const name = subjectNameInput?.value.trim();
-      const category = subjectCategorySelect?.value || "Core Science";
-      const term = subjectTermSelect?.value || "Current Term";
+      const category = subjectCategorySelect?.value || "Theory";
+      const term = subjectTermSelect?.value || "Annual Examination";
       const obtained = parseFloat(subjectObtainedInput?.value || 0);
       const max = parseFloat(subjectTotalInput?.value || 100);
       const editId = subjectEditId?.value;
@@ -1396,6 +2062,618 @@ document.addEventListener("DOMContentLoaded", () => {
     subjectsStore[currentStage] = (subjectsStore[currentStage] || []).filter((s) => s.id !== id);
     renderSubjectsTable();
     showToast("Subject removed.", "info");
+  };
+
+  // ============================================================================
+  // 10. MULTI-SEMESTER & HISTORICAL ACADEMIC TERMS CRUD (SUPABASE BACKED)
+  // ============================================================================
+  const termsHistoryCardsContainer = document.getElementById("terms-history-cards-container");
+  const kpiTotalTerms = document.getElementById("kpi-total-terms");
+  const kpiCumulativeCgpa = document.getElementById("kpi-cumulative-cgpa");
+  const btnAddSemester = document.getElementById("btn-add-semester");
+  const btnAddSemesterText = document.getElementById("btn-add-semester-text");
+  const modalAddTerm = document.getElementById("modal-add-term");
+  const btnCloseTermModal = document.getElementById("btn-close-term-modal");
+  const btnCancelTermModal = document.getElementById("btn-cancel-term-modal");
+  const addTermForm = document.getElementById("add-term-form");
+  const modalTermSubjectsContainer = document.getElementById("modal-term-subjects-container");
+  const btnAddModalSubjectRow = document.getElementById("btn-add-modal-subject-row");
+
+  let loggedTerms = [];
+
+  function calculateModalGpaFromRows() {
+    const termGpaInput = document.getElementById("term-gpa-input");
+    if (!termGpaInput || !modalTermSubjectsContainer) return;
+    const rows = Array.from(modalTermSubjectsContainer.querySelectorAll(".modal-subject-row"));
+    let totObt = 0;
+    let totMax = 0;
+    rows.forEach(r => {
+      const obt = parseFloat(r.querySelector(".m-sub-obt")?.value);
+      const max = parseFloat(r.querySelector(".m-sub-max")?.value);
+      if (!isNaN(obt) && !isNaN(max) && max > 0) {
+        totObt += obt;
+        totMax += max;
+      }
+    });
+    if (totMax > 0) {
+      if (currentStage === "university") {
+        const gpa = Math.min(4.0, (totObt / totMax) * 4.0);
+        termGpaInput.value = gpa.toFixed(2);
+      } else {
+        const pct = Math.min(100.0, (totObt / totMax) * 100.0);
+        termGpaInput.value = pct.toFixed(1);
+      }
+    }
+  }
+
+  function addModalSubjectRow(name = "", cat = "", obt = "", max = 100) {
+    if (!modalTermSubjectsContainer) return;
+    const rowId = `m-sub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const row = document.createElement("div");
+    row.className = "modal-subject-row";
+    row.id = rowId;
+    row.style.display = "grid";
+    row.style.gridTemplateColumns = "2fr 1fr 1fr 1fr 32px";
+    row.style.gap = "8px";
+    row.style.alignItems = "center";
+
+    let defaultName = "Calculus";
+    let catOptions = `
+      <option value="Theory" ${cat === "Theory" || !cat ? "selected" : ""}>Theory</option>
+      <option value="Lab" ${cat === "Lab" ? "selected" : ""}>Lab</option>
+    `;
+
+    if (currentStage === "secondary") {
+      defaultName = "Mathematics";
+      catOptions = `
+        <option value="Core Subject" ${cat === "Core Subject" || !cat ? "selected" : ""}>Core Subject</option>
+        <option value="Science" ${cat === "Science" ? "selected" : ""}>Science</option>
+        <option value="Mathematics" ${cat === "Mathematics" ? "selected" : ""}>Mathematics</option>
+        <option value="Language" ${cat === "Language" ? "selected" : ""}>Language</option>
+        <option value="Practical" ${cat === "Practical" ? "selected" : ""}>Practical</option>
+      `;
+    } else if (currentStage === "primary") {
+      defaultName = "Math & Numeracy";
+      catOptions = `
+        <option value="Foundational" ${cat === "Foundational" || !cat ? "selected" : ""}>Foundational</option>
+        <option value="Numeracy" ${cat === "Numeracy" ? "selected" : ""}>Numeracy</option>
+        <option value="Literacy" ${cat === "Literacy" ? "selected" : ""}>Literacy</option>
+        <option value="Creative Art" ${cat === "Creative Art" ? "selected" : ""}>Creative Art</option>
+        <option value="Activity" ${cat === "Activity" ? "selected" : ""}>Activity</option>
+      `;
+    }
+
+    row.innerHTML = `
+      <input type="text" class="form-input m-sub-name" placeholder="Subject Name (e.g. ${defaultName})" value="${name}" required style="padding:6px 10px;font-size:13px;">
+      <select class="form-select m-sub-cat" style="padding:6px 10px;font-size:13px;">
+        ${catOptions}
+      </select>
+      <input type="number" step="0.5" class="form-input m-sub-obt" placeholder="Marks" value="${obt !== undefined && obt !== null ? obt : ""}" min="0" required style="padding:6px 10px;font-size:13px;">
+      <input type="number" step="0.5" class="form-input m-sub-max" placeholder="Max" value="${max || 100}" min="1" required style="padding:6px 10px;font-size:13px;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="this.parentElement.remove(); window.calculateModalGpaFromRows && window.calculateModalGpaFromRows();" style="padding:4px 8px;font-size:12px;color:var(--color-red);" title="Remove Row">✕</button>
+    `;
+
+    const obtInput = row.querySelector(".m-sub-obt");
+    const maxInput = row.querySelector(".m-sub-max");
+    if (obtInput) obtInput.addEventListener("input", calculateModalGpaFromRows);
+    if (maxInput) maxInput.addEventListener("input", calculateModalGpaFromRows);
+
+    modalTermSubjectsContainer.appendChild(row);
+  }
+  window.calculateModalGpaFromRows = calculateModalGpaFromRows;
+
+  if (btnAddModalSubjectRow) {
+    btnAddModalSubjectRow.addEventListener("click", () => addModalSubjectRow("", "", "", 100));
+  }
+
+  async function loadAcademicTerms(stage = currentStage) {
+    if (btnAddSemesterText) {
+      if (stage === "university") {
+        btnAddSemesterText.innerText = "+ Add Semester";
+      } else if (stage === "secondary") {
+        btnAddSemesterText.innerText = "+ Add Class Record";
+      } else if (stage === "primary") {
+        btnAddSemesterText.innerText = "+ Add Primary Class";
+      } else {
+        btnAddSemesterText.innerText = "+ Add Academic Record";
+      }
+    }
+
+    try {
+      if (window.apiClient) {
+        const res = await window.apiClient.getAcademicRecords(stage);
+        if (res && Array.isArray(res.terms)) {
+          loggedTerms = res.terms;
+          renderTermsHistoryCards(loggedTerms, res);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("[Prediction] Loading academic terms from API fallback:", e.message);
+    }
+
+    renderTermsHistoryCards([], { cumulative_cgpa: 0, count: 0 });
+  }
+
+  function renderTermsHistoryCards(terms, meta = {}) {
+    if (!termsHistoryCardsContainer) return;
+
+    const kpiStanding = document.getElementById("kpi-current-standing");
+    const kpiStandingSub = document.getElementById("kpi-standing-sub");
+    const kpiLatestGpa = document.getElementById("kpi-latest-gpa");
+
+    if (!terms || terms.length === 0) {
+      const emptyIcon = currentStage === "university" ? "🏛️" : currentStage === "secondary" ? "🏫" : "🌱";
+      const emptyTitle = currentStage === "university" ? "No Academic Semesters Logged Yet" : currentStage === "secondary" ? "No Secondary Classes Logged Yet" : "No Primary Grades Logged Yet";
+      const emptyHelp = currentStage === "university"
+        ? "Click <strong>+ Add Semester</strong> to log your GPA, CGPA, attendance, and enrolled courses."
+        : currentStage === "secondary"
+        ? "Click <strong>+ Add Class Record</strong> to log your completed classes (e.g. Class 6, Class 7) and individual subjects."
+        : "Click <strong>+ Add Primary Class</strong> to log completed primary classes and learning subjects.";
+
+      if (kpiStanding) kpiStanding.innerText = currentStage === "university" ? "Semester 1 (Freshman)" : "No Classes Yet";
+      if (kpiStandingSub) kpiStandingSub.innerText = "Awaiting 1st Entry";
+      if (kpiLatestGpa) kpiLatestGpa.innerText = currentStage === "university" ? "0.00 GPA" : "0.0%";
+      if (kpiCumulativeCgpa) kpiCumulativeCgpa.innerText = "--";
+      const kpiAgg = document.getElementById("kpi-aggregate-pct");
+      if (kpiAgg) kpiAgg.innerText = "--";
+
+      termsHistoryCardsContainer.innerHTML = `
+        <div style="padding: 24px; text-align: center; border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; color: var(--text-muted);">
+          <div style="font-size: 24px; margin-bottom: 6px;">${emptyIcon}</div>
+          <div style="font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 4px;">${emptyTitle}</div>
+          <div style="font-size: 12px; margin-bottom: 14px;">${emptyHelp}</div>
+        </div>
+      `;
+      return;
+    }
+
+    let totalCoursesCount = 0;
+    let totalObtainedAll = 0;
+    let totalMaxAll = 0;
+    let totalAttendance = 0;
+
+    terms.forEach(t => {
+      totalAttendance += parseFloat(t.attendance_pct || 85);
+      const subs = t.subjects || [];
+      totalCoursesCount += subs.length;
+      subs.forEach(s => {
+        totalObtainedAll += parseFloat(s.obtained_marks || 0);
+        totalMaxAll += parseFloat(s.total_marks || 100);
+      });
+    });
+
+    const overallPct = totalMaxAll > 0 ? (totalObtainedAll / totalMaxAll) * 100 : 0;
+    const calcCgpa = currentStage === "university"
+      ? +(Math.min(4.0, (overallPct / 100.0) * 4.0)).toFixed(2)
+      : +overallPct.toFixed(1);
+    const avgAttendance = +(totalAttendance / terms.length).toFixed(1);
+
+    if (kpiStanding) {
+      if (currentStage === "university") {
+        const semNumber = terms.length;
+        const tierName = semNumber === 1 ? "Freshman" : semNumber === 2 ? "Sophomore" : semNumber <= 4 ? "Junior" : "Senior";
+        kpiStanding.innerText = `Semester ${semNumber} (${tierName})`;
+      } else if (currentStage === "secondary") {
+        kpiStanding.innerText = `${terms.length} ${terms.length > 1 ? "Classes" : "Class"} Logged`;
+      } else {
+        kpiStanding.innerText = `${terms.length} ${terms.length > 1 ? "Grades" : "Grade"} Logged`;
+      }
+    }
+    if (kpiStandingSub) kpiStandingSub.innerText = `${terms.length} Level${terms.length > 1 ? "s" : ""} Recorded`;
+
+    if (kpiLatestGpa) {
+      const lastTerm = terms[terms.length - 1];
+      const lastGpa = lastTerm.gpa !== undefined ? lastTerm.gpa : (lastTerm.percentage || calcCgpa);
+      kpiLatestGpa.innerText = currentStage === "university" ? `${Number(lastGpa).toFixed(2)} GPA` : `${lastGpa}%`;
+    }
+
+    if (kpiCumulativeCgpa) {
+      kpiCumulativeCgpa.innerText = currentStage === "university" ? `${calcCgpa.toFixed(2)} CGPA` : `${calcCgpa}%`;
+    }
+    const kpiAgg = document.getElementById("kpi-aggregate-pct");
+    if (kpiAgg) kpiAgg.innerText = `${avgAttendance}%`;
+
+    const cardIcon = currentStage === "university" ? "🏛️" : currentStage === "secondary" ? "🏫" : "🌱";
+    const subLabelUnit = currentStage === "university" ? "Courses" : "Subjects";
+
+    termsHistoryCardsContainer.innerHTML = terms.map((t) => {
+      const scoreLabel = currentStage === "university" ? `${Number(t.gpa || calcCgpa).toFixed(2)} GPA` : `${t.percentage || t.gpa || calcCgpa}% Score`;
+      const attPill = t.attendance_pct ? ` • ${t.attendance_pct}% Att` : "";
+      const crPill = currentStage === "university" && t.credit_hours ? ` • ${t.credit_hours} Credits` : "";
+      const studyPill = (currentStage === "secondary" || currentStage === "primary") && t.study_hours ? ` • ${t.study_hours}h Study` : "";
+      const cgpaPill = currentStage === "university" && t.cgpa ? ` • ${Number(t.cgpa).toFixed(2)} CGPA` : "";
+      return `
+        <div class="card" style="padding: 14px 18px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.35); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span style="font-weight: 800; color: #ffffff; font-size: 15px;">${cardIcon} ${t.term_name}</span>
+              <span class="badge badge-info" style="font-size: 11px;">${t.subjects?.length || 0} ${subLabelUnit}${crPill}${studyPill}${attPill}${cgpaPill}</span>
+              <span class="badge badge-success" style="font-size: 11px; font-weight: 700;">${scoreLabel}</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.editSemester('${t.term_name}')" style="padding: 3px 10px; font-size: 11.5px; color: var(--color-lime);">
+                ✏️ Edit
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.deleteSemester('${t.term_name}')" style="padding: 3px 10px; font-size: 11.5px; color: var(--color-red);">
+                🗑️ Remove
+              </button>
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;">
+            ${(t.subjects || []).map(s => {
+              const subPct = s.total_marks > 0 ? Math.round((s.obtained_marks / s.total_marks) * 100) : 0;
+              return `<span style="background: rgba(255,255,255,0.06); padding: 5px 12px; border-radius: 6px; font-size: 12px; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.08);">
+                <strong style="color: #ffffff;">${s.subject_name}</strong>: ${s.obtained_marks}/${s.total_marks} (${subPct}%)
+              </span>`;
+            }).join("") || "<span style='color:var(--text-muted);font-size:12px;'>No subjects recorded</span>"}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function setupModalForCurrentStage(isEdit = false, term = null) {
+    const termModalTitle = document.getElementById("term-modal-title");
+    const termModalSubtitle = document.getElementById("term-modal-subtitle");
+    const termNameLabel = document.getElementById("term-name-label");
+    const termNameSelect = document.getElementById("term-name-select");
+    const termNameInput = document.getElementById("term-name-input");
+    const termGpaLabel = document.getElementById("term-gpa-label");
+    const termGpaInput = document.getElementById("term-gpa-input");
+    const termCgpaGroup = document.getElementById("term-cgpa-group");
+    const termCreditsGroup = document.getElementById("term-credits-group");
+    const termCreditsLabel = document.getElementById("term-credits-label");
+    const termCreditsInput = document.getElementById("term-credits-input");
+    const termMidtermGroup = document.getElementById("term-midterm-group");
+    const termBacklogsGroup = document.getElementById("term-backlogs-group");
+    const termCoursesLabel = document.getElementById("term-courses-label");
+    const btnAddModalSubjectRowText = document.getElementById("btn-add-modal-subject-row-text");
+    const colSubNameHeader = document.getElementById("col-sub-name-header");
+    const colSubCatHeader = document.getElementById("col-sub-cat-header");
+
+    if (currentStage === "university") {
+      if (termModalTitle) termModalTitle.innerHTML = isEdit ? `<span>✏️ Edit ${term?.term_name || 'Semester'} & Coursework</span>` : `<span>🏛️ Add Academic Semester & Coursework</span>`;
+      if (termModalSubtitle) termModalSubtitle.innerText = "Enter semester details, GPA/CGPA, attendance, credit hours, and enrolled courses.";
+      if (termNameLabel) termNameLabel.innerHTML = `Semester / Term Name <span style="color:var(--color-lime)">*</span>`;
+      
+      if (termNameSelect) {
+        termNameSelect.style.display = "block";
+        termNameSelect.innerHTML = `
+          <option value="Semester 1">Semester 1</option>
+          <option value="Semester 2">Semester 2</option>
+          <option value="Semester 3">Semester 3</option>
+          <option value="Semester 4">Semester 4</option>
+          <option value="Semester 5">Semester 5</option>
+          <option value="Semester 6">Semester 6</option>
+          <option value="Semester 7">Semester 7</option>
+          <option value="Semester 8">Semester 8</option>
+          <option value="custom">✍️ Custom Term Name...</option>
+        `;
+        const nextNum = loggedTerms.length + 1;
+        const curVal = isEdit ? (term?.term_name || `Semester ${nextNum}`) : `Semester ${nextNum}`;
+        if (termNameSelect.querySelector(`option[value="${curVal}"]`)) {
+          termNameSelect.value = curVal;
+          if (termNameInput) {
+            termNameInput.value = curVal;
+            termNameInput.style.display = "none";
+          }
+        } else {
+          termNameSelect.value = "custom";
+          if (termNameInput) {
+            termNameInput.value = curVal;
+            termNameInput.style.display = "block";
+          }
+        }
+      }
+
+      if (termGpaLabel) termGpaLabel.innerHTML = `Semester GPA (0–4) <span style="color:var(--color-lime)">*</span>`;
+      if (termGpaInput) {
+        termGpaInput.min = "0.00";
+        termGpaInput.max = "4.00";
+        termGpaInput.placeholder = "e.g. 3.65";
+      }
+      if (termCgpaGroup) termCgpaGroup.style.display = "block";
+      if (termCreditsGroup) {
+        termCreditsGroup.style.display = "block";
+        if (termCreditsLabel) termCreditsLabel.innerText = "Credit Hours";
+      }
+      if (termMidtermGroup) termMidtermGroup.style.display = "block";
+      if (termBacklogsGroup) termBacklogsGroup.style.display = "block";
+      if (termCoursesLabel) termCoursesLabel.innerText = "Enrolled Courses & Marks";
+      if (btnAddModalSubjectRowText) btnAddModalSubjectRowText.innerText = "+ Add Course";
+      if (colSubNameHeader) colSubNameHeader.innerText = "Course Name";
+      if (colSubCatHeader) colSubCatHeader.innerText = "Type";
+    } else if (currentStage === "secondary") {
+      if (termModalTitle) termModalTitle.innerHTML = isEdit ? `<span>✏️ Edit ${term?.term_name || 'Class'} Record</span>` : `<span>🏫 Add Secondary Class & Subject Coursework</span>`;
+      if (termModalSubtitle) termModalSubtitle.innerText = "Select or enter your class grade (e.g. Class 5, Class 6, Class 7), attendance, and add your subjects with marks.";
+      if (termNameLabel) termNameLabel.innerHTML = `Secondary Class / Grade <span style="color:var(--color-lime)">*</span>`;
+      
+      if (termNameSelect) {
+        termNameSelect.style.display = "block";
+        termNameSelect.innerHTML = `
+          <option value="Class 5">Class 5</option>
+          <option value="Class 6">Class 6</option>
+          <option value="Class 7">Class 7</option>
+          <option value="Class 8">Class 8</option>
+          <option value="Class 9">Class 9</option>
+          <option value="custom">✍️ Custom Class Name...</option>
+        `;
+        const selectedCur = document.getElementById("manager_current_class_select")?.value || "Class 7";
+        const curVal = isEdit ? (term?.term_name || selectedCur) : selectedCur;
+        if (termNameSelect.querySelector(`option[value="${curVal}"]`)) {
+          termNameSelect.value = curVal;
+          if (termNameInput) {
+            termNameInput.value = curVal;
+            termNameInput.style.display = "none";
+          }
+        } else {
+          termNameSelect.value = "custom";
+          if (termNameInput) {
+            termNameInput.value = curVal;
+            termNameInput.style.display = "block";
+          }
+        }
+      }
+
+      if (termGpaLabel) termGpaLabel.innerHTML = `Class Final Score (%) <span style="color:var(--color-lime)">*</span>`;
+      if (termGpaInput) {
+        termGpaInput.min = "0";
+        termGpaInput.max = "100";
+        termGpaInput.placeholder = "e.g. 85.0";
+      }
+      if (termCgpaGroup) termCgpaGroup.style.display = "none";
+      if (termCreditsGroup) {
+        termCreditsGroup.style.display = "block";
+        if (termCreditsLabel) termCreditsLabel.innerText = "Daily Study Hours";
+        if (termCreditsInput) {
+          termCreditsInput.placeholder = "e.g. 3.5";
+          termCreditsInput.value = term?.study_hours || "3.5";
+        }
+      }
+      if (termMidtermGroup) termMidtermGroup.style.display = "none";
+      if (termBacklogsGroup) termBacklogsGroup.style.display = "none";
+      if (termCoursesLabel) termCoursesLabel.innerText = "Class Subjects & Marks";
+      if (btnAddModalSubjectRowText) btnAddModalSubjectRowText.innerText = "+ Add Subject";
+      if (colSubNameHeader) colSubNameHeader.innerText = "Subject Name";
+      if (colSubCatHeader) colSubCatHeader.innerText = "Category";
+    } else if (currentStage === "primary") {
+      if (termModalTitle) termModalTitle.innerHTML = isEdit ? `<span>✏️ Edit ${term?.term_name || 'Primary Grade'} Record</span>` : `<span>🌱 Add Primary Grade & Learning Skills</span>`;
+      if (termModalSubtitle) termModalSubtitle.innerText = "Select or enter your primary grade (e.g. Class 1, Class 2, Class 3), attendance, and add learning subjects & marks.";
+      if (termNameLabel) termNameLabel.innerHTML = `Primary Grade / Class <span style="color:var(--color-lime)">*</span>`;
+      
+      if (termNameSelect) {
+        termNameSelect.style.display = "block";
+        termNameSelect.innerHTML = `
+          <option value="Class 1">Class 1</option>
+          <option value="Class 2">Class 2</option>
+          <option value="Class 3">Class 3</option>
+          <option value="Class 4">Class 4</option>
+          <option value="Class 5">Class 5</option>
+          <option value="custom">✍️ Custom Grade Name...</option>
+        `;
+        const selectedCur = document.getElementById("manager_current_class_select")?.value || "Class 3";
+        const curVal = isEdit ? (term?.term_name || selectedCur) : selectedCur;
+        if (termNameSelect.querySelector(`option[value="${curVal}"]`)) {
+          termNameSelect.value = curVal;
+          if (termNameInput) {
+            termNameInput.value = curVal;
+            termNameInput.style.display = "none";
+          }
+        } else {
+          termNameSelect.value = "custom";
+          if (termNameInput) {
+            termNameInput.value = curVal;
+            termNameInput.style.display = "block";
+          }
+        }
+      }
+
+      if (termGpaLabel) termGpaLabel.innerHTML = `Grade Final Score (%) <span style="color:var(--color-lime)">*</span>`;
+      if (termGpaInput) {
+        termGpaInput.min = "0";
+        termGpaInput.max = "100";
+        termGpaInput.placeholder = "e.g. 88.0";
+      }
+      if (termCgpaGroup) termCgpaGroup.style.display = "none";
+      if (termCreditsGroup) termCreditsGroup.style.display = "none";
+      if (termMidtermGroup) termMidtermGroup.style.display = "none";
+      if (termBacklogsGroup) termBacklogsGroup.style.display = "none";
+      if (termCoursesLabel) termCoursesLabel.innerText = "Learning Subjects & Skills";
+      if (btnAddModalSubjectRowText) btnAddModalSubjectRowText.innerText = "+ Add Subject / Skill";
+      if (colSubNameHeader) colSubNameHeader.innerText = "Subject / Skill";
+      if (colSubCatHeader) colSubCatHeader.innerText = "Type";
+    }
+
+    if (termNameSelect && termNameInput) {
+      termNameSelect.onchange = function() {
+        if (this.value === "custom") {
+          termNameInput.style.display = "block";
+          termNameInput.value = "";
+          termNameInput.placeholder = "Type custom name...";
+          termNameInput.focus();
+        } else {
+          termNameInput.style.display = "none";
+          termNameInput.value = this.value;
+        }
+      };
+    }
+  }
+
+  if (btnAddSemester) {
+    btnAddSemester.addEventListener("click", () => {
+      if (addTermForm) addTermForm.reset();
+      setupModalForCurrentStage(false);
+
+      if (modalTermSubjectsContainer) {
+        modalTermSubjectsContainer.innerHTML = "";
+        if (currentStage === "secondary") {
+          addModalSubjectRow("Mathematics", "Mathematics", 88, 100);
+          addModalSubjectRow("General Science", "Science", 84, 100);
+          addModalSubjectRow("English Language", "Language", 83, 100);
+        } else if (currentStage === "primary") {
+          addModalSubjectRow("Math & Numeracy", "Numeracy", 88, 100);
+          addModalSubjectRow("Reading & Literacy", "Literacy", 90, 100);
+        } else {
+          addModalSubjectRow("", "Theory", "", 100);
+        }
+      }
+
+      const termNameSelect = document.getElementById("term-name-select");
+      const termNameInput = document.getElementById("term-name-input");
+      if (termNameSelect && termNameInput) {
+        if (termNameSelect.value && termNameSelect.value !== "custom") {
+          termNameInput.value = termNameSelect.value;
+        }
+      }
+
+      const termGpaInput = document.getElementById("term-gpa-input");
+      if (termGpaInput) {
+        termGpaInput.value = currentStage === "university" ? "3.60" : "85.0";
+      }
+      const termCgpaInput = document.getElementById("term-cgpa-input");
+      if (termCgpaInput) termCgpaInput.value = "3.50";
+      const termAttInput = document.getElementById("term-attendance-input");
+      if (termAttInput) termAttInput.value = currentStage === "primary" ? "94" : currentStage === "secondary" ? "92" : "85";
+      const termCreditsInput = document.getElementById("term-credits-input");
+      if (termCreditsInput) termCreditsInput.value = currentStage === "secondary" ? "3.5" : "18";
+      const termMidtermInput = document.getElementById("term-midterm-input");
+      if (termMidtermInput) termMidtermInput.value = "80";
+      const termBacklogsInput = document.getElementById("term-backlogs-input");
+      if (termBacklogsInput) termBacklogsInput.value = "0";
+
+      calculateModalGpaFromRows();
+
+      if (modalAddTerm) modalAddTerm.classList.add("active");
+    });
+  }
+
+  if (btnCloseTermModal) btnCloseTermModal.addEventListener("click", () => modalAddTerm?.classList.remove("active"));
+  if (btnCancelTermModal) btnCancelTermModal.addEventListener("click", () => modalAddTerm?.classList.remove("active"));
+
+  if (addTermForm) {
+    addTermForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const termNameSelect = document.getElementById("term-name-select");
+      const termNameInput = document.getElementById("term-name-input");
+      let termName = termNameInput?.value.trim();
+      if (!termName && termNameSelect && termNameSelect.value !== "custom") {
+        termName = termNameSelect.value;
+      }
+      if (!termName) {
+        termName = currentStage === "university" ? `Semester ${loggedTerms.length + 1}` : `Class ${loggedTerms.length + 1}`;
+      }
+
+      const gpaVal = parseFloat(document.getElementById("term-gpa-input")?.value || (currentStage === "university" ? 3.5 : 85.0));
+      const cgpaVal = parseFloat(document.getElementById("term-cgpa-input")?.value || gpaVal);
+      const attVal = document.getElementById("term-attendance-input")?.value;
+      const att = attVal !== "" && attVal !== undefined ? parseFloat(attVal) : 85.0;
+      const creditsVal = parseFloat(document.getElementById("term-credits-input")?.value || 18);
+      const midtermVal = parseFloat(document.getElementById("term-midterm-input")?.value || 80);
+      const backlogsVal = parseInt(document.getElementById("term-backlogs-input")?.value || 0);
+
+      const rows = modalTermSubjectsContainer ? Array.from(modalTermSubjectsContainer.querySelectorAll(".modal-subject-row")) : [];
+      const subjects = rows.map(r => {
+        const obt = parseFloat(r.querySelector(".m-sub-obt")?.value || 0);
+        const maxM = parseFloat(r.querySelector(".m-sub-max")?.value || 100);
+        const pct = maxM > 0 ? (obt / maxM) * 100 : 80;
+        let g = "A";
+        if (pct >= 85) g = "A+";
+        else if (pct >= 75) g = "A";
+        else if (pct >= 65) g = "B";
+        else if (pct >= 50) g = "C";
+        else g = "F";
+
+        return {
+          id: "sub_" + Math.random().toString(36).substring(2, 9),
+          subject_name: r.querySelector(".m-sub-name")?.value.trim() || "Subject",
+          subject_category: r.querySelector(".m-sub-cat")?.value || "Theory",
+          credits: 3,
+          obtained_marks: obt,
+          total_marks: maxM,
+          grade: g
+        };
+      });
+
+      try {
+        if (window.apiClient) {
+          await window.apiClient.createAcademicRecord({
+            stage: currentStage,
+            term_name: termName,
+            gpa: currentStage === "university" ? gpaVal : +(gpaVal / 25.0).toFixed(2),
+            percentage: currentStage === "university" ? +(gpaVal / 4.0 * 100).toFixed(1) : gpaVal,
+            cgpa: cgpaVal,
+            attendance_pct: att,
+            credit_hours: creditsVal,
+            midterm_score: midtermVal,
+            backlogs: backlogsVal,
+            study_hours: currentStage === "secondary" ? creditsVal : 4.5,
+            subjects: subjects.length > 0 ? subjects : [{ subject_name: "Core Subject", subject_category: "Core", obtained_marks: 85, total_marks: 100 }]
+          });
+        }
+        showToast(`Saved ${termName} successfully!`, "success");
+        if (modalAddTerm) modalAddTerm.classList.remove("active");
+        await loadAcademicTerms(currentStage);
+      } catch (err) {
+        showToast(`Failed to save record: ${err.message}`, "error");
+      }
+    });
+  }
+
+  window.editSemester = (termName) => {
+    const term = loggedTerms.find(t => t.term_name === termName);
+    if (!term) return;
+
+    if (addTermForm) addTermForm.reset();
+    setupModalForCurrentStage(true, term);
+
+    const termNameInput = document.getElementById("term-name-input");
+    const termGpaInput = document.getElementById("term-gpa-input");
+    const termCgpaInput = document.getElementById("term-cgpa-input");
+    const termAttInput = document.getElementById("term-attendance-input");
+    const termCreditsInput = document.getElementById("term-credits-input");
+    const termMidtermInput = document.getElementById("term-midterm-input");
+    const termBacklogsInput = document.getElementById("term-backlogs-input");
+
+    if (termNameInput) termNameInput.value = term.term_name;
+    if (termGpaInput) {
+      if (currentStage === "university") {
+        termGpaInput.value = term.gpa !== undefined ? term.gpa : "3.50";
+      } else {
+        termGpaInput.value = term.percentage !== undefined ? term.percentage : (term.gpa ? (term.gpa > 4 ? term.gpa : term.gpa * 25) : "85.0");
+      }
+    }
+    if (termCgpaInput) termCgpaInput.value = term.cgpa !== undefined ? term.cgpa : "3.50";
+    if (termAttInput) termAttInput.value = term.attendance_pct || 85;
+    if (termCreditsInput) termCreditsInput.value = currentStage === "secondary" ? (term.study_hours || "3.5") : (term.credit_hours || 18);
+    if (termMidtermInput) termMidtermInput.value = term.midterm_score || 80;
+    if (termBacklogsInput) termBacklogsInput.value = term.backlogs || 0;
+
+    if (modalTermSubjectsContainer) {
+      modalTermSubjectsContainer.innerHTML = "";
+      const subs = term.subjects || [];
+      if (subs.length > 0) {
+        subs.forEach(s => {
+          addModalSubjectRow(s.subject_name, s.subject_category || "Theory", s.obtained_marks, s.total_marks);
+        });
+      } else {
+        addModalSubjectRow("", "", "", 100);
+      }
+    }
+    if (modalAddTerm) modalAddTerm.classList.add("active");
+  };
+
+  window.deleteSemester = async (termName) => {
+    if (!confirm(`Are you sure you want to remove '${termName}' from your academic records?`)) return;
+    try {
+      if (window.apiClient) {
+        await window.apiClient.deleteAcademicRecord(termName, currentStage);
+      }
+      showToast(`Removed ${termName}.`, "info");
+      await loadAcademicTerms(currentStage);
+    } catch (err) {
+      showToast(`Error deleting record: ${err.message}`, "error");
+    }
   };
 
   // ============================================================================
@@ -1529,8 +2807,7 @@ document.addEventListener("DOMContentLoaded", () => {
     currentTeacherTool = tool;
     const tools = [
       { id: "individual", btn: toolBtnIndividual, view: teacherViewIndividual },
-      { id: "class", btn: toolBtnClass, view: teacherViewClass },
-      { id: "upload", btn: toolBtnUpload, view: teacherViewUpload }
+      { id: "class", btn: toolBtnClass, view: teacherViewClass }
     ];
 
     tools.forEach((t) => {
@@ -1550,7 +2827,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (toolBtnIndividual) toolBtnIndividual.addEventListener("click", () => switchTeacherTool("individual"));
   if (toolBtnClass) toolBtnClass.addEventListener("click", () => switchTeacherTool("class"));
-  if (toolBtnUpload) toolBtnUpload.addEventListener("click", () => switchTeacherTool("upload"));
 
   // Teacher Tool 1: Individual Form Submit
   if (teacherIndividualForm) {
@@ -1638,8 +2914,10 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${st.assignment}%</td>
         <td><span class="badge ${st.midterm.startsWith("A") ? "badge-success" : "badge-info"}">${st.midterm}</span></td>
         <td style="text-align: right;">
-          <button type="button" class="subject-action-btn" onclick="window.editClassStudent(${idx})">✏️ Edit</button>
-          <button type="button" class="subject-action-btn delete" onclick="window.deleteClassStudent(${idx})">🗑️</button>
+          <div class="action-btn-group">
+            <button type="button" class="table-icon-btn btn-edit" onclick="window.editClassStudent(${idx})">✏️ Edit</button>
+            <button type="button" class="table-icon-btn btn-delete" onclick="window.deleteClassStudent(${idx})">🗑️</button>
+          </div>
         </td>
       </tr>
     `
@@ -1921,7 +3199,16 @@ document.addEventListener("DOMContentLoaded", () => {
         recommendations: result.recommendation || (Array.isArray(result.recommendations) ? result.recommendations.join(" ") : result.recommendations) || "Maintain steady academic momentum and weekly revision routine."
       };
 
-      const existingHistory = JSON.parse(localStorage.getItem("edumetrics_prediction_history_v2") || localStorage.getItem("edumetrics_prediction_history") || "[]");
+      const currentUser = window.authClient ? window.authClient.getUser() : null;
+      const userKey = currentUser ? `edumetrics_prediction_history_v2_${currentUser.id}` : "edumetrics_prediction_history_v2";
+
+      // Save to user-specific store
+      const userHistory = JSON.parse(localStorage.getItem(userKey) || "[]");
+      userHistory.unshift(historyItem);
+      localStorage.setItem(userKey, JSON.stringify(userHistory.slice(0, 100)));
+
+      // Save to global history fallback
+      const existingHistory = JSON.parse(localStorage.getItem("edumetrics_prediction_history_v2") || "[]");
       existingHistory.unshift(historyItem);
       localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(existingHistory.slice(0, 100)));
       localStorage.setItem("edumetrics_prediction_history", JSON.stringify(existingHistory.slice(0, 100)));
@@ -1935,17 +3222,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================================
   function initProfileSettings() {
     const userProfileBtn = document.getElementById("user-profile-btn");
+    const btnOpenSettings = document.getElementById("btn-open-settings");
     const profileModal = document.getElementById("profile-settings-modal");
     const btnCloseProfile = document.getElementById("btn-close-profile-modal");
     const btnCancelProfile = document.getElementById("btn-cancel-profile");
     const profileTabs = document.querySelectorAll(".modal-tab-btn");
     const tabContents = document.querySelectorAll(".profile-tab-content");
-    const avatarFileInput = document.getElementById("avatar-file-input");
-    const btnGenerateAvatar = document.getElementById("btn-generate-avatar");
-    const btnApplyAvatar = document.getElementById("btn-apply-avatar");
-    const avatarPreviewBig = document.getElementById("avatar-preview-big");
-    const studentAvatar = document.getElementById("student-avatar");
-    const avatarUrlInput = document.getElementById("avatar-url-input");
     const profileForm = document.getElementById("profile-details-form");
     const studentNameEl = document.getElementById("student-name");
     const studentIdCodeEl = document.getElementById("student-id-code");
@@ -1960,15 +3242,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
-        if (confirm("Are you sure you want to sign out?")) {
-          if (window.authClient) await window.authClient.signOut();
-          window.location.href = "login.html";
+        if (window.authClient) await window.authClient.signOut();
+        window.location.href = "signup.html";
+      });
+    }
+
+    function populateSettingsInputs() {
+      const user = window.authClient ? window.authClient.getUser() : null;
+      const userMeta = user?.user_metadata || {};
+      const idCode = userMeta.student_id || userMeta.id_code || (userMeta.role === "teacher" ? "TCH-2026-001" : "STU-2026-001");
+      const program = userMeta.program || userMeta.major || "Software Engineering";
+      const institution = userMeta.institution_name || userMeta.institution || "Faculty of Engineering";
+
+      const settingName = document.getElementById("setting-fullname");
+      const settingId = document.getElementById("setting-studentid");
+      const settingProg = document.getElementById("setting-program") || document.getElementById("setting-major");
+      const settingInst = document.getElementById("setting-institution");
+
+      if (settingName) settingName.value = userMeta.full_name || (user?.email ? user.email.split("@")[0] : "Muhammad Ali");
+      if (settingId) settingId.value = idCode;
+      if (settingProg) settingProg.value = program;
+      if (settingInst) settingInst.value = institution;
+
+      // Reset and clear security password fields
+      const secForm = document.getElementById("profile-security-form");
+      if (secForm) secForm.reset();
+      const newPassInput = document.getElementById("setting-new-password");
+      const confPassInput = document.getElementById("setting-confirm-password");
+      if (newPassInput) newPassInput.value = "";
+      if (confPassInput) confPassInput.value = "";
+
+      // Reset tabs to show first tab by default
+      profileTabs.forEach((t, i) => {
+        if (i === 0) t.classList.add("active");
+        else t.classList.remove("active");
+      });
+      tabContents.forEach((c, i) => {
+        if (i === 0) {
+          c.classList.add("active");
+          c.style.display = "block";
+        } else {
+          c.classList.remove("active");
+          c.style.display = "none";
         }
       });
     }
 
+    const railProfileBtn = document.getElementById("rail-profile-btn");
+    if (railProfileBtn && profileModal) {
+      railProfileBtn.addEventListener("click", () => {
+        populateSettingsInputs();
+        profileModal.classList.add("active");
+      });
+    }
+    if (btnOpenSettings && profileModal) {
+      btnOpenSettings.addEventListener("click", () => {
+        populateSettingsInputs();
+        profileModal.classList.add("active");
+      });
+    }
     if (userProfileBtn && profileModal) {
-      userProfileBtn.addEventListener("click", () => profileModal.classList.add("active"));
+      userProfileBtn.addEventListener("click", () => {
+        populateSettingsInputs();
+        profileModal.classList.add("active");
+      });
     }
     if (btnCloseProfile && profileModal) {
       btnCloseProfile.addEventListener("click", () => profileModal.classList.remove("active"));
@@ -1981,69 +3318,73 @@ document.addEventListener("DOMContentLoaded", () => {
       tab.addEventListener("click", () => {
         const target = tab.getAttribute("data-tab");
         profileTabs.forEach((t) => t.classList.remove("active"));
-        tabContents.forEach((c) => c.classList.remove("active"));
+        tabContents.forEach((c) => {
+          c.classList.remove("active");
+          c.style.display = "none";
+        });
         tab.classList.add("active");
-        document.getElementById(target)?.classList.add("active");
+        const targetEl = document.getElementById(target);
+        if (targetEl) {
+          targetEl.classList.add("active");
+          targetEl.style.display = "block";
+        }
       });
     });
 
-    if (avatarFileInput && avatarPreviewBig) {
-      avatarFileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (evt) => {
-            avatarPreviewBig.src = evt.target.result;
-            if (avatarUrlInput) avatarUrlInput.value = "";
-          };
-          reader.readAsDataURL(file);
-        }
-      });
-    }
-
-    if (btnGenerateAvatar && avatarPreviewBig) {
-      btnGenerateAvatar.addEventListener("click", () => {
-        const randomSeed = "User_" + Math.random().toString(36).substring(2, 9);
-        const newUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}`;
-        avatarPreviewBig.src = newUrl;
-        if (avatarUrlInput) avatarUrlInput.value = newUrl;
-      });
-    }
-
-    if (btnApplyAvatar && avatarPreviewBig && studentAvatar) {
-      btnApplyAvatar.addEventListener("click", () => {
-        studentAvatar.src = avatarPreviewBig.src;
-        localStorage.setItem("edumetrics_custom_avatar", avatarPreviewBig.src);
-        profileModal?.classList.remove("active");
-        showToast("Profile picture updated successfully!", "success");
-      });
-    }
-
-    // Load saved avatar
-    const savedAvatar = localStorage.getItem("edumetrics_custom_avatar");
-    if (savedAvatar) {
-      if (studentAvatar) studentAvatar.src = savedAvatar;
-      if (avatarPreviewBig) avatarPreviewBig.src = savedAvatar;
-    }
+    populateSettingsInputs();
 
     if (profileForm) {
-      profileForm.addEventListener("submit", (e) => {
+      profileForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const fullName = document.getElementById("setting-fullname")?.value;
-        const studentId = document.getElementById("setting-studentid")?.value;
-        if (fullName && studentNameEl) studentNameEl.innerText = fullName;
-        if (studentId && studentIdCodeEl) studentIdCodeEl.innerText = studentId;
+        const fullName = document.getElementById("setting-fullname")?.value.trim() || "User";
+        const programVal = (document.getElementById("setting-program") || document.getElementById("setting-major"))?.value.trim() || "Software Engineering";
+        const instVal = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
+
+        if (window.authClient) {
+          await window.authClient.updateUser({
+            full_name: fullName,
+            program: programVal,
+            major: programVal,
+            institution_name: instVal
+          });
+        }
+
+        syncUserProfile();
         profileModal?.classList.remove("active");
         showToast("Profile settings saved successfully!", "success");
       });
     }
 
+    const secForm = document.getElementById("profile-security-form");
+    if (secForm) {
+      secForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const newPass = document.getElementById("setting-new-password")?.value;
+        const confPass = document.getElementById("setting-confirm-password")?.value;
+
+        if (!newPass || newPass.length < 6) {
+          return showToast("Password must be at least 6 characters long.", "error");
+        }
+        if (newPass !== confPass) {
+          return showToast("Passwords do not match.", "error");
+        }
+
+        try {
+          if (window.authClient) await window.authClient.updatePassword(newPass);
+          profileModal?.classList.remove("active");
+          secForm.reset();
+          showToast("Password updated securely!", "success");
+        } catch (err) {
+          showToast(err.message || "Failed to update password.", "error");
+        }
+      });
+    }
+
     if (btnDeleteAccount) {
-      btnDeleteAccount.addEventListener("click", () => {
+      btnDeleteAccount.addEventListener("click", async () => {
         if (confirm("Permanently delete account and all historical predictions? This cannot be undone.")) {
-          localStorage.clear();
-          showToast("Account deleted.", "info");
-          setTimeout(() => (window.location.href = "login.html"), 1000);
+          if (window.authClient) await window.authClient.deleteAccount();
+          window.location.href = "signup.html";
         }
       });
     }

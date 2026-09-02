@@ -3,13 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Performance Prediction & Analytics System</title>
+  <title>Student Performance Prediction</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
+  
+  <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js"></script>
   <script>
@@ -17,16 +24,16 @@
       if (window.authClient && window.authClient.isAuthenticated()) {
         window.location.href = "dashboard.html";
       } else {
-        window.location.href = "login.html";
+        window.location.href = "signup.html";
       }
     });
   </script>
 </head>
-<body style="display:flex;align-items:center;justify-content:center;height:100vh;">
+<body style="display:flex;align-items:center;justify-content:center;height:100vh;background-color:var(--color-canvas);">
   <div style="text-align:center;">
-    <div class="brand-logo-icon" style="margin:0 auto var(--space-4);width:48px;height:48px;font-size:24px;">🎓</div>
-    <h2 style="font-weight:700;margin-bottom:var(--space-2);">Student Performance AI</h2>
-    <p style="color:var(--text-muted);font-size:var(--font-size-sm);">Routing to your dashboard...</p>
+    <div style="width:56px;height:56px;margin:0 auto var(--space-4);background:#101115;border:2px solid var(--color-lime);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-family-display);font-size:22px;font-weight:800;color:var(--color-lime);">SP</div>
+    <h2 style="font-family:var(--font-family-display);font-size:24px;font-weight:800;letter-spacing:0.02em;margin-bottom:var(--space-2);color:#ffffff;text-transform:uppercase;">Student Performance Prediction</h2>
+    <p style="color:var(--text-muted);font-size:var(--font-size-sm);">Initializing machine learning intelligence engine...</p>
   </div>
 </body>
 </html>

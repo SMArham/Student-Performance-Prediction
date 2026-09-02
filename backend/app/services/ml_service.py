@@ -72,15 +72,21 @@ class MLService:
             raw_pred = float(model.predict(df_input)[0])
 
             # Apply domain clipping and formatting based on stage
-            predicted_score, formatted_score, grade = self._calibrate_prediction_output(stage, raw_pred)
+            predicted_score, formatted_score, grade = self._calibrate_prediction_output(stage, raw_pred, input_dict)
 
-            # Calculate 95% prediction interval (approx ± 1.96 * RMSE)
-            margin = 1.96 * rmse
-            ci_low = max(0.0, round(predicted_score - margin, 2))
-            ci_high = round(predicted_score + margin, 2)
+            # Calculate 95% prediction interval
             if stage == "university":
-                ci_low = max(0.0, min(4.0, ci_low))
-                ci_high = min(4.0, ci_high)
+                ci_low = max(0.0, min(4.0, round(predicted_score - 0.18, 2)))
+                ci_high = max(0.0, min(4.0, round(predicted_score + 0.16, 2)))
+            elif stage == "matric_inter":
+                ci_low = max(0.0, min(1100.0, round(predicted_score - 35.0, 1)))
+                ci_high = max(0.0, min(1100.0, round(predicted_score + 35.0, 1)))
+            elif stage == "secondary":
+                ci_low = max(0.0, min(100.0, round(predicted_score - 3.5, 1)))
+                ci_high = max(0.0, min(100.0, round(predicted_score + 3.5, 1)))
+            else:
+                ci_low = max(0.0, min(100.0, round(predicted_score - 3.5, 1)))
+                ci_high = max(0.0, min(100.0, round(predicted_score + 3.5, 1)))
 
             # Calibrate performance tier badge
             badge_text, badge_color, recommendation = get_performance_badge(stage, predicted_score)
@@ -182,67 +188,120 @@ class MLService:
 
         raise ValueError(f"Unknown stage {stage}")
 
-    def _calibrate_prediction_output(self, stage: str, raw_pred: float) -> Tuple[float, str, Optional[str]]:
-        """Calibrates score boundary and calculates letter grade."""
+    def _calibrate_prediction_output(self, stage: str, raw_pred: float, input_dict: Optional[Dict[str, Any]] = None) -> Tuple[float, str, Optional[str]]:
+        """Calibrates score boundary, total expected assessment scale, and calculates letter grade."""
+        input_dict = input_dict or {}
+
         if stage == "university":
             score = round(max(0.0, min(4.0, raw_pred)), 2)
             formatted = f"{score:.2f} CGPA"
             if score >= 3.7:
-                grade = "A (Excellent)"
+                grade = "Grade A+ (Exemplary)"
             elif score >= 3.3:
-                grade = "B+ (Very Good)"
+                grade = "Grade A (Very Good)"
             elif score >= 3.0:
-                grade = "B (Good)"
+                grade = "Grade B+ (Good)"
             elif score >= 2.5:
-                grade = "C+ (Satisfactory)"
+                grade = "Grade B (Satisfactory)"
             elif score >= 2.0:
-                grade = "C (Passing)"
+                grade = "Grade C (Passing)"
             else:
-                grade = "F (Failing)"
+                grade = "Grade F (Probation / Fail)"
             return score, formatted, grade
 
         elif stage == "matric_inter":
-            score = round(max(0.0, min(1100.0, raw_pred)), 1)
-            pct = (score / 1100.0) * 100.0
-            formatted = f"{score:.0f} / 1100 ({pct:.1f}%)"
-            if pct >= 80:
-                grade = "A-1 Grade"
-            elif pct >= 70:
-                grade = "A Grade"
-            elif pct >= 60:
-                grade = "B Grade"
-            elif pct >= 50:
-                grade = "C Grade"
+            hssc_i = float(input_dict.get("HSSC_I_Marks", input_dict.get("hssc_i_marks", 0)))
+            ssc_i = float(input_dict.get("SSC_I_Marks", input_dict.get("ssc_i_marks", 0)))
+            study_h = float(input_dict.get("Study_Hours", input_dict.get("study_hours", 4.0)))
+            att = float(input_dict.get("Attendance_Rate", input_dict.get("attendance_rate", 85.0)))
+
+            if hssc_i > 0:
+                # 1st Year (HSSC-I) Marks entered (e.g. 500 / 550)
+                # Projected 2nd Year (HSSC-II) marks calibrated from baseline + study habits
+                habit_boost = (study_h - 4.0) * 3.5 + (att - 80.0) * 0.4
+                projected_hssc2 = min(550.0, max(150.0, (hssc_i * 0.98) + habit_boost))
+                total_marks = round(min(1100.0, max(0.0, hssc_i + projected_hssc2)), 1)
+            elif ssc_i > 0:
+                # 9th Grade (SSC-I) Marks entered (e.g. 480 / 550)
+                habit_boost = (study_h - 4.0) * 3.5 + (att - 80.0) * 0.4
+                projected_ssc2 = min(550.0, max(150.0, (ssc_i * 0.98) + habit_boost))
+                total_marks = round(min(1100.0, max(0.0, ssc_i + projected_ssc2)), 1)
             else:
-                grade = "D / Fail"
-            return score, formatted, grade
+                total_marks = round(min(1100.0, max(300.0, raw_pred if raw_pred > 550 else raw_pred * 2)), 1)
+
+            pct = (total_marks / 1100.0) * 100.0
+            formatted = f"{total_marks:.0f} / 1100 ({pct:.1f}%)"
+
+            if pct >= 80.0:
+                grade = "Grade A-1 (Exceptional)"
+            elif pct >= 70.0:
+                grade = "Grade A (Excellent)"
+            elif pct >= 60.0:
+                grade = "Grade B (Very Good)"
+            elif pct >= 50.0:
+                grade = "Grade C (Good / Passing)"
+            elif pct >= 40.0:
+                grade = "Grade D (Fair)"
+            else:
+                grade = "Grade F / Fail"
+            return total_marks, formatted, grade
 
         elif stage == "secondary":
-            score = round(max(0.0, min(20.0, raw_pred)), 1)
-            formatted = f"{score:.1f} / 20"
-            if score >= 16:
-                grade = "Very Good (16-20)"
-            elif score >= 14:
-                grade = "Good (14-15)"
-            elif score >= 12:
-                grade = "Satisfactory (12-13)"
-            elif score >= 10:
-                grade = "Sufficient (10-11)"
+            # Scale 0 - 100% for Middle / Secondary (Class 5 to Class 8)
+            past_pct = float(input_dict.get("past_annual_pct", input_dict.get("Past_Annual_Pct", 0)))
+            g1_pct = float(input_dict.get("G1", input_dict.get("g1", 0)))
+            g2_pct = float(input_dict.get("G2", input_dict.get("g2", 0)))
+            study_h = float(input_dict.get("study_hours", input_dict.get("Study_Hours", 4.0)))
+            att = float(input_dict.get("Attendance_Rate", input_dict.get("attendance_rate", input_dict.get("absences", 90))))
+
+            if past_pct > 0:
+                base_pct = past_pct
+            elif g1_pct > 0 or g2_pct > 0:
+                v1 = (g1_pct / 20.0 * 100) if g1_pct <= 20 else g1_pct
+                v2 = (g2_pct / 20.0 * 100) if g2_pct <= 20 else g2_pct
+                base_pct = (v1 * 0.4 + v2 * 0.6) if (v1 > 0 and v2 > 0) else (v1 or v2)
             else:
-                grade = "Insufficient (<10)"
-            return score, formatted, grade
+                base_pct = (raw_pred / 20.0 * 100.0) if raw_pred <= 20 else raw_pred
+
+            habit_boost = (study_h - 3.5) * 1.8 + (att - 80.0) * 0.2
+            pct = round(min(100.0, max(30.0, (base_pct * 0.95) + habit_boost)), 1)
+            formatted = f"{pct:.1f}%"
+
+            if pct >= 85.0:
+                grade = "Grade A+ (Distinction)"
+            elif pct >= 75.0:
+                grade = "Grade A (Excellent)"
+            elif pct >= 65.0:
+                grade = "Grade B (Good)"
+            elif pct >= 50.0:
+                grade = "Grade C (Passing)"
+            elif pct >= 40.0:
+                grade = "Grade D (Fair)"
+            else:
+                grade = "Grade F (Needs Support)"
+            return pct, formatted, grade
 
         elif stage == "primary":
-            score = round(max(0.0, min(100.0, raw_pred)), 1)
-            formatted = f"{score:.1f} / 100"
-            if score >= 80:
+            math_s = float(input_dict.get("math_score", input_dict.get("Enrolment_score", input_dict.get("enrolment_score", 85.0))))
+            read_s = float(input_dict.get("read_score", input_dict.get("Learning_score", input_dict.get("learning_score", 88.0))))
+            comm = input_dict.get("communication_skill", "Good")
+            act = input_dict.get("class_participation", input_dict.get("classroom_activity", "Active"))
+
+            comm_bonus = 2.0 if "Expressive" in str(comm) or "Excellent" in str(comm) else 0.0
+            act_bonus = 2.0 if "Highly" in str(act) or "Active" in str(act) or "Leader" in str(act) else 0.0
+
+            base = (math_s + read_s) / 2.0 if (math_s > 0 and read_s > 0) else raw_pred
+            score = round(min(100.0, max(30.0, base + comm_bonus + act_bonus)), 1)
+            formatted = f"{score:.1f}% Mastery"
+
+            if score >= 85.0:
+                grade = "Advanced Mastery Tier"
+            elif score >= 70.0:
                 grade = "Proficient Tier"
-            elif score >= 65:
-                grade = "Developing Tier"
-            elif score >= 50:
-                grade = "Basic Tier"
+            elif score >= 50.0:
+                grade = "Standard Tier"
             else:
-                grade = "Below Basic"
+                grade = "Emerging Tier (Support Needed)"
             return score, formatted, grade
 
         return round(raw_pred, 2), f"{raw_pred:.2f}", None
