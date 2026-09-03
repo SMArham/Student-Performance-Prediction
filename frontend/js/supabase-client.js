@@ -318,7 +318,7 @@ class SupabaseAuthClient {
     // 2. Check persistent registered accounts registry
     if (existingAccount) {
       if (existingAccount.password && existingAccount.password !== password) {
-        throw new Error("Incorrect password. Please verify your password or use 'Forgot Password'.");
+        throw new Error("Incorrect password. Please check your password and try again.");
       }
 
       const userRole = existingAccount.user_metadata?.role || "student";
@@ -351,19 +351,40 @@ class SupabaseAuthClient {
     const newMeta = { ...currentMeta, ...metadataUpdates };
     session.user.user_metadata = newMeta;
 
-    // Sync with cloud if client is available
+    const cleanEmail = (session.user.email || "").toLowerCase();
+    const userId = session.user.id;
+
+    // Sync with Supabase Auth & Cloud Database `profiles` table
     if (this.client) {
       try {
         await this.client.auth.updateUser({ data: newMeta });
       } catch (err) {
-        console.warn("[Auth] Cloud sync warning:", err);
+        console.warn("[Auth] Cloud auth sync warning:", err);
+      }
+
+      if (userId) {
+        try {
+          const profilePayload = {
+            id: userId,
+            email: cleanEmail,
+            full_name: newMeta.full_name || cleanEmail.split("@")[0],
+            role: newMeta.role || "student",
+            stage: newMeta.stage || "university",
+            institution_name: newMeta.institution_name || newMeta.institution || "Faculty of Engineering",
+            department_or_program: newMeta.program || newMeta.major || newMeta.department || "Software Engineering",
+            student_id_code: newMeta.student_id || newMeta.id_code || `STU-${userId.slice(0, 4).toUpperCase()}`,
+            updated_at: new Date().toISOString()
+          };
+          await this.client.from("profiles").upsert(profilePayload, { onConflict: "id" });
+        } catch (dbErr) {
+          console.warn("[Auth] Cloud profiles table upsert warning:", dbErr);
+        }
       }
     }
 
     // Sync with local session & registry
     localStorage.setItem("sp_auth_user", JSON.stringify(session.user));
 
-    const cleanEmail = (session.user.email || "").toLowerCase();
     if (cleanEmail) {
       const registry = this.getAccountsRegistry();
       if (registry[cleanEmail]) {
@@ -398,21 +419,31 @@ class SupabaseAuthClient {
     return { success: true, message: "Password updated successfully." };
   }
 
-  async resetPasswordForEmail(email, newPassword) {
-    const cleanEmail = (email || "").trim().toLowerCase();
-    const registry = this.getAccountsRegistry();
-    if (registry[cleanEmail]) {
-      registry[cleanEmail].password = newPassword;
-      this.saveAccountsRegistry(registry);
-    }
-    return { success: true, message: "Password reset complete." };
-  }
-
   async deleteAccount() {
     const session = this.getSession();
-    const cleanEmail = session?.user?.email ? session.user.email.toLowerCase() : "";
+    const user = session?.user;
+    const cleanEmail = user?.email ? user.email.toLowerCase() : "";
+    const userId = user?.id;
 
+    // 1. Comprehensive Database Deletion from all Supabase tables
     if (this.client) {
+      try {
+        if (userId) {
+          await this.client.from("profiles").delete().eq("id", userId);
+          await this.client.from("prediction_history").delete().eq("user_id", userId);
+          await this.client.from("academic_records").delete().eq("user_id", userId);
+          await this.client.from("academic_subjects").delete().eq("user_id", userId);
+          await this.client.from("students").delete().eq("user_id", userId);
+        }
+        if (cleanEmail) {
+          await this.client.from("profiles").delete().eq("email", cleanEmail);
+          await this.client.from("prediction_history").delete().eq("email", cleanEmail);
+          await this.client.from("students").delete().eq("email", cleanEmail);
+        }
+      } catch (err) {
+        console.warn("[Auth] Cloud database delete warning:", err);
+      }
+
       try {
         await this.client.auth.signOut();
       } catch (err) {
@@ -420,15 +451,33 @@ class SupabaseAuthClient {
       }
     }
 
+    // 2. Remove from Local Registry
     if (cleanEmail) {
       const registry = this.getAccountsRegistry();
       delete registry[cleanEmail];
       this.saveAccountsRegistry(registry);
     }
 
+    // 3. Clear all cached data and session keys
+    if (userId) {
+      localStorage.removeItem(`sp_academic_records_${userId}`);
+      localStorage.removeItem(`sp_academic_records_${userId}_university`);
+      localStorage.removeItem(`sp_academic_records_${userId}_intermediate`);
+      localStorage.removeItem(`sp_academic_records_${userId}_secondary`);
+      localStorage.removeItem(`sp_academic_records_${userId}_primary`);
+      localStorage.removeItem(`sp_prediction_history_${userId}`);
+    }
+    const stages = ["university", "intermediate", "secondary", "primary"];
+    stages.forEach(st => {
+      localStorage.removeItem(`sp_academic_records_${st}`);
+    });
+    localStorage.removeItem("sp_academic_records");
     localStorage.removeItem("sp_auth_token");
     localStorage.removeItem("sp_auth_user");
     localStorage.removeItem("sp_user_subjects_v1");
+    localStorage.removeItem("edumetrics_cached_history");
+    localStorage.removeItem("edumetrics_analytics_cache");
+
     window.location.href = "login.html";
   }
 
