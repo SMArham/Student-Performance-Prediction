@@ -107,17 +107,26 @@ class APIClient {
     if (window.authClient && window.authClient.client) {
       const user = window.authClient.getUser();
       const rawScore = typeof predictionData.score === "number" ? predictionData.score : parseFloat(predictionData.predicted_score || 85.0);
-        const localTime = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
-        window.authClient.client.from("prediction_history").insert({
-          user_id: user?.id,
-          stage: predictionData.stage || "university",
-          input_features: predictionData.payload || predictionData.input_features || {},
-          predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
-          predicted_grade: predictionData.predicted_grade || predictionData.grade || "Grade A",
-          status_badge: predictionData.status_badge || "On Track",
-          created_at: localTime
-        }).then().catch(e => console.warn("[Supabase] Cloud savePrediction note:", e.message));
-      }
+      const localTime = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
+      const features = {
+        ...(predictionData.payload || predictionData.input_features || {}),
+        user_id: user?.id,
+        user_email: user?.email
+      };
+      const predId = predictionData.id || `pred-${Date.now().toString().slice(-6)}`;
+
+      window.authClient.client.from("prediction_history").insert({
+        id: predId,
+        stage: predictionData.stage || "university",
+        input_features: features,
+        predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
+        predicted_grade: predictionData.predicted_grade || predictionData.grade || "Grade A",
+        status_badge: predictionData.status_badge || "On Track",
+        created_at: localTime
+      }).then(() => {
+        console.log("[Supabase] Prediction saved to prediction_history successfully.");
+      }).catch(e => console.warn("[Supabase] Cloud savePrediction note:", e.message));
+    }
 
     // 2. Try backend API if available
     try {

@@ -3242,6 +3242,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         const cloudRecord = {
+          id: historyItem.id || `pred-${Date.now().toString().slice(-6)}`,
           stage: currentStage || "university",
           input_features: featuresWithUser,
           predicted_score: isNaN(rawScore) ? 85.0 : rawScore,

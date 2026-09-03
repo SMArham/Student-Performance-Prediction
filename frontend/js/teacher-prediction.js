@@ -833,6 +833,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const isUuid = teacherId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacherId);
 
             const predPayload = {
+              id: `pred-${Date.now().toString().slice(-6)}`,
               stage: stage,
               input_features: evaluatedRecord,
               predicted_score: typeof predictedScore === "number" ? predictedScore : 3.5,
