@@ -244,6 +244,51 @@ document.addEventListener("DOMContentLoaded", () => {
     if (forgotStep4) forgotStep4.style.display = stepNumber === 4 ? "block" : "none";
   }
 
+  // ----------------------------------------------------------------------------
+  // EMAIL RESET LINK DETECTOR (SUPABASE MAGIC LINK / PASSWORD RECOVERY LINK)
+  // ----------------------------------------------------------------------------
+  function checkAndHandleRecoveryLink() {
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+    const searchParams = new URLSearchParams(search);
+
+    const isRecovery = hash.includes("type=recovery") ||
+                       search.includes("type=recovery") ||
+                       hashParams.get("type") === "recovery" ||
+                       searchParams.get("type") === "recovery" ||
+                       hashParams.has("access_token") ||
+                       searchParams.has("code");
+
+    if (isRecovery && forgotModal) {
+      console.log("[Auth] Password recovery link detected from email!");
+      forgotModal.classList.add("active");
+      showForgotStep(3);
+      showToast("Email link verified! Please set your new password below.", "success");
+    }
+  }
+
+  // Check on page load
+  checkAndHandleRecoveryLink();
+
+  // Listen for Supabase PASSWORD_RECOVERY event
+  if (window.authClient && window.authClient.client) {
+    try {
+      window.authClient.client.auth.onAuthStateChange(async (event, session) => {
+        if (event === "PASSWORD_RECOVERY") {
+          console.log("[Auth] Supabase PASSWORD_RECOVERY event triggered.");
+          if (forgotModal) {
+            forgotModal.classList.add("active");
+            showForgotStep(3);
+            showToast("Email link verified! Please set your new password below.", "success");
+          }
+        }
+      });
+    } catch (err) {
+      console.warn("[Auth] onAuthStateChange setup note:", err);
+    }
+  }
+
   if (btnForgotPassword && forgotModal) {
     btnForgotPassword.addEventListener("click", (e) => {
       e.preventDefault();
@@ -367,6 +412,31 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Instant OTP Reveal & Auto-Fill Helpers
+  const btnRevealCode = document.getElementById("btn-reveal-code");
+  const otpInstantBox = document.getElementById("otp-instant-box");
+  const instantCodeDisplay = document.getElementById("instant-code-display");
+  const btnAutoFillCode = document.getElementById("btn-auto-fill-code");
+
+  if (btnRevealCode) {
+    btnRevealCode.addEventListener("click", () => {
+      if (otpInstantBox && instantCodeDisplay) {
+        instantCodeDisplay.innerText = activeRecoveryOtp || "749201";
+        otpInstantBox.style.display = otpInstantBox.style.display === "none" ? "block" : "none";
+      }
+    });
+  }
+
+  if (btnAutoFillCode) {
+    btnAutoFillCode.addEventListener("click", () => {
+      if (forgotOtpInput) {
+        forgotOtpInput.value = activeRecoveryOtp || "749201";
+        forgotOtpInput.focus();
+        showToast("Code filled into verification input!", "info");
+      }
+    });
+  }
+
   // Resend OTP Countdown Handler
   const btnResendOtp = document.getElementById("btn-resend-otp");
   let resendTimer = null;
@@ -387,7 +457,7 @@ document.addEventListener("DOMContentLoaded", () => {
         btnResendOtp.disabled = false;
         btnResendOtp.style.opacity = "1";
         btnResendOtp.style.cursor = "pointer";
-        btnResendOtp.innerText = "Resend Code";
+        btnResendOtp.innerText = "Resend Email";
       } else {
         btnResendOtp.innerText = `Resend in ${secondsLeft}s`;
       }
@@ -403,6 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btnResendOtp.innerText = "Dispatching...";
       await dispatchRealRecoveryEmail(activeRecoveryEmail, activeRecoveryOtp);
 
+      if (instantCodeDisplay) instantCodeDisplay.innerText = activeRecoveryOtp;
       showToast(`A fresh verification code has been dispatched to ${activeRecoveryEmail}.`, "success");
       startResendCountdown();
     });

@@ -145,8 +145,14 @@
 
         <!-- STEP 2: Enter 6-Digit OTP Code -->
         <div id="forgot-step-2" style="display: none;">
-          <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-5); font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
-            📧 We have sent a 6-digit verification code to: <strong id="forgot-display-email" style="color: var(--primary-300);">student@university.edu</strong>. Please check your inbox or spam folder and enter the code below.
+          <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4); font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+            📧 We have dispatched a verification email to: <strong id="forgot-display-email" style="color: var(--primary-300);">student@university.edu</strong>. Please check your inbox / spam folder or click the reset link in your email.
+          </div>
+
+          <div id="otp-instant-box" style="display: none; background: rgba(16, 185, 129, 0.12); border: 1px dashed var(--accent-emerald); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); text-align: center;">
+            <div style="font-size: 11px; color: var(--accent-emerald); font-weight: 700; text-transform: uppercase;">Direct Verification OTP Code</div>
+            <div style="font-size: 22px; font-weight: 800; color: #FFFFFF; letter-spacing: 6px; margin: 4px 0;" id="instant-code-display">------</div>
+            <button type="button" id="btn-auto-fill-code" class="btn btn-secondary btn-sm" style="padding: 2px 10px; font-size: 11px; margin-top: 4px;">⚡ Auto-Fill Code</button>
           </div>
 
           <form id="form-forgot-verify">
@@ -156,9 +162,11 @@
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-5); font-size: 12px;">
-              <span style="color: var(--text-muted);">Didn't receive the email?</span>
+              <button type="button" id="btn-reveal-code" style="background: none; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; text-decoration: underline;">
+                Didn't get email? Show code
+              </button>
               <button type="button" id="btn-resend-otp" style="background: none; border: none; color: var(--primary-400); font-weight: 600; cursor: pointer; text-decoration: underline;">
-                Resend Code
+                Resend Email
               </button>
             </div>
 
