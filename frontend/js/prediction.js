@@ -3198,10 +3198,11 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const isLowRisk = result.risk_level === "LOW" || result.risk_level === "low";
       const isMedRisk = result.risk_level === "MEDIUM" || result.risk_level === "medium";
+      const currentUser = window.authClient ? window.authClient.getUser() : null;
 
       const historyItem = {
         id: `pred-${Date.now().toString().slice(-6)}`,
-        timestamp: new Date().toISOString(),
+        timestamp: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString(),
         role: currentRole || "student",
         stage: currentStage || "university",
         score: result.formatted_score || `${result.score}`,
@@ -3209,23 +3210,31 @@ document.addEventListener("DOMContentLoaded", () => {
         status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Attention Needed"),
         status_color: result.status_color || (isLowRisk ? "badge-success" : isMedRisk ? "badge-info" : "badge-danger"),
         payload: payload || {},
-        recommendations: result.recommendation || (Array.isArray(result.recommendations) ? result.recommendations.join(" ") : result.recommendations) || "Maintain steady academic momentum and weekly revision routine."
+        recommendations: result.recommendation || (Array.isArray(result.recommendations) ? result.recommendations.join(" ") : result.recommendations) || "Maintain steady academic momentum and weekly revision routine.",
+        user_id: currentUser?.id || ""
       };
 
-      const currentUser = window.authClient ? window.authClient.getUser() : null;
-      const userKey = currentUser ? `edumetrics_prediction_history_v2_${currentUser.id}` : "edumetrics_prediction_history_v2";
+      // 1. Save to user-specific store
+      if (currentUser?.id) {
+        const userKey = `edumetrics_prediction_history_v2_${currentUser.id}`;
+        const userHistory = JSON.parse(localStorage.getItem(userKey) || "[]");
+        userHistory.unshift(historyItem);
+        localStorage.setItem(userKey, JSON.stringify(userHistory.slice(0, 100)));
+        localStorage.setItem(`edumetrics_prediction_history_${currentUser.id}`, JSON.stringify(userHistory.slice(0, 100)));
+      }
 
-      // Save strictly to user-isolated store
-      const userHistory = JSON.parse(localStorage.getItem(userKey) || "[]");
-      userHistory.unshift(historyItem);
-      localStorage.setItem(userKey, JSON.stringify(userHistory.slice(0, 100)));
+      // 2. Save to general session store for instant access across tabs
+      const genKey = "edumetrics_prediction_history_v2";
+      const genHistory = JSON.parse(localStorage.getItem(genKey) || "[]");
+      genHistory.unshift(historyItem);
+      localStorage.setItem(genKey, JSON.stringify(genHistory.slice(0, 100)));
+      localStorage.setItem("edumetrics_prediction_history", JSON.stringify(genHistory.slice(0, 100)));
 
       // 3. Persist into Supabase Cloud prediction_history table
       if (window.authClient && window.authClient.client) {
         const rawScore = typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0);
         const localNow = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
         const cloudRecord = {
-          user_id: currentUser?.id,
           stage: currentStage || "university",
           input_features: payload || {},
           predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
@@ -3233,10 +3242,23 @@ document.addEventListener("DOMContentLoaded", () => {
           status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Attention Needed"),
           created_at: localNow
         };
+
+        if (currentUser?.id) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
+          if (isUuid) {
+            cloudRecord.user_id = currentUser.id;
+          }
+        }
+
         window.authClient.client.from("prediction_history").insert(cloudRecord).then(() => {
           console.log("[Supabase] Latest prediction successfully persisted to database.");
         }).catch((cloudErr) => {
           console.warn("[Supabase] Cloud history insert note:", cloudErr.message);
+          // If insert failed due to user_id UUID constraint, retry without user_id
+          if (cloudRecord.user_id) {
+            delete cloudRecord.user_id;
+            window.authClient.client.from("prediction_history").insert(cloudRecord).catch(() => {});
+          }
         });
       }
 

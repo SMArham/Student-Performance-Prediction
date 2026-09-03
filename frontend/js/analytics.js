@@ -310,6 +310,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem(`edumetrics_prediction_history_v2_${user.id}`, JSON.stringify(historyList));
       localStorage.setItem(`edumetrics_prediction_history_${user.id}`, JSON.stringify(historyList));
     }
+    localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(historyList));
+    localStorage.setItem("edumetrics_prediction_history", JSON.stringify(historyList));
   }
 
   // Formatter for diagnostic payload parameters
@@ -340,42 +342,60 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // --------------------------------------------------------------------------
   // 7. LOAD PREDICTION HISTORY (OFFLINE-FIRST + LIVE SUPABASE CLOUD SYNC)
   // --------------------------------------------------------------------------
   async function loadHistory() {
     try {
       const user = window.authClient ? window.authClient.getUser() : null;
-      let list = [];
+      let localList = [];
 
-      // Step 1: Immediate local storage load strictly for this user (0ms latency)
-      const userKey = user?.id ? `edumetrics_prediction_history_v2_${user.id}` : null;
-      if (userKey) {
+      // Step 1: Scan all potential local storage keys for existing history
+      const candidateKeys = [];
+      if (user?.id) {
+        candidateKeys.push(`edumetrics_prediction_history_v2_${user.id}`);
+        candidateKeys.push(`edumetrics_prediction_history_${user.id}`);
+        candidateKeys.push(`sp_prediction_history_${user.id}`);
+      }
+      candidateKeys.push("edumetrics_prediction_history_v2");
+      candidateKeys.push("edumetrics_prediction_history");
+
+      for (const k of candidateKeys) {
         try {
-          const cached = localStorage.getItem(userKey);
-          if (cached) {
-            const parsed = JSON.parse(cached);
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              list = parsed;
-              predictionHistory = list;
-              refreshAllViews();
+              const matching = parsed.filter(item => !item.user_id || !user?.id || item.user_id === user.id);
+              if (matching.length > 0) {
+                localList = matching;
+                predictionHistory = localList;
+                refreshAllViews();
+                break;
+              }
             }
           }
-        } catch (cacheErr) {}
+        } catch (e) {}
       }
 
-      // Step 2: Live Supabase Cloud Database Table Query strictly for this user
-      if (window.authClient && window.authClient.client && user?.id) {
+      // Step 2: Live Supabase Cloud Database Table Query
+      let cloudList = [];
+      if (window.authClient && window.authClient.client) {
         try {
           let query = window.authClient.client
             .from("prediction_history")
             .select("*")
-            .eq("user_id", user.id)
             .order("created_at", { ascending: false });
 
+          if (user?.id) {
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
+            if (isUuid) {
+              query = query.or(`user_id.eq.${user.id},user_id.is.null`);
+            }
+          }
+
           const { data, error } = await query.limit(50);
-          if (!error && Array.isArray(data)) {
-            const cloudRecords = data.map((item) => {
+          if (!error && Array.isArray(data) && data.length > 0) {
+            cloudList = data.map((item) => {
               const stage = item.stage || "university";
               const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
               const isLowRisk = (item.status_badge || "").toLowerCase().includes("exemp") || (item.status_badge || "").toLowerCase().includes("on track");
@@ -393,25 +413,45 @@ document.addEventListener("DOMContentLoaded", async () => {
                 recommendations: item.recommendations || "Maintain steady academic momentum."
               };
             });
-            list = cloudRecords;
-            persistHistory(list);
           }
         } catch (cloudErr) {
           console.warn("[Analytics] Supabase direct query notice:", cloudErr.message);
         }
       }
 
-      // Step 3: Strict newest-first sorting by timestamp/created_at
-      list.sort((a, b) => {
+      // Step 3: Backend API fallback if both local and cloud query yielded no results
+      if (localList.length === 0 && cloudList.length === 0 && window.apiClient) {
+        try {
+          const apiRecords = await window.apiClient.getHistory(50);
+          if (Array.isArray(apiRecords) && apiRecords.length > 0) {
+            cloudList = apiRecords;
+          }
+        } catch (e) {}
+      }
+
+      // Step 4: Merge & Deduplicate by record ID (Never wipe local data)
+      const mergedMap = new Map();
+      localList.forEach(item => { if (item && item.id) mergedMap.set(String(item.id), item); });
+      cloudList.forEach(item => { if (item && item.id) mergedMap.set(String(item.id), item); });
+
+      let finalList = Array.from(mergedMap.values());
+      finalList.sort((a, b) => {
         const tA = new Date(a.timestamp || a.created_at || 0).getTime();
         const tB = new Date(b.timestamp || b.created_at || 0).getTime();
         return tB - tA;
       });
 
-      predictionHistory = list;
-    }
+      if (finalList.length > 0) {
+        predictionHistory = finalList;
+        persistHistory(finalList);
+      } else if (localList.length > 0) {
+        predictionHistory = localList;
+      }
 
-    refreshAllViews();
+      refreshAllViews();
+    } catch (err) {
+      console.warn("[Analytics] History initialization notice:", err.message);
+    }
   }
 
   // --------------------------------------------------------------------------
