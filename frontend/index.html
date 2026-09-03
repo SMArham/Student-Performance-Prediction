@@ -22,9 +22,11 @@
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       if (window.authClient && window.authClient.isAuthenticated()) {
-        window.location.href = "dashboard.html";
+        const u = window.authClient.getUser();
+        const isTeacher = u?.user_metadata?.role === "teacher";
+        window.location.href = isTeacher ? "teacher-dashboard.html" : "dashboard.html";
       } else {
-        window.location.href = "signup.html";
+        window.location.href = "login.html";
       }
     });
   </script>

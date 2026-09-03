@@ -36,6 +36,116 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------------------------------
+  // SIGN UP: Interactive Role Selector (Student vs Teacher)
+  // ----------------------------------------------------------------------------
+  const roleTabStudent = document.getElementById("signup-role-student");
+  const roleTabTeacher = document.getElementById("signup-role-teacher");
+  const accountRoleInput = document.getElementById("account_role");
+  const studentFieldsBlock = document.getElementById("student-fields-block");
+  const teacherFieldsBlock = document.getElementById("teacher-fields-block");
+  const signupSubmitBtn = document.getElementById("btn-signup-submit");
+  const fullNameInput = document.getElementById("full_name");
+
+  function setSignupRole(role) {
+    if (!accountRoleInput) return;
+    accountRoleInput.value = role;
+
+    if (role === "teacher") {
+      if (roleTabTeacher) {
+        roleTabTeacher.style.borderColor = "var(--color-lime)";
+        roleTabTeacher.style.background = "rgba(168, 240, 75, 0.12)";
+        roleTabTeacher.style.color = "#ffffff";
+      }
+      if (roleTabStudent) {
+        roleTabStudent.style.borderColor = "var(--border-subtle)";
+        roleTabStudent.style.background = "rgba(255, 255, 255, 0.03)";
+        roleTabStudent.style.color = "var(--text-muted)";
+      }
+      if (studentFieldsBlock) studentFieldsBlock.style.display = "none";
+      if (teacherFieldsBlock) teacherFieldsBlock.style.display = "block";
+      if (signupSubmitBtn) signupSubmitBtn.innerText = "CREATE TEACHER ACCOUNT";
+      if (fullNameInput) fullNameInput.placeholder = "e.g. Dr. Muhammad Farooq";
+    } else {
+      if (roleTabStudent) {
+        roleTabStudent.style.borderColor = "var(--color-lime)";
+        roleTabStudent.style.background = "rgba(168, 240, 75, 0.12)";
+        roleTabStudent.style.color = "#ffffff";
+      }
+      if (roleTabTeacher) {
+        roleTabTeacher.style.borderColor = "var(--border-subtle)";
+        roleTabTeacher.style.background = "rgba(255, 255, 255, 0.03)";
+        roleTabTeacher.style.color = "var(--text-muted)";
+      }
+      if (studentFieldsBlock) studentFieldsBlock.style.display = "block";
+      if (teacherFieldsBlock) teacherFieldsBlock.style.display = "none";
+      if (signupSubmitBtn) signupSubmitBtn.innerText = "CREATE STUDENT ACCOUNT";
+      if (fullNameInput) fullNameInput.placeholder = "e.g. Ali Ahmed";
+    }
+  }
+
+  if (roleTabStudent) roleTabStudent.addEventListener("click", () => setSignupRole("student"));
+  if (roleTabTeacher) roleTabTeacher.addEventListener("click", () => setSignupRole("teacher"));
+
+  // ----------------------------------------------------------------------------
+  // SIGN IN: Interactive Portal Switcher (Student vs Teacher) & URL Param Init
+  // ----------------------------------------------------------------------------
+  const loginPortalStudent = document.getElementById("login-portal-student");
+  const loginPortalTeacher = document.getElementById("login-portal-teacher");
+  const loginPortalRoleInput = document.getElementById("login_portal_role");
+  const loginSubmitBtn = document.getElementById("btn-login-submit");
+  const regSuccessBanner = document.getElementById("registration-success-banner");
+
+  function setLoginPortal(role) {
+    if (!loginPortalRoleInput) return;
+    loginPortalRoleInput.value = role;
+
+    if (role === "teacher") {
+      if (loginPortalTeacher) {
+        loginPortalTeacher.style.borderColor = "var(--color-lime)";
+        loginPortalTeacher.style.background = "rgba(168, 240, 75, 0.12)";
+        loginPortalTeacher.style.color = "#ffffff";
+      }
+      if (loginPortalStudent) {
+        loginPortalStudent.style.borderColor = "var(--border-subtle)";
+        loginPortalStudent.style.background = "rgba(255, 255, 255, 0.03)";
+        loginPortalStudent.style.color = "var(--text-muted)";
+      }
+      if (loginSubmitBtn) loginSubmitBtn.innerText = "SIGN IN AS TEACHER";
+    } else {
+      if (loginPortalStudent) {
+        loginPortalStudent.style.borderColor = "var(--color-lime)";
+        loginPortalStudent.style.background = "rgba(168, 240, 75, 0.12)";
+        loginPortalStudent.style.color = "#ffffff";
+      }
+      if (loginPortalTeacher) {
+        loginPortalTeacher.style.borderColor = "var(--border-subtle)";
+        loginPortalTeacher.style.background = "rgba(255, 255, 255, 0.03)";
+        loginPortalTeacher.style.color = "var(--text-muted)";
+      }
+      if (loginSubmitBtn) loginSubmitBtn.innerText = "SIGN IN AS STUDENT";
+    }
+  }
+
+  if (loginPortalStudent) loginPortalStudent.addEventListener("click", () => setLoginPortal("student"));
+  if (loginPortalTeacher) loginPortalTeacher.addEventListener("click", () => setLoginPortal("teacher"));
+
+  // Handle post-signup redirect parameters on login page
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("registered") === "true") {
+    if (regSuccessBanner) regSuccessBanner.style.display = "block";
+    const regEmail = urlParams.get("email");
+    const regRole = urlParams.get("role") || "student";
+    if (regEmail) {
+      const emailField = document.getElementById("email");
+      if (emailField) emailField.value = regEmail;
+    }
+    setLoginPortal(regRole);
+    showToast("Account created successfully! Please enter your password to sign in.", "success");
+    const passField = document.getElementById("password");
+    if (passField) passField.focus();
+  }
+
+  // ----------------------------------------------------------------------------
   // Sign In Form Submission
   // ----------------------------------------------------------------------------
   if (loginForm) {
@@ -43,7 +153,8 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       const email = document.getElementById("email")?.value.trim();
       const password = document.getElementById("password")?.value;
-      const submitBtn = loginForm.querySelector("button[type='submit']");
+      const submitBtn = loginSubmitBtn || loginForm.querySelector("button[type='submit']");
+      const activeRole = loginPortalRoleInput ? loginPortalRoleInput.value : "student";
 
       if (!email || !password) {
         showToast("Please provide both email and password.", "error");
@@ -51,47 +162,68 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
-        submitBtn.disabled = true;
-        submitBtn.innerText = "Signing in...";
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerText = "Verifying Credentials...";
+        }
+
         await window.authClient.signIn(email, password);
         const u = window.authClient.getUser();
-        const isTeacher = u?.user_metadata?.role === "teacher";
-        showToast("Welcome back! Redirecting...", "success");
+        const userRole = (u?.user_metadata?.role || activeRole || "student").toLowerCase();
+        const isTeacher = userRole === "teacher";
+
+        showToast(`Welcome back, ${u?.user_metadata?.full_name || "User"}! Redirecting...`, "success");
+
         setTimeout(() => {
           window.location.href = isTeacher ? "teacher-dashboard.html" : "dashboard.html";
-        }, 800);
+        }, 600);
       } catch (err) {
-        let msg = err.message || "Invalid email or password.";
+        const msg = err.message || "Invalid email or password.";
         showToast(msg, "error");
-        submitBtn.disabled = false;
-        submitBtn.innerText = "SIGN IN TO DASHBOARD";
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = activeRole === "teacher" ? "SIGN IN AS TEACHER" : "SIGN IN AS STUDENT";
+        }
       }
     });
   }
 
   // ----------------------------------------------------------------------------
-  // Sign Up Form Submission
+  // Sign Up Form Submission (First make account, then redirect to login)
   // ----------------------------------------------------------------------------
   if (signupForm) {
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const fullName = document.getElementById("full_name")?.value.trim();
       const email = document.getElementById("email")?.value.trim();
-      const institution = document.getElementById("institution_name")?.value.trim() || "Faculty of Engineering";
-      const program = document.getElementById("program")?.value.trim() || document.getElementById("major")?.value.trim() || "Software Engineering";
       const role = document.getElementById("account_role")?.value || "student";
-      const stage = document.getElementById("stage")?.value || "university";
+      const institution = document.getElementById("institution_name")?.value.trim() || "Faculty of Engineering";
       const gender = document.getElementById("gender")?.value || "male";
       const password = document.getElementById("password")?.value;
       const confirmPassword = document.getElementById("confirm_password")?.value;
-      const submitBtn = signupForm.querySelector("button[type='submit']");
+      const submitBtn = signupSubmitBtn || signupForm.querySelector("button[type='submit']");
+
+      let program = "";
+      let stage = "university";
+      let department = "";
+      let designation = "Faculty Instructor";
+
+      if (role === "teacher") {
+        department = document.getElementById("teacher_department")?.value.trim() || "Computer Science";
+        designation = document.getElementById("teacher_designation")?.value || "Faculty Instructor";
+        program = department;
+        stage = "all";
+      } else {
+        stage = document.getElementById("stage")?.value || "university";
+        program = document.getElementById("program")?.value.trim() || "Software Engineering";
+      }
 
       if (!fullName || !email || !password) {
         showToast("Please fill in all required fields.", "error");
         return;
       }
 
-      // Email format validation (at least 2+ chars before @)
+      // Email format validation
       const emailParts = email.split("@");
       if (emailParts.length !== 2 || emailParts[0].length < 2 || !emailParts[1].includes(".")) {
         showToast("Please enter a valid email address (e.g. name@university.edu).", "error");
@@ -109,10 +241,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
-        submitBtn.disabled = true;
-        submitBtn.innerText = "Creating Account...";
-        const uniqueCode = Math.floor(100 + Math.random() * 900);
-        const autoId = role === "teacher" ? `TCH-2026-${uniqueCode}` : `STU-2026-${uniqueCode}`;
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerText = "Creating Account...";
+        }
+
+        const uniqueSuffix = Math.floor(10 + Math.random() * 90);
+        const autoId = role === "teacher" ? `TCH-0${Math.floor(1 + Math.random() * 9)}` : `STU-${uniqueSuffix}`;
 
         await window.authClient.signUp(email, password, {
           full_name: fullName,
@@ -120,40 +255,27 @@ document.addEventListener("DOMContentLoaded", () => {
           role: role,
           stage: stage,
           institution_name: institution,
+          institution: institution,
           program: program,
           major: program,
+          department: department || program,
+          designation: designation,
           student_id: autoId,
           id_code: autoId
         });
-        showToast("Account created successfully! Redirecting...", "success");
-        setTimeout(() => {
-          window.location.href = role === "teacher" ? "teacher-dashboard.html" : "dashboard.html";
-        }, 800);
-      } catch (err) {
-        let msg = err.message || "Registration failed. Please try again.";
-        showToast(msg, "error");
-        submitBtn.disabled = false;
-        submitBtn.innerText = "SIGN UP TO DASHBOARD";
-      }
-    });
-  }
 
-  // ----------------------------------------------------------------------------
-  // 1-Click Demo Login
-  // ----------------------------------------------------------------------------
-  if (demoLoginBtn) {
-    demoLoginBtn.addEventListener("click", async () => {
-      try {
-        demoLoginBtn.disabled = true;
-        demoLoginBtn.innerText = "Launching Demo...";
-        await window.authClient.signIn("demo.student@university.edu", "demo123456");
-        showToast("Logged in as Demo Student! Redirecting...", "success");
+        showToast("Account created successfully! Please sign in with your password.", "success");
+
         setTimeout(() => {
-          window.location.href = "dashboard.html";
-        }, 600);
+          window.location.href = `login.html?registered=true&email=${encodeURIComponent(email)}&role=${role}`;
+        }, 700);
       } catch (err) {
-        showToast("Error starting demo mode: " + err.message, "error");
-        demoLoginBtn.disabled = false;
+        const msg = err.message || "Registration failed. Please try again.";
+        showToast(msg, "error");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = role === "teacher" ? "CREATE TEACHER ACCOUNT" : "CREATE STUDENT ACCOUNT";
+        }
       }
     });
   }

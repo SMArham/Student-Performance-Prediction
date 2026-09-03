@@ -73,41 +73,76 @@
         <div style="font-family: var(--font-family-display); font-size: 23px; font-weight: 800; color: var(--color-lime); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; line-height: 1.2;">
           Student Performance Prediction
         </div>
-        <h1 class="auth-title-condensed" style="font-size: 30px; margin-bottom: 4px;">SIGN UP</h1>
-        <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: var(--space-4);">Create an account to access machine learning performance forecasts</p>
+        <h1 class="auth-title-condensed" style="font-size: 30px; margin-bottom: 4px;">CREATE ACCOUNT</h1>
+        <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: var(--space-4);">Select your role and create an account to access machine learning intelligence</p>
       </div>
+
+      <!-- Role Selection Tabs -->
+      <div class="auth-role-tabs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px;">
+        <button type="button" class="auth-role-tab active" id="signup-role-student" data-role="student" style="padding: 10px; border-radius: 10px; border: 1.5px solid var(--color-lime); background: rgba(168, 240, 75, 0.12); color: #ffffff; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          <span>🎓 Student</span>
+        </button>
+        <button type="button" class="auth-role-tab" id="signup-role-teacher" data-role="teacher" style="padding: 10px; border-radius: 10px; border: 1.5px solid var(--border-subtle); background: rgba(255, 255, 255, 0.03); color: var(--text-muted); font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+          <span>👨‍🏫 Teacher</span>
+        </button>
+      </div>
+      <input type="hidden" id="account_role" value="student">
 
       <form id="signup-form">
         <div class="form-group">
-          <label class="form-label" for="full_name">Full Name</label>
-          <input type="text" id="full_name" class="form-input" placeholder="e.g. Ali" required>
+          <label class="form-label" for="full_name" id="label-full-name">Full Name</label>
+          <input type="text" id="full_name" class="form-input" placeholder="e.g. Ali Ahmed" required>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="email">Email</label>
-          <input type="email" id="email" class="form-input" placeholder="e.g. name@email.com" required autocomplete="email">
+          <label class="form-label" for="email">Email Address</label>
+          <input type="email" id="email" class="form-input" placeholder="e.g. name@university.edu" required autocomplete="email">
+        </div>
+
+        <!-- Dynamic Student Fields -->
+        <div id="student-fields-block">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3);">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="stage">Educational Stage</label>
+              <select id="stage" class="form-select">
+                <option value="university" selected>University / Higher Ed</option>
+                <option value="intermediate">Matric / Intermediate</option>
+                <option value="secondary">Secondary School (Grade 9-10)</option>
+                <option value="primary">Primary School</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="program">Enrolled Major / Program</label>
+              <input type="text" id="program" class="form-input" placeholder="e.g. Software Engineering">
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Teacher Fields (Hidden by default) -->
+        <div id="teacher-fields-block" style="display: none;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3);">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="teacher_department">Faculty / Department</label>
+              <input type="text" id="teacher_department" class="form-input" placeholder="e.g. Computer Science">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="teacher_designation">Academic Designation</label>
+              <select id="teacher_designation" class="form-select">
+                <option value="Lecturer" selected>Lecturer</option>
+                <option value="Assistant Professor">Assistant Professor</option>
+                <option value="Associate Professor">Associate Professor</option>
+                <option value="Professor">Professor</option>
+                <option value="Faculty Instructor">Faculty Instructor</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
-            <label class="form-label" for="institution_name">Institution Name</label>
+            <label class="form-label" for="institution_name">Institution / College</label>
             <input type="text" id="institution_name" class="form-input" placeholder="e.g. Faculty of Engineering" required>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="program">Enrolled Program</label>
-            <input type="text" id="program" class="form-input" placeholder="e.g. Software Engineering" required>
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
-          <div class="form-group">
-            <label class="form-label" for="account_role">Account Type</label>
-            <select id="account_role" class="form-select">
-              <option value="student" selected>Student</option>
-              <option value="teacher">Teacher</option>
-            </select>
-          </div>
-
           <div class="form-group">
             <label class="form-label" for="gender">Gender</label>
             <select id="gender" class="form-select">
@@ -119,8 +154,8 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
-            <label class="form-label" for="password">Password</label>
-            <input type="password" id="password" class="form-input" placeholder="Min. 6 chars" required autocomplete="new-password">
+            <label class="form-label" for="password">Create Password</label>
+            <input type="password" id="password" class="form-input" placeholder="Min. 6 characters" required autocomplete="new-password">
           </div>
           <div class="form-group">
             <label class="form-label" for="confirm_password">Confirm Password</label>
@@ -128,14 +163,14 @@
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width: 100%; height: 46px; margin-top: var(--space-3);">
-          SIGN UP TO DASHBOARD
+        <button type="submit" class="btn btn-primary" id="btn-signup-submit" style="width: 100%; height: 46px; margin-top: var(--space-3);">
+          CREATE STUDENT ACCOUNT
         </button>
       </form>
 
       <div style="text-align: center; margin-top: var(--space-6); font-size: var(--font-size-sm); color: var(--text-muted);">
         Already have an account? 
-        <a href="login.html" style="font-weight: 700; color: var(--color-lime);">Sign In</a>
+        <a href="login.html" style="font-weight: 700; color: var(--color-lime);">Sign In here</a>
       </div>
     </div>
   </div>

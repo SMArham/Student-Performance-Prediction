@@ -6,7 +6,12 @@
 document.addEventListener("DOMContentLoaded", () => {
   "use strict";
 
-  // Check Role Access Safeguard
+  // Check Authentication & Role Access Safeguard
+  if (window.authClient && !window.authClient.isAuthenticated()) {
+    window.location.href = "login.html";
+    return;
+  }
+
   const currentUser = window.authClient ? window.authClient.getUser() : null;
   const userMeta = currentUser?.user_metadata || {};
   if (userMeta.role === "student") {
@@ -908,7 +913,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       if (window.authClient) await window.authClient.signOut();
-      window.location.href = "signup.html";
+      window.location.href = "login.html";
     });
   }
 
@@ -1030,7 +1035,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnDeleteAccount.addEventListener("click", async () => {
       if (confirm("Permanently delete your instructor account and all cohort records? This action cannot be undone.")) {
         if (window.authClient) await window.authClient.deleteAccount();
-        window.location.href = "signup.html";
+        window.location.href = "login.html";
       }
     });
   }

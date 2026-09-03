@@ -6,7 +6,12 @@
 document.addEventListener("DOMContentLoaded", () => {
   "use strict";
 
-  // Check Role Access Safeguard
+  // Check Authentication & Role Access Safeguard
+  if (window.authClient && !window.authClient.isAuthenticated()) {
+    window.location.href = "login.html";
+    return;
+  }
+
   const currentUser = window.authClient ? window.authClient.getUser() : null;
   const userMeta = currentUser?.user_metadata || {};
   if (userMeta.role === "student") {
@@ -33,8 +38,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Sync Profile Identity
   const teacherNameEl = document.getElementById("teacher-name");
   const teacherIdCodeEl = document.getElementById("teacher-id-code");
-  const name = userMeta.full_name || "Dr. Muhammad Farooq";
-  const idCode = userMeta.student_id || userMeta.id_code || "TCH-2026-001";
+  const name = userMeta.full_name || "Instructor Portal";
+  const idCode = userMeta.student_id || userMeta.id_code || "TCH-01";
   if (teacherNameEl) teacherNameEl.innerText = name;
   if (teacherIdCodeEl) teacherIdCodeEl.innerText = idCode;
 
@@ -43,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       if (window.authClient) await window.authClient.signOut();
-      window.location.href = "signup.html";
+      window.location.href = "login.html";
     });
   }
 
@@ -137,7 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnDeleteAccount.addEventListener("click", async () => {
       if (confirm("Permanently delete your instructor account and all cohort records? This action cannot be undone.")) {
         if (window.authClient) await window.authClient.deleteAccount();
-        window.location.href = "signup.html";
+        window.location.href = "login.html";
       }
     });
   }

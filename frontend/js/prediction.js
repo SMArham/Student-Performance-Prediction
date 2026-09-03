@@ -7,8 +7,13 @@ document.addEventListener("DOMContentLoaded", () => {
   "use strict";
 
   // ============================================================================
-  // 1. GLOBAL STATE MANAGEMENT
+  // 1. GLOBAL STATE MANAGEMENT & AUTH SAFEGUARD
   // ============================================================================
+  if (window.authClient && !window.authClient.isAuthenticated()) {
+    window.location.href = "login.html";
+    return;
+  }
+
   const currentUser = window.authClient ? window.authClient.getUser() : null;
   const userMeta = currentUser?.user_metadata || {};
   if (userMeta.role === "teacher") {
@@ -3243,7 +3248,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
         if (window.authClient) await window.authClient.signOut();
-        window.location.href = "signup.html";
+        window.location.href = "login.html";
       });
     }
 
@@ -3384,7 +3389,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btnDeleteAccount.addEventListener("click", async () => {
         if (confirm("Permanently delete account and all historical predictions? This cannot be undone.")) {
           if (window.authClient) await window.authClient.deleteAccount();
-          window.location.href = "signup.html";
+          window.location.href = "login.html";
         }
       });
     }

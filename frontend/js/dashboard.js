@@ -118,7 +118,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       if (window.authClient) await window.authClient.signOut();
-      window.location.href = "signup.html";
+      window.location.href = "login.html";
     });
   }
 
@@ -767,7 +767,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     btnDeleteAccount.addEventListener("click", async () => {
       if (confirm("Permanently delete your account and all data? This cannot be undone.")) {
         if (window.authClient) await window.authClient.deleteAccount();
-        window.location.href = "signup.html";
+        window.location.href = "login.html";
       }
     });
   }

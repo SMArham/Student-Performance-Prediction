@@ -38,39 +38,7 @@ class SupabaseAuthClient {
     try {
       const existing = localStorage.getItem("sp_registered_accounts");
       if (!existing) {
-        const defaultAccounts = {
-          "demo.student@university.edu": {
-            id: "demo-user-id-001",
-            email: "demo.student@university.edu",
-            password: "demo123456",
-            user_metadata: {
-              full_name: "Muhammad Ali",
-              role: "student",
-              stage: "university"
-            }
-          },
-          "student@example.com": {
-            id: "demo-user-id-001",
-            email: "student@example.com",
-            password: "Password123!",
-            user_metadata: {
-              full_name: "Muhammad Ali",
-              role: "student",
-              stage: "university"
-            }
-          },
-          "arham@university.edu": {
-            id: "usr-arham-001",
-            email: "arham@university.edu",
-            password: "Password123!",
-            user_metadata: {
-              full_name: "Syed Muhammad Arham",
-              role: "student",
-              stage: "university"
-            }
-          }
-        };
-        localStorage.setItem("sp_registered_accounts", JSON.stringify(defaultAccounts));
+        localStorage.setItem("sp_registered_accounts", JSON.stringify({}));
       }
     } catch (e) {
       console.warn("[Auth] Registry init notice:", e);
@@ -96,10 +64,23 @@ class SupabaseAuthClient {
 
   async signUp(email, password, metadata = {}) {
     const cleanEmail = (email || "").trim().toLowerCase();
-    const cleanName = metadata.full_name || cleanEmail.split("@")[0] || "Student";
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      throw new Error("Please provide a valid email address.");
+    }
+    if (!password || password.length < 6) {
+      throw new Error("Password must be at least 6 characters long.");
+    }
 
-    const autoId = metadata.student_id || metadata.id_code || (metadata.role === "teacher" ? `TCH-2026-${Math.floor(100 + Math.random() * 900)}` : `STU-2026-${Math.floor(100 + Math.random() * 900)}`);
-    const programName = metadata.program || metadata.major || "Software Engineering";
+    const registry = this.getAccountsRegistry();
+    if (registry[cleanEmail]) {
+      throw new Error("An account with this email already exists. Please sign in instead.");
+    }
+
+    const role = (metadata.role || "student").toLowerCase();
+    const cleanName = metadata.full_name || cleanEmail.split("@")[0] || (role === "teacher" ? "Faculty Teacher" : "Student");
+    const uniqueSuffix = Math.floor(100 + Math.random() * 900);
+    const autoId = metadata.student_id || metadata.id_code || (role === "teacher" ? `TCH-0${Math.floor(1 + Math.random() * 9)}` : `STU-${uniqueSuffix}`);
+    const programName = metadata.program || metadata.major || (role === "teacher" ? (metadata.department || "Computer Science") : "Software Engineering");
     const institutionName = metadata.institution_name || metadata.institution || "Faculty of Engineering";
 
     const userObj = {
@@ -108,20 +89,21 @@ class SupabaseAuthClient {
       user_metadata: {
         ...metadata,
         full_name: cleanName,
-        role: metadata.role || "student",
-        stage: metadata.stage || "university",
+        role: role,
+        stage: metadata.stage || (role === "teacher" ? "all" : "university"),
         gender: metadata.gender || "male",
         institution_name: institutionName,
         institution: institutionName,
         program: programName,
         major: programName,
+        department: metadata.department || programName,
+        designation: metadata.designation || (role === "teacher" ? "Faculty Instructor" : "Student"),
         student_id: autoId,
         id_code: autoId
       }
     };
 
-    // 1. Always register in persistent local accounts registry
-    const registry = this.getAccountsRegistry();
+    // 1. Store in persistent accounts registry
     registry[cleanEmail] = {
       id: userObj.id,
       email: cleanEmail,
@@ -130,7 +112,7 @@ class SupabaseAuthClient {
     };
     this.saveAccountsRegistry(registry);
 
-    // 2. Attempt live Supabase cloud signup
+    // 2. Attempt live Supabase cloud signup sync
     if (this.client) {
       try {
         const { data, error } = await this.client.auth.signUp({
@@ -143,63 +125,28 @@ class SupabaseAuthClient {
 
         if (!error && data?.user) {
           userObj.id = data.user.id;
-          const mergedUser = {
-            ...data.user,
-            user_metadata: {
-              ...userObj.user_metadata,
-              ...(data.user.user_metadata || {})
-            }
-          };
-          if (data.session) {
-            localStorage.setItem("sp_auth_token", data.session.access_token);
-          } else {
-            localStorage.setItem("sp_auth_token", "supabase-token-" + data.user.id);
-          }
-          localStorage.setItem("sp_auth_user", JSON.stringify(mergedUser));
-          return { ...data, user: mergedUser };
+          registry[cleanEmail].id = data.user.id;
+          this.saveAccountsRegistry(registry);
         }
       } catch (supabaseErr) {
-        console.warn("[Auth] Live Supabase signup fallback to local registry:", supabaseErr);
+        console.warn("[Auth] Live Supabase signup notice:", supabaseErr);
       }
     }
 
-    // 3. Complete local session registration
-    const token = "session-token-" + userObj.id;
-    localStorage.setItem("sp_auth_token", token);
-    localStorage.setItem("sp_auth_user", JSON.stringify(userObj));
-    return { user: userObj, session: { access_token: token } };
+    // Return created user (Explicitly requires login on login.html)
+    return { user: userObj, success: true };
   }
 
   async signIn(email, password) {
     const cleanEmail = (email || "").trim().toLowerCase();
-    const registry = this.getAccountsRegistry();
-    const existingAccount = registry[cleanEmail];
-
-    // 1. 1-Click Demo student shortcut
-    if (cleanEmail === "demo.student@university.edu" || cleanEmail.includes("demo")) {
-      const demoUser = {
-        id: "demo-user-id-001",
-        email: "demo.student@university.edu",
-        user_metadata: {
-          full_name: "Muhammad Ali",
-          role: "student",
-          stage: "university",
-          gender: "male",
-          program: "Software Engineering",
-          major: "Software Engineering",
-          institution_name: "Faculty of Engineering",
-          institution: "Faculty of Engineering",
-          student_id: "STU-2026-101",
-          id_code: "STU-2026-101"
-        }
-      };
-      const token = "demo-token-001";
-      localStorage.setItem("sp_auth_token", token);
-      localStorage.setItem("sp_auth_user", JSON.stringify(demoUser));
-      return { user: demoUser, session: { access_token: token } };
+    if (!cleanEmail || !password) {
+      throw new Error("Please enter both email and password.");
     }
 
-    // 2. Attempt live Supabase Cloud login
+    const registry = this.getAccountsRegistry();
+    let existingAccount = registry[cleanEmail];
+
+    // 1. Attempt live Supabase Cloud login
     if (this.client) {
       try {
         const { data, error } = await this.client.auth.signInWithPassword({
@@ -207,44 +154,51 @@ class SupabaseAuthClient {
           password: password
         });
 
-        if (!error && data?.session) {
+        if (!error && data?.session && data?.user) {
+          const userRole = data.user.user_metadata?.role || existingAccount?.user_metadata?.role || (cleanEmail.includes("teacher") ? "teacher" : "student");
+          const combinedMeta = {
+            ...(existingAccount?.user_metadata || {}),
+            ...(data.user?.user_metadata || {}),
+            role: userRole
+          };
+
           const combinedUser = {
             ...data.user,
-            user_metadata: {
-              ...(existingAccount?.user_metadata || {}),
-              ...(data.user?.user_metadata || {})
-            }
+            user_metadata: combinedMeta
           };
+
           localStorage.setItem("sp_auth_token", data.session.access_token);
           localStorage.setItem("sp_auth_user", JSON.stringify(combinedUser));
-          return { ...data, user: combinedUser };
+
+          // Sync into local registry
+          registry[cleanEmail] = {
+            id: data.user.id,
+            email: cleanEmail,
+            password: password,
+            user_metadata: combinedMeta
+          };
+          this.saveAccountsRegistry(registry);
+
+          return { user: combinedUser, session: data.session };
         }
       } catch (err) {
         console.warn("[Auth] Supabase cloud login notice:", err);
       }
     }
 
-    // 3. Check persistent registered accounts registry
+    // 2. Check persistent registered accounts registry
     if (existingAccount) {
       if (existingAccount.password && existingAccount.password !== password) {
-        throw new Error("Incorrect password for this student account. Please check your password or use 'Forgot Password'.");
+        throw new Error("Incorrect password. Please verify your password or use 'Forgot Password'.");
       }
 
+      const userRole = existingAccount.user_metadata?.role || "student";
       const loggedUser = {
         id: existingAccount.id || ("usr-" + Math.random().toString(36).substring(2, 9)),
         email: cleanEmail,
         user_metadata: {
-          full_name: cleanEmail.split("@")[0],
-          role: "student",
-          stage: "university",
-          gender: "male",
-          program: "Software Engineering",
-          major: "Software Engineering",
-          institution_name: "Faculty of Engineering",
-          institution: "Faculty of Engineering",
-          student_id: `STU-2026-${Math.floor(100 + Math.random() * 900)}`,
-          id_code: `STU-2026-${Math.floor(100 + Math.random() * 900)}`,
-          ...(existingAccount.user_metadata || {})
+          ...existingAccount.user_metadata,
+          role: userRole
         }
       };
 
@@ -254,37 +208,8 @@ class SupabaseAuthClient {
       return { user: loggedUser, session: { access_token: token } };
     }
 
-    // 4. If account wasn't pre-registered, create dynamic session for user convenience
-    const fallbackUser = {
-      id: "usr-" + Math.random().toString(36).substring(2, 9),
-      email: cleanEmail,
-      user_metadata: {
-        full_name: cleanEmail.split("@")[0].replace(/[\._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
-        role: "student",
-        stage: "university",
-        gender: "male",
-        program: "Software Engineering",
-        major: "Software Engineering",
-        institution_name: "Faculty of Engineering",
-        institution: "Faculty of Engineering",
-        student_id: `STU-2026-${Math.floor(100 + Math.random() * 900)}`,
-        id_code: `STU-2026-${Math.floor(100 + Math.random() * 900)}`
-      }
-    };
-
-    // Save for future logins
-    registry[cleanEmail] = {
-      id: fallbackUser.id,
-      email: cleanEmail,
-      password: password,
-      user_metadata: fallbackUser.user_metadata
-    };
-    this.saveAccountsRegistry(registry);
-
-    const token = "session-token-" + fallbackUser.id;
-    localStorage.setItem("sp_auth_token", token);
-    localStorage.setItem("sp_auth_user", JSON.stringify(fallbackUser));
-    return { user: fallbackUser, session: { access_token: token } };
+    // 3. DO NOT AUTO-CREATE! User must sign up first
+    throw new Error("No account found with this email. Please click 'Create Account' to sign up first.");
   }
 
   async updateUser(metadataUpdates = {}) {

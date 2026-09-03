@@ -9,7 +9,12 @@
 document.addEventListener("DOMContentLoaded", async () => {
   "use strict";
 
-  // 1. Role Safeguard & Profile Sync
+  // 1. Authentication & Role Safeguard
+  if (window.authClient && !window.authClient.isAuthenticated()) {
+    window.location.href = "login.html";
+    return;
+  }
+
   const currentUser = window.authClient ? window.authClient.getUser() : null;
   const userMeta = currentUser?.user_metadata || {};
   if (userMeta.role === "student") {
@@ -1224,7 +1229,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       if (window.authClient) await window.authClient.signOut();
-      window.location.href = "signup.html";
+      window.location.href = "login.html";
     });
   }
 
