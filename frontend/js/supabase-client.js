@@ -14,6 +14,128 @@ const SUPABASE_CONFIG = {
   anonKey: "sb_publishable_97_-DqS2UcA9W4w7qi8Qog_ig3ipXx3"
 };
 
+/**
+ * High-Security Blocklist of Disposable / Temporary Email Domains
+ */
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  "tempmail.com", "temp-mail.org", "temp-mail.io", "tempmail.net", "tempmail.ninja",
+  "10minutemail.com", "10minutemail.net", "10minutemail.org", "10minmail.com", "minutemail.com",
+  "guerrillamail.com", "guerrillamail.net", "guerrillamail.biz", "guerrillamail.org", "guerrillamailblock.com", "sharklasers.com", "grr.la", "pokemail.net",
+  "mailinator.com", "mailinater.com", "mailinator2.com", "suremail.info", "spamherelots.com",
+  "throwawaymail.com", "throwaway.email",
+  "yopmail.com", "yopmail.fr", "yopmail.net", "cool.fr.nf", "jetable.fr.nf", "courriel.fr.nf", "moncourrier.fr.nf",
+  "trashmail.com", "trashmail.net", "trashmail.me", "trashmail.org", "rcpt.at", "damnthespam.com",
+  "dispostable.com", "getairmail.com", "airmail.news", "inboxkitten.com",
+  "nada.ltd", "getnada.com", "abovethecurv.com", "dropmail.me",
+  "mohmal.com", "mohmal.im", "mohmal.in", "crazymailing.com", "maildrop.cc",
+  "fakeinbox.com", "fakemailgenerator.com", "generator.email", "emailondeck.com",
+  "burnermail.io", "mytemp.email", "minuteinbox.com", "tmail.link", "disposablemail.com",
+  "fakemail.net", "armyspy.com", "cuvox.de", "dayrep.com", "fleckens.hu", "gustr.com",
+  "jourrapide.com", "rhyta.com", "superrito.com", "teleworm.us", "tinypm.com",
+  "binkmail.com", "bobmail.info", "chacuo.net", "devnullmail.com", "emailgo.de",
+  "filzmail.com", "incognitotube.com", "kasmail.com", "maildrop.com", "mailforspam.com",
+  "mailimate.com", "mailnull.com", "meltmail.com", "mytempemail.com", "no-spam.ws",
+  "nowmymail.com", "oneoffmail.com", "pookmail.com", "shortmail.net", "sogetthis.com",
+  "spambox.us", "spamex.com", "spamfree24.org", "spamgourmet.com", "tempemail.net",
+  "tempsky.com", "thankyou2010.com", "trash-mail.com", "wegwerfmail.de", "wegwerfmail.net",
+  "whyspam.me", "zoemail.org", "mailtothis.com", "mailsac.com", "harakirimail.com",
+  "mailnesia.com", "disposable.com", "tempinbox.com", "inboxbear.com", "inboxclean.com",
+  "mailcatch.com", "mailscrap.com", "mytempmail.com", "trashymail.com"
+]);
+
+/**
+ * Blocklist of Obvious Fake / Placeholder Domains
+ */
+const FAKE_EMAIL_DOMAINS = new Set([
+  "test.com", "example.com", "example.org", "example.net", "fake.com", "dummy.com", "sample.com",
+  "asdf.com", "random.com", "invalid.com", "temp.com", "trash.com", "xyz.com", "abc.com", "123.com",
+  "none.com", "null.com", "foo.com", "bar.com", "foobar.com", "testing.com", "noemail.com", "notreal.com",
+  "fakeemail.com", "fakedomain.com", "nonexistent.com", "testmail.com"
+]);
+
+/**
+ * Blocklist of Placeholder Usernames
+ */
+const FAKE_USERNAMES = new Set([
+  "test", "testing", "tester", "fake", "dummy", "admin", "administrator", "root",
+  "asdf", "asdfg", "asdfgh", "qwerty", "user", "sample", "random", "none", "null",
+  "aaa", "aaaa", "aaaaa", "123", "1234", "12345", "123456", "abc", "abcd", "xyz"
+]);
+
+/**
+ * Validates that an email is legitimate, active, and not disposable or fake
+ */
+function validateRealEmail(email) {
+  if (!email || typeof email !== "string") {
+    return { valid: false, error: "Please provide an email address." };
+  }
+
+  const clean = email.trim().toLowerCase();
+
+  // Basic RFC email regex structure
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (!emailRegex.test(clean) || clean.includes("..")) {
+    return { valid: false, error: "Please enter a valid email format (e.g. name@university.edu or name@gmail.com)." };
+  }
+
+  const parts = clean.split("@");
+  if (parts.length !== 2) {
+    return { valid: false, error: "Invalid email address format." };
+  }
+
+  const [username, domain] = parts;
+
+  // Username checks
+  if (username.length < 3) {
+    return { valid: false, error: "Email prefix must be at least 3 characters long." };
+  }
+
+  if (FAKE_USERNAMES.has(username)) {
+    return { valid: false, error: `"${username}" is a placeholder name. Please use your real personal or institutional email.` };
+  }
+
+  // Repetitive characters check (e.g. 'aaaaa', '11111')
+  if (/^(.)\1{4,}$/.test(username)) {
+    return { valid: false, error: "Invalid repetitive email username. Please use your genuine email address." };
+  }
+
+  // Domain structure checks
+  const domainParts = domain.split(".");
+  const tld = domainParts[domainParts.length - 1];
+  if (!tld || tld.length < 2 || /\d/.test(tld)) {
+    return { valid: false, error: "Email domain must have a valid top-level domain (e.g. .com, .edu, .org, .edu.pk)." };
+  }
+
+  // Disposable domain check
+  if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+    return { valid: false, error: "Temporary and disposable email addresses (e.g. temp-mail, mailinator, guerrillamail) are blocked. Please use an active personal (Gmail, Outlook, Yahoo) or university email." };
+  }
+
+  // Fake domain check
+  if (FAKE_EMAIL_DOMAINS.has(domain)) {
+    return { valid: false, error: `"${domain}" is not a legitimate email provider. Please use your real email address.` };
+  }
+
+  // Heuristic keywords check in domain
+  const disposableKeywords = [
+    "tempmail", "temp-mail", "disposable", "throwaway", "fakeinbox", "burner",
+    "trashmail", "guerrilla", "mailinator", "10minute", "minuteinbox", "fakemail",
+    "generator.email", "yopmail", "maildrop", "sharklasers", "mohmal", "crazymailing"
+  ];
+  for (const kw of disposableKeywords) {
+    if (domain.includes(kw)) {
+      return { valid: false, error: "Temporary and disposable email providers are blocked. Please use your real email." };
+    }
+  }
+
+  return { valid: true, cleanEmail: clean };
+}
+
+// Global export for UI and form validations
+if (typeof window !== "undefined") {
+  window.validateRealEmail = validateRealEmail;
+}
+
 class SupabaseAuthClient {
   constructor() {
     this.client = null;
@@ -63,10 +185,12 @@ class SupabaseAuthClient {
   }
 
   async signUp(email, password, metadata = {}) {
-    const cleanEmail = (email || "").trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes("@")) {
-      throw new Error("Please provide a valid email address.");
+    const emailCheck = validateRealEmail(email);
+    if (!emailCheck.valid) {
+      throw new Error(emailCheck.error);
     }
+    const cleanEmail = emailCheck.cleanEmail;
+
     if (!password || password.length < 6) {
       throw new Error("Password must be at least 6 characters long.");
     }
@@ -138,9 +262,14 @@ class SupabaseAuthClient {
   }
 
   async signIn(email, password) {
-    const cleanEmail = (email || "").trim().toLowerCase();
-    if (!cleanEmail || !password) {
-      throw new Error("Please enter both email and password.");
+    const emailCheck = validateRealEmail(email);
+    if (!emailCheck.valid) {
+      throw new Error(emailCheck.error);
+    }
+    const cleanEmail = emailCheck.cleanEmail;
+
+    if (!password) {
+      throw new Error("Please enter your password.");
     }
 
     const registry = this.getAccountsRegistry();

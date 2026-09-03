@@ -146,6 +146,48 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------------------------------
+  // Real-Time Email Validation & Security Indicator
+  // ----------------------------------------------------------------------------
+  const emailInputEl = document.getElementById("email");
+  const emailValidationMsg = document.getElementById("email-validation-msg");
+
+  if (emailInputEl) {
+    const handleEmailInputCheck = () => {
+      const val = emailInputEl.value.trim();
+      if (!val) {
+        if (emailValidationMsg) emailValidationMsg.style.display = "none";
+        emailInputEl.style.borderColor = "";
+        return;
+      }
+
+      if (val.includes("@") && val.split("@")[1] && val.split("@")[1].includes(".")) {
+        const check = window.validateRealEmail ? window.validateRealEmail(val) : { valid: true };
+        if (!check.valid) {
+          if (emailValidationMsg) {
+            emailValidationMsg.style.display = "block";
+            emailValidationMsg.style.color = "#ff6b6b";
+            emailValidationMsg.innerHTML = `⚠️ ${check.error}`;
+          }
+          emailInputEl.style.borderColor = "#ff4d4f";
+        } else {
+          if (emailValidationMsg) {
+            emailValidationMsg.style.display = "block";
+            emailValidationMsg.style.color = "var(--color-lime)";
+            emailValidationMsg.innerHTML = `✓ Legitimate active email`;
+          }
+          emailInputEl.style.borderColor = "var(--color-lime)";
+        }
+      } else {
+        if (emailValidationMsg) emailValidationMsg.style.display = "none";
+        emailInputEl.style.borderColor = "";
+      }
+    };
+
+    emailInputEl.addEventListener("input", handleEmailInputCheck);
+    emailInputEl.addEventListener("blur", handleEmailInputCheck);
+  }
+
+  // ----------------------------------------------------------------------------
   // Sign In Form Submission
   // ----------------------------------------------------------------------------
   if (loginForm) {
@@ -159,6 +201,20 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!email || !password) {
         showToast("Please provide both email and password.", "error");
         return;
+      }
+
+      // High-Security Email Validation: Reject fake/disposable emails
+      if (window.validateRealEmail) {
+        const emailCheck = window.validateRealEmail(email);
+        if (!emailCheck.valid) {
+          showToast(emailCheck.error, "error");
+          const emailField = document.getElementById("email");
+          if (emailField) {
+            emailField.focus();
+            emailField.style.borderColor = "#ff4d4f";
+          }
+          return;
+        }
       }
 
       try {
@@ -223,11 +279,18 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Email format validation
-      const emailParts = email.split("@");
-      if (emailParts.length !== 2 || emailParts[0].length < 2 || !emailParts[1].includes(".")) {
-        showToast("Please enter a valid email address (e.g. name@university.edu).", "error");
-        return;
+      // High-Security Email Validation: Reject disposable, temporary, and fake domains
+      if (window.validateRealEmail) {
+        const emailCheck = window.validateRealEmail(email);
+        if (!emailCheck.valid) {
+          showToast(emailCheck.error, "error");
+          const emailField = document.getElementById("email");
+          if (emailField) {
+            emailField.focus();
+            emailField.style.borderColor = "#ff4d4f";
+          }
+          return;
+        }
       }
 
       if (password.length < 6) {
@@ -378,6 +441,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const email = forgotEmailInput?.value.trim();
       if (!email || !email.includes("@")) {
         return showToast("Please enter a valid email address.", "error");
+      }
+
+      if (window.validateRealEmail) {
+        const emailCheck = window.validateRealEmail(email);
+        if (!emailCheck.valid) {
+          return showToast(emailCheck.error, "error");
+        }
       }
 
       const sendBtn = document.getElementById("btn-send-otp");
