@@ -383,21 +383,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       let cloudList = [];
       if (window.authClient && window.authClient.client) {
         try {
-          let query = window.authClient.client
+          const { data, error } = await window.authClient.client
             .from("prediction_history")
             .select("*")
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: false })
+            .limit(50);
 
-          if (user?.id) {
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
-            if (isUuid) {
-              query = query.or(`user_id.eq.${user.id},user_id.is.null`);
-            }
-          }
-
-          const { data, error } = await query.limit(50);
           if (!error && Array.isArray(data) && data.length > 0) {
-            cloudList = data.map((item) => {
+            const userRows = data.filter((item) => {
+              const p = item.input_features || item.payload || {};
+              if (!user?.id) return true;
+              return !p.user_id || p.user_id === user.id || (user.email && p.user_email === user.email);
+            });
+            cloudList = userRows.map((item) => {
               const stage = item.stage || "university";
               const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
               const isLowRisk = (item.status_badge || "").toLowerCase().includes("exemp") || (item.status_badge || "").toLowerCase().includes("on track");

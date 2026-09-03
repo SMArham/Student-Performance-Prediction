@@ -251,12 +251,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         const { data, error } = await window.authClient.client
           .from("prediction_history")
           .select("*")
-          .eq("user_id", currentUser.id)
           .order("created_at", { ascending: false })
           .limit(50);
 
         if (!error && Array.isArray(data)) {
-          predictionHistory = data.map((item) => {
+          const userRows = data.filter((item) => {
+            const p = item.input_features || item.payload || {};
+            return !p.user_id || p.user_id === currentUser.id || (currentUser.email && p.user_email === currentUser.email);
+          });
+          predictionHistory = userRows.map((item) => {
             const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
             return {
               id: item.id,
