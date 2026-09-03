@@ -89,6 +89,16 @@ app.include_router(models_registry.router)
 app.include_router(students.router)
 app.include_router(academic_records.router)
 
+from backend.app.services.supabase_service import supabase_service
+
+@app.post("/api/v1/auth/delete-account", summary="Permanent Account Deletion")
+@app.delete("/api/v1/auth/delete-account", summary="Permanent Account Deletion")
+async def delete_account_endpoint(payload: dict):
+    user_id = payload.get("user_id")
+    email = payload.get("email")
+    success = supabase_service.delete_account_complete(user_id=user_id, email=email)
+    return {"success": success, "message": "Account completely wiped from Supabase Auth & Database."}
+
 
 # ------------------------------------------------------------------------------
 # 5. Robust Static Frontend & HTML Route Serving

@@ -5,7 +5,7 @@ Student Performance Prediction & Analytics System
 
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import uuid
 import re
 from backend.app.core.database import get_supabase_client, memory_db
@@ -185,6 +185,7 @@ class SupabaseService:
             }
 
         # Essential Core Schema Only: id, stage, input_features, predicted_score, predicted_grade, status_badge, created_at
+        pkt_now = datetime.now(timezone(timedelta(hours=5)))
         core_record = {
             "id": record_id,
             "stage": pred_data.get("stage", "university"),
@@ -192,7 +193,7 @@ class SupabaseService:
             "predicted_score": raw_score,
             "predicted_grade": pred_data.get("predicted_grade") or pred_data.get("grade") or "Grade A",
             "status_badge": pred_data.get("status_badge", "On Track"),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": pkt_now.strftime("%Y-%m-%dT%H:%M:%S"),
         }
 
         if self.client:
@@ -248,6 +249,53 @@ class SupabaseService:
         count = len(memory_db.prediction_history)
         memory_db.prediction_history = []
         return count
+
+    def delete_account_complete(self, user_id: Optional[str] = None, email: Optional[str] = None) -> bool:
+        """Permanently wipes a user account from Supabase Auth admin, profiles, and all telemetry tables."""
+        if not self.client:
+            return True
+        try:
+            # 1. Delete user from Supabase Auth admin if user_id is a valid UUID
+            if user_id and UUID_REGEX.match(str(user_id)):
+                try:
+                    self.client.auth.admin.delete_user(str(user_id))
+                    logger.info(f"Deleted user {user_id} from Supabase Auth admin.")
+                except Exception as e:
+                    logger.warning(f"Notice deleting user from auth.admin: {e}")
+
+            # 2. Delete from public.profiles
+            if user_id:
+                self.client.table("profiles").delete().eq("id", str(user_id)).execute()
+            if email:
+                self.client.table("profiles").delete().eq("email", str(email).lower()).execute()
+
+            # 3. Delete from public.students
+            if user_id:
+                self.client.table("students").delete().eq("id", str(user_id)).execute()
+                self.client.table("students").delete().eq("user_id", str(user_id)).execute()
+            if email:
+                self.client.table("students").delete().eq("email", str(email).lower()).execute()
+
+            # 4. Delete from public.prediction_history
+            if user_id:
+                self.client.table("prediction_history").delete().eq("user_id", str(user_id)).execute()
+            if email:
+                self.client.table("prediction_history").delete().eq("email", str(email).lower()).execute()
+
+            # 5. Delete from public.academic_records & academic_subjects
+            if user_id:
+                self.client.table("academic_records").delete().eq("user_id", str(user_id)).execute()
+                self.client.table("academic_subjects").delete().eq("user_id", str(user_id)).execute()
+
+            # 6. Delete from public.teacher_class_roster
+            if user_id:
+                self.client.table("teacher_class_roster").delete().eq("student_id", str(user_id)).execute()
+                self.client.table("teacher_class_roster").delete().eq("teacher_id", str(user_id)).execute()
+
+            return True
+        except Exception as e:
+            logger.warning(f"Error executing complete account deletion: {e}")
+            return False
 
     # --------------------------------------------------------------------------
     # Academic Subjects & Multi-Term CRUD (public.academic_subjects)

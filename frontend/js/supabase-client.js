@@ -220,6 +220,15 @@ class SupabaseAuthClient {
       throw new Error("An account with this email already exists. Please sign in instead.");
     }
 
+    // Reset deleted account flag if user re-creates account
+    try {
+      const deletedMap = JSON.parse(localStorage.getItem("sp_deleted_accounts") || "{}");
+      if (deletedMap[cleanEmail]) {
+        delete deletedMap[cleanEmail];
+        localStorage.setItem("sp_deleted_accounts", JSON.stringify(deletedMap));
+      }
+    } catch (delMapErr) {}
+
     const role = (metadata.role || "student").toLowerCase();
     const cleanName = metadata.full_name || cleanEmail.split("@")[0] || (role === "teacher" ? "Faculty Teacher" : "Student");
     const uniqueSuffix = Math.floor(100 + Math.random() * 900);
@@ -325,6 +334,18 @@ class SupabaseAuthClient {
     }
     const cleanEmail = emailCheck.cleanEmail;
 
+    // Check if account was deleted
+    try {
+      const deletedMap = JSON.parse(localStorage.getItem("sp_deleted_accounts") || "{}");
+      if (deletedMap[cleanEmail]) {
+        if (this.client) await this.client.auth.signOut().catch(() => {});
+        const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
+        throw new Error(`This ${roleName} account was deleted and no longer exists. Please click 'Create Account' to sign up first.`);
+      }
+    } catch (delErr) {
+      if (delErr.message.includes("deleted")) throw delErr;
+    }
+
     if (!password) {
       throw new Error("Please enter your password.");
     }
@@ -332,9 +353,11 @@ class SupabaseAuthClient {
     const registry = this.getAccountsRegistry();
     let existingAccount = registry[cleanEmail];
 
-    // 1. Attempt live Supabase Cloud login
+    // 1. Attempt live Supabase Cloud login & verify database profile exists
     let cloudUser = null;
     let cloudSession = null;
+    let cloudProfile = null;
+
     if (this.client) {
       try {
         const { data, error } = await this.client.auth.signInWithPassword({
@@ -349,23 +372,48 @@ class SupabaseAuthClient {
       } catch (err) {
         console.warn("[Auth] Supabase cloud login notice:", err);
       }
+
+      // Verify the user exists in public.profiles table
+      try {
+        const { data: prof } = await this.client
+          .from("profiles")
+          .select("id, role, email, full_name")
+          .eq("email", cleanEmail)
+          .maybeSingle();
+
+        if (prof) {
+          cloudProfile = prof;
+        }
+      } catch (profErr) {
+        console.warn("[Auth] Profiles verification notice:", profErr);
+      }
     }
 
-    // 2. Check if account exists anywhere
-    if (!cloudUser && !existingAccount) {
+    // 2. Reject if account was deleted from database and local registry
+    if (!cloudProfile && !existingAccount) {
+      if (this.client) {
+        await this.client.auth.signOut().catch(() => {});
+      }
+      const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
+      throw new Error(`No ${roleName} account found with this email. This account does not exist or was deleted. Please click 'Create Account' to sign up.`);
+    }
+
+    // 3. Check if account exists anywhere
+    if (!cloudUser && !existingAccount && !cloudProfile) {
       const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
       throw new Error(`No ${roleName} account found with this email. Please click 'Create Account' to sign up first.`);
     }
 
-    // 3. Password Verification (Local registry check if not already verified by Supabase)
+    // 4. Password Verification (Local registry check if not already verified by Supabase)
     if (!cloudUser && existingAccount) {
       if (existingAccount.password && existingAccount.password !== password) {
         throw new Error("Incorrect password. Please check your password and try again.");
       }
     }
 
-    // 4. Strict Role Verification: Enforce separate Student vs Teacher access
+    // 5. Strict Role Verification: Enforce separate Student vs Teacher access
     const registeredRole = (
+      cloudProfile?.role ||
       existingAccount?.user_metadata?.role ||
       cloudUser?.user_metadata?.role ||
       (cleanEmail.includes("teacher") ? "teacher" : "student")
@@ -504,6 +552,8 @@ class SupabaseAuthClient {
           await this.client.from("academic_subjects").delete().eq("user_id", userId);
           await this.client.from("students").delete().eq("id", userId);
           await this.client.from("students").delete().eq("user_id", userId);
+          await this.client.from("teacher_class_roster").delete().eq("student_id", userId);
+          await this.client.from("teacher_class_roster").delete().eq("teacher_id", userId);
         }
         if (cleanEmail) {
           await this.client.from("profiles").delete().eq("email", cleanEmail);
@@ -514,11 +564,10 @@ class SupabaseAuthClient {
         console.warn("[Auth] Cloud database delete warning:", err);
       }
 
-      // Also call backend API student and history deletion if reachable
+      // Complete wipe from Supabase Auth admin via backend endpoint
       if (window.apiClient) {
         try {
-          if (userId) await window.apiClient.deleteStudent(userId);
-          await window.apiClient.clearAllHistory();
+          await window.apiClient.post("/api/v1/auth/delete-account", { user_id: userId, email: cleanEmail });
         } catch (apiErr) {}
       }
 
@@ -529,11 +578,17 @@ class SupabaseAuthClient {
       }
     }
 
-    // 2. Remove from Local Registry
+    // 2. Remove from Local Registry & Record in Deleted Accounts Blocklist
     if (cleanEmail) {
       const registry = this.getAccountsRegistry();
       delete registry[cleanEmail];
       this.saveAccountsRegistry(registry);
+
+      try {
+        const deletedMap = JSON.parse(localStorage.getItem("sp_deleted_accounts") || "{}");
+        deletedMap[cleanEmail] = Date.now();
+        localStorage.setItem("sp_deleted_accounts", JSON.stringify(deletedMap));
+      } catch (e) {}
     }
 
     // 3. Clear all cached data and session keys

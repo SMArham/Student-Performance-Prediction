@@ -1376,7 +1376,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     ledgerTableBody.innerHTML = filtered
       .map((item) => {
-        const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent";
+        const dateRaw = item.created_at || item.timestamp;
+        let dateStr = "Recent";
+        if (dateRaw) {
+          const d = new Date(dateRaw);
+          if (!isNaN(d.getTime())) {
+            dateStr = d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+          }
+        }
 
         const entries = Object.entries(item.payload || {}).filter(([k]) => k !== "subjects" || (Array.isArray(item.payload[k]) && item.payload[k].length > 0));
 
