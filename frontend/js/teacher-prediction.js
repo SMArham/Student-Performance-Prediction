@@ -848,15 +848,15 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             // Also upsert directly into teacher_class_roster table with exact Supabase table schema
-            const teacherCode = userMeta.id_code || userMeta.student_id || "TCH-01";
+            const teacherUniqueId = (session && session.user && session.user.id) ? session.user.id : (userMeta.id_code || userMeta.student_id || "TCH-01");
             const isLowRisk = (statusBadge || "").toLowerCase().includes("exemplary") || (statusBadge || "").toLowerCase().includes("honors") || (statusBadge || "").toLowerCase().includes("track");
             const isMedRisk = (statusBadge || "").toLowerCase().includes("moderate") || (statusBadge || "").toLowerCase().includes("attention");
             const riskStr = isLowRisk ? "Low Risk" : (isMedRisk ? "Medium Risk" : "High Risk");
             const avgNum = typeof predictedScore === "number" ? (stage === "university" ? (predictedScore / 4.0) * 100 : predictedScore) : 80.0;
 
             const rosterRow = {
-              id: `STU-${studentId || Math.floor(10 + Math.random() * 90)}`,
-              teacher_id: teacherCode || "TCH-01",
+              id: `STU-${studentId || Math.floor(100 + Math.random() * 900)}`,
+              teacher_id: teacherUniqueId,
               student_name: studentName,
               student_id_code: studentId || `STU-${Math.floor(100 + Math.random() * 900)}`,
               stage: stage,

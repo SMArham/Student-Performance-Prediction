@@ -248,8 +248,8 @@ class SupabaseAuthClient {
 
     const role = (metadata.role || "student").toLowerCase();
     const cleanName = metadata.full_name || cleanEmail.split("@")[0] || (role === "teacher" ? "Faculty Teacher" : "Student");
-    const uniqueSuffix = Math.floor(100 + Math.random() * 900);
-    const autoId = metadata.student_id || metadata.id_code || (role === "teacher" ? `TCH-0${Math.floor(1 + Math.random() * 9)}` : `STU-${uniqueSuffix}`);
+    const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
+    const autoId = metadata.student_id || metadata.id_code || (role === "teacher" ? `TCH-${uniqueSuffix}` : `STU-${uniqueSuffix}`);
     const programName = metadata.program || metadata.major || (role === "teacher" ? (metadata.department || "Computer Science") : "Software Engineering");
     const institutionName = metadata.institution_name || metadata.institution || "Faculty of Engineering";
 
