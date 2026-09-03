@@ -19,6 +19,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // Live Database Health Check
+  if (window.authClient && typeof window.authClient.checkDatabaseHealth === "function") {
+    window.authClient.checkDatabaseHealth().then((status) => {
+      const text = document.getElementById("db-health-text");
+      if (text) {
+        text.innerText = status.connected ? `Supabase Cloud (${status.latency}ms)` : "Local Cache Active";
+      }
+    });
+  }
+
   // Teacher State for the CURRENT student being evaluated
   let teacherSubjectsStore = [];
   let editingSubjectId = null;
@@ -795,35 +805,83 @@ document.addEventListener("DOMContentLoaded", () => {
           timestamp: new Date().toISOString()
         };
 
-        // 1. LocalStorage De-duplicated Upsert by student_id (strictly per teacher profile)
+        // 1. LocalStorage De-duplicated Upsert by student_id across candidate teacher keys
         try {
-          const teacherCode = userMeta.id_code || userMeta.student_id || currentUser?.id || "default";
-          const teacherStorageKey = `edumetrics_teacher_${teacherCode}`;
-          let teacherEvals = [];
-          const existingTeacherStr = localStorage.getItem(teacherStorageKey);
-          if (existingTeacherStr) teacherEvals = JSON.parse(existingTeacherStr) || [];
-          teacherEvals = teacherEvals.filter((item) => item.student_id !== studentId);
-          teacherEvals.unshift(evaluatedRecord);
-          localStorage.setItem(teacherStorageKey, JSON.stringify(teacherEvals));
+          const teacherCode = userMeta.id_code || userMeta.student_id || "TCH-01";
+          const keys = [`edumetrics_teacher_${teacherCode}`];
+          if (currentUser?.id) keys.push(`edumetrics_teacher_${currentUser.id}`);
+
+          keys.forEach((k) => {
+            let teacherEvals = [];
+            const existing = localStorage.getItem(k);
+            if (existing) {
+              try { teacherEvals = JSON.parse(existing) || []; } catch(e) {}
+            }
+            teacherEvals = teacherEvals.filter((item) => item.student_id !== studentId);
+            teacherEvals.unshift(evaluatedRecord);
+            localStorage.setItem(k, JSON.stringify(teacherEvals));
+          });
         } catch (storageErr) {
           console.warn("LocalStorage save error:", storageErr);
         }
 
-        // 2. Save into Supabase prediction_history (Direct Cloud Table + API)
+        // 2. Save into Supabase prediction_history & teacher_class_roster (Direct Cloud Table + API)
         try {
           if (window.authClient && window.authClient.client) {
             const session = window.authClient.getSession();
-            window.authClient.client.from("prediction_history").insert({
-              user_id: session?.user?.id,
+            const teacherId = session?.user?.id;
+            const isUuid = teacherId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacherId);
+
+            const predPayload = {
               stage: stage,
               input_features: evaluatedRecord,
               predicted_score: typeof predictedScore === "number" ? predictedScore : 3.5,
               predicted_grade: predictedGrade,
               status_badge: statusBadge,
               created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
-            }).then(() => {
+            };
+            if (isUuid) {
+              predPayload.user_id = teacherId;
+            }
+
+            window.authClient.client.from("prediction_history").insert(predPayload).then(() => {
               console.log("[Supabase] Teacher evaluation saved to prediction_history table.");
-            }).catch(e => console.warn("[Supabase] Teacher history insert notice:", e.message));
+            }).catch((e) => {
+              console.warn("[Supabase] Teacher history insert notice:", e.message);
+              if (predPayload.user_id) {
+                delete predPayload.user_id;
+                window.authClient.client.from("prediction_history").insert(predPayload).catch(() => {});
+              }
+            });
+
+            // Also upsert directly into teacher_class_roster table
+            const teacherCode = userMeta.id_code || userMeta.student_id || "TCH-01";
+            const rosterRow = {
+              id: `STU-${studentId || Math.floor(10 + Math.random() * 90)}`,
+              teacher_id: teacherCode || "TCH-01",
+              instructor_id: teacherCode || "TCH-01",
+              student_name: studentName,
+              student_id_code: studentId,
+              roll_no: studentId,
+              stage: stage,
+              attendance_pct: parseFloat(attendance) || 85.0,
+              quiz_test_pct: parseFloat(evaluatedRecord.quizzes_avg || 80.0),
+              assignment_pct: parseFloat(evaluatedRecord.coursework_avg || 80.0),
+              midterm_score: parseFloat(predictedScore) || 80.0,
+              avg_marks: parseFloat(predictedScore) || 80.0,
+              predicted_score: parseFloat(predictedScore) || 3.5,
+              predicted_grade: predictedGrade,
+              status_badge: statusBadge,
+              status_color: statusColor,
+              gender: "male",
+              notes: notes || strategy || "",
+              created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
+            };
+            window.authClient.client.from("teacher_class_roster").upsert(rosterRow, { onConflict: "id" }).then(() => {
+              console.log("[Supabase] Student persisted in teacher_class_roster.");
+            }).catch((rErr) => {
+              console.warn("[Supabase] teacher_class_roster notice:", rErr.message);
+            });
           }
 
           if (window.apiClient) {

@@ -126,6 +126,34 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Profile Details Form Submission Handler
+  if (profileForm) {
+    profileForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nameVal = document.getElementById("setting-fullname")?.value.trim() || "Instructor";
+      const idCodeVal = document.getElementById("setting-studentid")?.value.trim() || "TCH-01";
+      const deptVal = document.getElementById("setting-department")?.value.trim() || "Computer Science";
+      const instVal = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
+
+      if (window.authClient) {
+        await window.authClient.updateUser({
+          full_name: nameVal,
+          student_id: idCodeVal,
+          id_code: idCodeVal,
+          department: deptVal,
+          program: deptVal,
+          institution_name: instVal,
+          institution: instVal
+        });
+      }
+
+      if (teacherNameEl) teacherNameEl.innerText = nameVal;
+      if (teacherIdCodeEl) teacherIdCodeEl.innerText = idCodeVal;
+      profileModal?.classList.remove("active");
+      showToast("Instructor profile updated successfully!", "success");
+    });
+  }
+
   const securityForm = document.getElementById("profile-security-form");
   if (securityForm) {
     securityForm.addEventListener("submit", async (e) => {
@@ -192,24 +220,104 @@ document.addEventListener("DOMContentLoaded", () => {
     let rawList = [];
     const teacher = getTeacherIdentity();
 
-    // 1. Read strictly from this teacher's isolated storage key (no fallback to shared legacy keys)
+    // 1. Read strictly from this teacher's isolated storage key
     try {
-      const localStr = localStorage.getItem(teacher.storageKey);
-      if (localStr) {
-        const parsed = JSON.parse(localStr);
-        if (Array.isArray(parsed)) {
-          const matching = parsed.filter((item) => {
-            const tCode = item.teacher_code || item.teacher_id;
-            return tCode === teacher.code || (teacher.id && tCode === teacher.id);
-          });
-          rawList = [...matching];
+      const candidateKeys = [teacher.storageKey];
+      if (teacher.code) candidateKeys.push(`edumetrics_teacher_${teacher.code}`);
+      if (teacher.id) candidateKeys.push(`edumetrics_teacher_${teacher.id}`);
+
+      for (const k of candidateKeys) {
+        const localStr = localStorage.getItem(k);
+        if (localStr) {
+          const parsed = JSON.parse(localStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            rawList = [...parsed];
+            break;
+          }
         }
       }
     } catch (e) {
       console.warn("Could not load evaluations from localStorage:", e);
     }
 
-    // 2. Fetch from Backend History ONLY if explicitly tagged for this instructor
+    // 2. Fetch directly from live Supabase Cloud Database (prediction_history & teacher_class_roster)
+    if (window.authClient && window.authClient.client) {
+      try {
+        let q = window.authClient.client
+          .from("prediction_history")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (teacher.id) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacher.id);
+          if (isUuid) {
+            q = q.or(`user_id.eq.${teacher.id},user_id.is.null`);
+          }
+        }
+
+        const { data, error } = await q.limit(100);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          const cloudTeacherEvals = data
+            .filter((item) => {
+              const p = item.input_features || item.payload || {};
+              const isTeacher = (item.role === "teacher" || p.role === "teacher" || !!p.student_id || !!p.teacher_id);
+              const matchesTeacher = !p.teacher_id || p.teacher_id === teacher.id || p.teacher_id === teacher.code || item.user_id === teacher.id;
+              return isTeacher && matchesTeacher;
+            })
+            .map((item) => {
+              const p = item.input_features || item.payload || {};
+              return {
+                ...p,
+                id: item.id,
+                created_at: item.created_at,
+                timestamp: item.created_at,
+                predicted_score: item.predicted_score ?? p.predicted_score ?? 3.5,
+                predicted_grade: item.predicted_grade || p.predicted_grade || "Grade A",
+                status_badge: item.status_badge || p.status_badge || "On Track"
+              };
+            });
+          rawList = [...rawList, ...cloudTeacherEvals];
+        }
+      } catch (cloudErr) {
+        console.warn("[TeacherDashboard] Supabase history query note:", cloudErr);
+      }
+
+      try {
+        const { data: rosterData, error: rosterErr } = await window.authClient.client
+          .from("teacher_class_roster")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (!rosterErr && Array.isArray(rosterData) && rosterData.length > 0) {
+          const matchingRoster = rosterData
+            .filter((r) => !r.teacher_id || r.teacher_id === teacher.code || r.teacher_id === teacher.id || r.teacher_id === "TCH-01")
+            .map((r) => ({
+              id: r.id,
+              student_id: r.student_id_code || r.roll_no || r.id,
+              student_name: r.student_name,
+              stage: r.stage || "university",
+              predicted_score: r.predicted_score ?? 3.5,
+              predicted_grade: r.predicted_grade || "Grade A",
+              status_badge: r.status_badge || r.risk_level || "On Track",
+              status_color: r.status_color || "badge-success",
+              attendance_pct: r.attendance_pct || 85,
+              courses: [{ name: r.subject || "Coursework", obtained: r.midterm_score || 85, total: 100 }],
+              attentive: "High",
+              comm_skill: "Good",
+              academic_need: "Independent",
+              rating: 5.0,
+              notes: r.notes || "",
+              timestamp: r.created_at || new Date().toISOString()
+            }));
+          rawList = [...rawList, ...matchingRoster];
+        }
+      } catch (rosterErr) {
+        console.warn("[TeacherDashboard] Supabase roster query note:", rosterErr);
+      }
+    }
+
+    // 3. Fetch from Backend History ONLY if explicitly tagged for this instructor
     try {
       if (window.apiClient && (teacher.code || teacher.id)) {
         const res = await window.apiClient.getHistory(100);
