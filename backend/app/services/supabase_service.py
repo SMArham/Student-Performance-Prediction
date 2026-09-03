@@ -126,7 +126,11 @@ class SupabaseService:
                     return [self._format_history_record(r) for r in res.data]
             except Exception as e:
                 logger.warning(f"Error querying prediction_history from Supabase: {e}")
-        return [self._format_history_record(h) for h in memory_db.prediction_history][:limit]
+        filtered_mem = [
+            h for h in memory_db.prediction_history
+            if not user_id or str(h.get("user_id")) == str(user_id)
+        ]
+        return [self._format_history_record(h) for h in filtered_mem][:limit]
 
     def _format_history_record(self, r: Dict[str, Any]) -> Dict[str, Any]:
         """Normalizes a prediction history row from core public.prediction_history."""

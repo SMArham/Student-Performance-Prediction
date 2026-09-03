@@ -518,6 +518,36 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
+    if (students.length === 0) {
+      chartRisk = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["No Evaluations Recorded Yet"],
+          datasets: [
+            {
+              data: [1],
+              backgroundColor: ["rgba(255, 255, 255, 0.04)"],
+              borderColor: "rgba(255, 255, 255, 0.08)",
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "68%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { color: "#64748b", font: { size: 11, weight: "600" }, padding: 12, usePointStyle: true }
+            },
+            tooltip: { enabled: false }
+          }
+        }
+      });
+      return;
+    }
+
     const total = students.length || 1;
 
     chartRisk = new Chart(ctx, {
@@ -640,6 +670,52 @@ document.addEventListener("DOMContentLoaded", async () => {
     const avgIndep = count > 0 ? Math.round(sumIndep / count) : 0;
     const avgAtt = count > 0 ? Math.round(sumAtt / count) : 0;
 
+    if (count === 0) {
+      chartBehavior = new Chart(ctx, {
+        type: "radar",
+        data: {
+          labels: [
+            "🎯 Classroom Focus",
+            "🗣️ Verbal Presentation",
+            "🤝 Behavior & Discipline",
+            "👥 Active Participation",
+            "🛠️ Learning Independence",
+            "📅 Lecture Attendance"
+          ],
+          datasets: [
+            {
+              label: "No Behavioral Evaluations Yet",
+              data: [0, 0, 0, 0, 0, 0],
+              backgroundColor: "rgba(255, 255, 255, 0.02)",
+              borderColor: "rgba(255, 255, 255, 0.1)",
+              borderWidth: 1.5,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              grid: { color: "rgba(255, 255, 255, 0.04)" },
+              angleLines: { color: "rgba(255, 255, 255, 0.04)" },
+              pointLabels: { color: "#64748b", font: { size: 10 } },
+              ticks: { display: false, min: 0, max: 100 }
+            }
+          },
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { color: "#64748b", font: { size: 11, weight: "600" } }
+            },
+            tooltip: { enabled: false }
+          }
+        }
+      });
+      return;
+    }
+
     chartBehavior = new Chart(ctx, {
       type: "radar",
       data: {
@@ -714,7 +790,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (chartMastery) chartMastery.destroy();
 
-    // Aggregate component marks across all courses in cohort
+    if (students.length === 0) {
+      if (masteryTheoryVal) masteryTheoryVal.innerText = "--";
+      if (masteryQuizVal) masteryQuizVal.innerText = "--";
+      if (masteryAssignVal) masteryAssignVal.innerText = "--";
+
+      chartMastery = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["No Coursework Evaluated Yet"],
+          datasets: [
+            {
+              label: "No Coursework Recorded",
+              data: [0],
+              backgroundColor: "rgba(255, 255, 255, 0.04)",
+              borderColor: "rgba(255, 255, 255, 0.08)",
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "top", labels: { color: "#64748b", font: { size: 11 } } },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: { grid: { color: "rgba(255,255,255,0.03)" }, ticks: { color: "#64748b" } },
+            y: { min: 0, max: 100, grid: { color: "rgba(255,255,255,0.03)" }, ticks: { color: "#64748b", callback: (v) => v + "%" } }
+          }
+        }
+      });
+      return;
+    }
     let totalExamObt = 0, totalExamTot = 0;
     let totalQuizObt = 0, totalQuizTot = 0;
     let totalAssignObt = 0, totalAssignTot = 0;
