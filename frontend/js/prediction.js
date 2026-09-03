@@ -3229,6 +3229,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // 3. Persist into Supabase Cloud prediction_history table
       if (window.authClient && window.authClient.client) {
         const rawScore = typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0);
+        const localNow = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
         const cloudRecord = {
           user_id: currentUser?.id,
           stage: currentStage || "university",
@@ -3236,7 +3237,7 @@ document.addEventListener("DOMContentLoaded", () => {
           predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
           predicted_grade: result.predicted_grade || result.grade || "Grade A",
           status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Attention Needed"),
-          created_at: new Date().toISOString()
+          created_at: localNow
         };
         window.authClient.client.from("prediction_history").insert(cloudRecord).then(() => {
           console.log("[Supabase] Latest prediction successfully persisted to database.");

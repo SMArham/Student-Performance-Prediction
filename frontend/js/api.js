@@ -107,16 +107,17 @@ class APIClient {
     if (window.authClient && window.authClient.client) {
       const user = window.authClient.getUser();
       const rawScore = typeof predictionData.score === "number" ? predictionData.score : parseFloat(predictionData.predicted_score || 85.0);
-      window.authClient.client.from("prediction_history").insert({
-        user_id: user?.id,
-        stage: predictionData.stage || "university",
-        input_features: predictionData.payload || predictionData.input_features || {},
-        predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
-        predicted_grade: predictionData.predicted_grade || predictionData.grade || "Grade A",
-        status_badge: predictionData.status_badge || "On Track",
-        created_at: new Date().toISOString()
-      }).then().catch(e => console.warn("[Supabase] Cloud savePrediction note:", e.message));
-    }
+        const localTime = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
+        window.authClient.client.from("prediction_history").insert({
+          user_id: user?.id,
+          stage: predictionData.stage || "university",
+          input_features: predictionData.payload || predictionData.input_features || {},
+          predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
+          predicted_grade: predictionData.predicted_grade || predictionData.grade || "Grade A",
+          status_badge: predictionData.status_badge || "On Track",
+          created_at: localTime
+        }).then().catch(e => console.warn("[Supabase] Cloud savePrediction note:", e.message));
+      }
 
     // 2. Try backend API if available
     try {
@@ -204,7 +205,7 @@ class APIClient {
             midterm_score: termPayload.midterm_score,
             backlogs: termPayload.backlogs,
             study_hours: termPayload.study_hours,
-            updated_at: new Date().toISOString()
+            updated_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
           }, { onConflict: "user_id,term_name" })
           .then().catch(e => console.warn("[Supabase] Academic records cloud sync notice:", e.message));
         }

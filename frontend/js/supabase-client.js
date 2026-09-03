@@ -136,6 +136,26 @@ if (typeof window !== "undefined") {
   window.validateRealEmail = validateRealEmail;
 }
 
+/**
+ * Returns exact local timestamp (YYYY-MM-DDTHH:mm:ss) to match
+ * the user's local clock without UTC drift in database tables.
+ */
+function getLocalTimestamp() {
+  const d = new Date();
+  const pad = n => (n < 10 ? "0" + n : n);
+  const YYYY = d.getFullYear();
+  const MM = pad(d.getMonth() + 1);
+  const DD = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return `${YYYY}-${MM}-${DD}T${hh}:${mm}:${ss}`;
+}
+
+if (typeof window !== "undefined") {
+  window.getLocalTimestamp = getLocalTimestamp;
+}
+
 class SupabaseAuthClient {
   constructor() {
     this.client = null;
@@ -256,7 +276,8 @@ class SupabaseAuthClient {
         console.warn("[Auth] Live Supabase signup notice:", supabaseErr);
       }
 
-      // Persist directly into Supabase database tables
+      // Persist directly into Supabase database tables with exact local time
+      const localNow = getLocalTimestamp();
       try {
         await this.client.from("profiles").upsert({
           id: userObj.id,
@@ -267,8 +288,8 @@ class SupabaseAuthClient {
           institution_name: institutionName,
           department_or_program: programName,
           student_id_code: autoId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          created_at: localNow,
+          updated_at: localNow
         }, { onConflict: "id" });
       } catch (profErr) {
         console.warn("[Auth] Supabase profiles initial insert note:", profErr);
@@ -285,7 +306,7 @@ class SupabaseAuthClient {
             gender: metadata.gender || "male",
             institution_name: institutionName,
             program_name: programName,
-            created_at: new Date().toISOString()
+            created_at: localNow
           }, { onConflict: "id" });
         } catch (stuErr) {
           console.warn("[Auth] Supabase students initial insert note:", stuErr);
@@ -421,7 +442,7 @@ class SupabaseAuthClient {
             institution_name: newMeta.institution_name || newMeta.institution || "Faculty of Engineering",
             department_or_program: newMeta.program || newMeta.major || newMeta.department || "Software Engineering",
             student_id_code: newMeta.student_id || newMeta.id_code || `STU-${userId.slice(0, 4).toUpperCase()}`,
-            updated_at: new Date().toISOString()
+            updated_at: getLocalTimestamp()
           };
           await this.client.from("profiles").upsert(profilePayload, { onConflict: "id" });
         } catch (dbErr) {

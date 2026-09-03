@@ -820,7 +820,7 @@ document.addEventListener("DOMContentLoaded", () => {
               predicted_score: typeof predictedScore === "number" ? predictedScore : 3.5,
               predicted_grade: predictedGrade,
               status_badge: statusBadge,
-              created_at: new Date().toISOString()
+              created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
             }).then(() => {
               console.log("[Supabase] Teacher evaluation saved to prediction_history table.");
             }).catch(e => console.warn("[Supabase] Teacher history insert notice:", e.message));
