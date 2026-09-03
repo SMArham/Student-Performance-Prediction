@@ -102,6 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const loginPortalRoleInput = document.getElementById("login_portal_role");
   const loginSubmitBtn = document.getElementById("btn-login-submit");
   const regSuccessBanner = document.getElementById("registration-success-banner");
+  const urlParams = new URLSearchParams(window.location.search);
 
   function setLoginPortal(role) {
     if (!loginPortalRoleInput) return;
@@ -146,7 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (loginPortalTeacher) loginPortalTeacher.addEventListener("click", () => setLoginPortal("teacher"));
 
   // Handle post-signup redirect parameters on login page
-  const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("registered") === "true") {
     if (regSuccessBanner) regSuccessBanner.style.display = "block";
     const regEmail = urlParams.get("email");
@@ -252,9 +252,15 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (err) {
         const msg = err.message || "Invalid email or password.";
         showToast(msg, "error");
+        if (msg.includes("switch to the Teacher Portal")) {
+          setLoginPortal("teacher");
+        } else if (msg.includes("switch to the Student Portal")) {
+          setLoginPortal("student");
+        }
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerText = activeRole === "teacher" ? "SIGN IN AS TEACHER" : "SIGN IN AS STUDENT";
+          const currentActive = loginPortalRoleInput ? loginPortalRoleInput.value : activeRole;
+          submitBtn.innerText = currentActive === "teacher" ? "SIGN IN AS TEACHER" : "SIGN IN AS STUDENT";
         }
       }
     });

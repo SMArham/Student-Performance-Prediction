@@ -253,8 +253,19 @@ class SupabaseAuthClient {
     const programName = metadata.program || metadata.major || (role === "teacher" ? (metadata.department || "Computer Science") : "Software Engineering");
     const institutionName = metadata.institution_name || metadata.institution || "Faculty of Engineering";
 
+    function createSafeUUID() {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+      }
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === "x" ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
     const userObj = {
-      id: "usr-" + Math.random().toString(36).substring(2, 9),
+      id: createSafeUUID(),
       email: cleanEmail,
       user_metadata: {
         ...metadata,
@@ -404,37 +415,59 @@ class SupabaseAuthClient {
       } catch (profErr) {
         console.warn("[Auth] Profiles verification notice:", profErr);
       }
-    }
 
-    // 2. Reject if account does not exist in Supabase Cloud Database
-    if (this.client && !cloudProfile) {
-      await this.client.auth.signOut().catch(() => {});
-      const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
-      throw new Error(`No ${roleName} account found in the database with this email. You must create an account first before signing in.`);
-    }
+      // If cloudUser authenticated but cloudProfile wasn't found by email, check by user ID or auto-sync
+      if (!cloudProfile && cloudUser) {
+        try {
+          const { data: profById } = await this.client
+            .from("profiles")
+            .select("id, role, email, full_name")
+            .eq("id", cloudUser.id)
+            .maybeSingle();
 
-    if (!cloudProfile && !existingAccount) {
-      if (this.client) {
-        await this.client.auth.signOut().catch(() => {});
+          if (profById) {
+            cloudProfile = profById;
+          } else {
+            const meta = cloudUser.user_metadata || {};
+            const localNow = getLocalTimestamp();
+            const uRole = meta.role || requiredRole || "teacher";
+            const autoId = meta.student_id || meta.id_code || (uRole === "teacher" ? "TCH-01" : "STU-01");
+            const { data: syncedProf } = await this.client.from("profiles").upsert({
+              id: cloudUser.id,
+              email: cleanEmail,
+              full_name: meta.full_name || cleanEmail.split("@")[0],
+              role: uRole,
+              stage: meta.stage || (uRole === "teacher" ? "all" : "university"),
+              institution_name: meta.institution_name || meta.institution || "Faculty Campus",
+              department_or_program: meta.department || meta.program || "Computer Science",
+              student_id_code: autoId,
+              created_at: localNow,
+              updated_at: localNow
+            }, { onConflict: "id" }).select().maybeSingle();
+            if (syncedProf) {
+              cloudProfile = syncedProf;
+            }
+          }
+        } catch (syncErr) {
+          console.warn("[Auth] Cloud profile sync notice:", syncErr);
+        }
       }
-      const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
-      throw new Error(`No ${roleName} account found with this email. This account does not exist. Please click 'Create Account' to sign up first.`);
     }
 
-    // 3. Check if account exists anywhere
+    // 2. Reject if account does not exist in Supabase Cloud Database or local registry
     if (!cloudUser && !existingAccount && !cloudProfile) {
       const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
-      throw new Error(`No ${roleName} account found with this email. Please click 'Create Account' to sign up first.`);
+      throw new Error(`No ${roleName} account found with this email. You must create an account first before signing in. Please click 'Create Account' to sign up.`);
     }
 
-    // 4. Password Verification (Local registry check if not already verified by Supabase)
+    // 3. Password Verification (Local registry check if not already verified by Supabase)
     if (!cloudUser && existingAccount) {
       if (existingAccount.password && existingAccount.password !== password) {
         throw new Error("Incorrect password. Please check your password and try again.");
       }
     }
 
-    // 5. Strict Role Verification: Enforce separate Student vs Teacher access
+    // 4. Strict Role Verification: Enforce separate Student vs Teacher access
     const registeredRole = (
       cloudProfile?.role ||
       existingAccount?.user_metadata?.role ||
@@ -445,9 +478,11 @@ class SupabaseAuthClient {
     if (requiredRole) {
       const targetRole = requiredRole.toLowerCase();
       if (targetRole === "teacher" && registeredRole !== "teacher") {
+        if (this.client) await this.client.auth.signOut().catch(() => {});
         throw new Error("Access Denied: This account is registered as a Student. Please switch to the Student Portal to sign in, or create a Teacher account.");
       }
       if (targetRole === "student" && registeredRole !== "student") {
+        if (this.client) await this.client.auth.signOut().catch(() => {});
         throw new Error("Access Denied: This account is registered as a Faculty Teacher. Please switch to the Teacher Portal to sign in.");
       }
     }
