@@ -231,28 +231,49 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Student Portal Data Loading (Zero Fake Metrics)
   // --------------------------------------------------------------------------
   async function loadStudentPortalData(stage) {
-    const userKey = currentUser ? `edumetrics_prediction_history_v2_${currentUser.id}` : "edumetrics_prediction_history_v2";
+    const userKey = currentUser?.id ? `edumetrics_prediction_history_v2_${currentUser.id}` : null;
 
-    // 1. Try to fetch live history from Supabase Backend API
-    try {
-      if (window.apiClient) {
-        const apiRecords = await window.apiClient.getHistory(50);
-        if (Array.isArray(apiRecords) && apiRecords.length > 0) {
-          predictionHistory = apiRecords;
-          localStorage.setItem(userKey, JSON.stringify(predictionHistory));
-          localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(predictionHistory));
-        } else {
-          predictionHistory = [];
-          localStorage.removeItem(userKey);
-          localStorage.removeItem("edumetrics_prediction_history_v2");
-          localStorage.removeItem("edumetrics_prediction_history");
-        }
-      } else {
-        predictionHistory = [];
+    // 1. Load user-isolated local cache
+    if (userKey) {
+      const localData = localStorage.getItem(userKey);
+      if (localData) {
+        try {
+          predictionHistory = JSON.parse(localData);
+        } catch (e) {}
       }
-    } catch (apiErr) {
-      console.warn("[Dashboard] Could not fetch live history from API:", apiErr.message);
-      predictionHistory = [];
+    }
+
+    // 2. Fetch live history strictly for this user from Supabase Cloud
+    if (window.authClient && window.authClient.client && currentUser?.id) {
+      try {
+        const { data, error } = await window.authClient.client
+          .from("prediction_history")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (!error && Array.isArray(data)) {
+          predictionHistory = data.map((item) => {
+            const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
+            return {
+              id: item.id,
+              stage: item.stage,
+              score: item.score || `${rawScore}`,
+              grade: item.predicted_grade || item.grade || "Grade A",
+              status_badge: item.status_badge || "On Track",
+              created_at: item.created_at,
+              timestamp: item.created_at,
+              payload: item.input_features || item.payload || {}
+            };
+          });
+          if (userKey) {
+            localStorage.setItem(userKey, JSON.stringify(predictionHistory));
+          }
+        }
+      } catch (err) {
+        console.warn("[Dashboard] Supabase history query note:", err);
+      }
     }
 
     renderUserProfile();

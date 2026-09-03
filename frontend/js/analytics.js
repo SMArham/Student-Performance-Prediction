@@ -310,8 +310,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem(`edumetrics_prediction_history_v2_${user.id}`, JSON.stringify(historyList));
       localStorage.setItem(`edumetrics_prediction_history_${user.id}`, JSON.stringify(historyList));
     }
-    localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(historyList));
-    localStorage.setItem("edumetrics_prediction_history", JSON.stringify(historyList));
   }
 
   // Formatter for diagnostic payload parameters
@@ -350,34 +348,33 @@ document.addEventListener("DOMContentLoaded", async () => {
       const user = window.authClient ? window.authClient.getUser() : null;
       let list = [];
 
-      // Step 1: Immediate local storage load (0ms latency display)
-      const userKey = user?.id ? `edumetrics_prediction_history_v2_${user.id}` : "edumetrics_prediction_history_v2";
-      try {
-        const cached = localStorage.getItem(userKey) || localStorage.getItem("edumetrics_prediction_history_v2") || localStorage.getItem("edumetrics_prediction_history");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            list = parsed;
-            predictionHistory = list;
-            refreshAllViews();
+      // Step 1: Immediate local storage load strictly for this user (0ms latency)
+      const userKey = user?.id ? `edumetrics_prediction_history_v2_${user.id}` : null;
+      if (userKey) {
+        try {
+          const cached = localStorage.getItem(userKey);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              list = parsed;
+              predictionHistory = list;
+              refreshAllViews();
+            }
           }
-        }
-      } catch (cacheErr) {}
+        } catch (cacheErr) {}
+      }
 
-      // Step 2: Live Supabase Cloud Database Table Query
-      if (window.authClient && window.authClient.client) {
+      // Step 2: Live Supabase Cloud Database Table Query strictly for this user
+      if (window.authClient && window.authClient.client && user?.id) {
         try {
           let query = window.authClient.client
             .from("prediction_history")
             .select("*")
+            .eq("user_id", user.id)
             .order("created_at", { ascending: false });
 
-          if (user?.id) {
-            query = query.or(`user_id.eq.${user.id},user_id.is.null`);
-          }
-
           const { data, error } = await query.limit(50);
-          if (!error && Array.isArray(data) && data.length > 0) {
+          if (!error && Array.isArray(data)) {
             const cloudRecords = data.map((item) => {
               const stage = item.stage || "university";
               const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
@@ -404,20 +401,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      // Step 3: Backend API Fallback if cloud query didn't yield records
-      if (list.length === 0 && window.apiClient) {
-        try {
-          const apiRecords = await window.apiClient.getHistory(50);
-          if (Array.isArray(apiRecords) && apiRecords.length > 0) {
-            list = apiRecords;
-            persistHistory(list);
-          }
-        } catch (apiErr) {
-          console.warn("[Analytics] Backend API history notice:", apiErr.message);
-        }
-      }
-
-      // Step 4: Strict newest-first sorting by timestamp/created_at
+      // Step 3: Strict newest-first sorting by timestamp/created_at
       list.sort((a, b) => {
         const tA = new Date(a.timestamp || a.created_at || 0).getTime();
         const tB = new Date(b.timestamp || b.created_at || 0).getTime();
@@ -425,11 +409,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       predictionHistory = list;
-    } catch (e) {
-      console.warn("[Analytics] Error loading history:", e);
-      if (!Array.isArray(predictionHistory)) {
-        predictionHistory = [];
-      }
     }
 
     refreshAllViews();

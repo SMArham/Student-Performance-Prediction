@@ -614,20 +614,27 @@ class SupabaseAuthClient {
       } catch (e) {}
     }
 
-    // 3. Clear all cached data and session keys
+    // 3. Clear all cached data, inner prediction history, and session keys
     if (userId) {
+      localStorage.removeItem(`edumetrics_prediction_history_v2_${userId}`);
+      localStorage.removeItem(`edumetrics_prediction_history_${userId}`);
       localStorage.removeItem(`sp_academic_records_${userId}`);
       localStorage.removeItem(`sp_academic_records_${userId}_university`);
       localStorage.removeItem(`sp_academic_records_${userId}_intermediate`);
       localStorage.removeItem(`sp_academic_records_${userId}_secondary`);
       localStorage.removeItem(`sp_academic_records_${userId}_primary`);
       localStorage.removeItem(`sp_prediction_history_${userId}`);
+      localStorage.removeItem(`sp_user_subjects_v1_${userId}`);
+      localStorage.removeItem(`edumetrics_cached_history_${userId}`);
+      localStorage.removeItem(`edumetrics_analytics_cache_${userId}`);
     }
     const stages = ["university", "intermediate", "secondary", "primary"];
     stages.forEach(st => {
       localStorage.removeItem(`sp_academic_records_${st}`);
     });
     localStorage.removeItem("sp_academic_records");
+    localStorage.removeItem("edumetrics_prediction_history_v2");
+    localStorage.removeItem("edumetrics_prediction_history");
     localStorage.removeItem("sp_auth_token");
     localStorage.removeItem("sp_auth_user");
     localStorage.removeItem("sp_user_subjects_v1");

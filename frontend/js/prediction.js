@@ -3215,16 +3215,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const currentUser = window.authClient ? window.authClient.getUser() : null;
       const userKey = currentUser ? `edumetrics_prediction_history_v2_${currentUser.id}` : "edumetrics_prediction_history_v2";
 
-      // Save to user-specific store
+      // Save strictly to user-isolated store
       const userHistory = JSON.parse(localStorage.getItem(userKey) || "[]");
       userHistory.unshift(historyItem);
       localStorage.setItem(userKey, JSON.stringify(userHistory.slice(0, 100)));
-
-      // Save to global history fallback
-      const existingHistory = JSON.parse(localStorage.getItem("edumetrics_prediction_history_v2") || "[]");
-      existingHistory.unshift(historyItem);
-      localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(existingHistory.slice(0, 100)));
-      localStorage.setItem("edumetrics_prediction_history", JSON.stringify(existingHistory.slice(0, 100)));
 
       // 3. Persist into Supabase Cloud prediction_history table
       if (window.authClient && window.authClient.client) {
