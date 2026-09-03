@@ -840,45 +840,34 @@ document.addEventListener("DOMContentLoaded", () => {
               status_badge: statusBadge,
               created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
             };
-            if (isUuid) {
-              predPayload.user_id = teacherId;
-            }
 
             window.authClient.client.from("prediction_history").insert(predPayload).then(() => {
               console.log("[Supabase] Teacher evaluation saved to prediction_history table.");
             }).catch((e) => {
               console.warn("[Supabase] Teacher history insert notice:", e.message);
-              if (predPayload.user_id) {
-                delete predPayload.user_id;
-                window.authClient.client.from("prediction_history").insert(predPayload).catch(() => {});
-              }
             });
 
-            // Also upsert directly into teacher_class_roster table
+            // Also upsert directly into teacher_class_roster table with exact Supabase table schema
             const teacherCode = userMeta.id_code || userMeta.student_id || "TCH-01";
+            const isLowRisk = (statusBadge || "").toLowerCase().includes("exemplary") || (statusBadge || "").toLowerCase().includes("honors") || (statusBadge || "").toLowerCase().includes("track");
+            const isMedRisk = (statusBadge || "").toLowerCase().includes("moderate") || (statusBadge || "").toLowerCase().includes("attention");
+            const riskStr = isLowRisk ? "Low Risk" : (isMedRisk ? "Medium Risk" : "High Risk");
+            const avgNum = typeof predictedScore === "number" ? (stage === "university" ? (predictedScore / 4.0) * 100 : predictedScore) : 80.0;
+
             const rosterRow = {
               id: `STU-${studentId || Math.floor(10 + Math.random() * 90)}`,
               teacher_id: teacherCode || "TCH-01",
-              instructor_id: teacherCode || "TCH-01",
               student_name: studentName,
-              student_id_code: studentId,
-              roll_no: studentId,
+              student_id_code: studentId || `STU-${Math.floor(100 + Math.random() * 900)}`,
               stage: stage,
               attendance_pct: parseFloat(attendance) || 85.0,
-              quiz_test_pct: parseFloat(evaluatedRecord.quizzes_avg || 80.0),
-              assignment_pct: parseFloat(evaluatedRecord.coursework_avg || 80.0),
-              midterm_score: parseFloat(predictedScore) || 80.0,
-              avg_marks: parseFloat(predictedScore) || 80.0,
-              predicted_score: parseFloat(predictedScore) || 3.5,
-              predicted_grade: predictedGrade,
-              status_badge: statusBadge,
-              status_color: statusColor,
-              gender: "male",
-              notes: notes || strategy || "",
+              avg_marks: parseFloat(avgNum.toFixed(1)),
+              study_hours: parseFloat(evaluatedRecord.study_hours || 12.0),
+              risk_level: riskStr,
               created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
             };
             window.authClient.client.from("teacher_class_roster").upsert(rosterRow, { onConflict: "id" }).then(() => {
-              console.log("[Supabase] Student persisted in teacher_class_roster.");
+              console.log("[Supabase] Student persisted in teacher_class_roster table successfully.");
             }).catch((rErr) => {
               console.warn("[Supabase] teacher_class_roster notice:", rErr.message);
             });

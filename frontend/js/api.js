@@ -193,21 +193,45 @@ class APIClient {
         const session = window.authClient.getSession();
         const userId = session?.user?.id;
         if (userId) {
-          window.authClient.client.from("academic_records").upsert({
+          const recId = `rec_${userId}_${(termPayload.term_name || "term").replace(/\s+/g, "_").toLowerCase()}`;
+          const cleanRecord = {
+            id: recId,
             user_id: userId,
             stage: stage,
-            term_name: termPayload.term_name,
-            gpa: termPayload.gpa,
-            cgpa: termPayload.cgpa,
-            subjects: termPayload.subjects,
-            attendance_pct: termPayload.attendance_pct,
-            credit_hours: termPayload.credit_hours,
-            midterm_score: termPayload.midterm_score,
-            backlogs: termPayload.backlogs,
-            study_hours: termPayload.study_hours,
-            updated_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
-          }, { onConflict: "user_id,term_name" })
-          .then().catch(e => console.warn("[Supabase] Academic records cloud sync notice:", e.message));
+            term_name: termPayload.term_name || "Current Term",
+            gpa: parseFloat(termPayload.gpa) || 3.5,
+            cgpa: parseFloat(termPayload.cgpa || termPayload.gpa) || 3.5,
+            subjects: termPayload.subjects || [],
+            created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
+          };
+
+          window.authClient.client.from("academic_records").upsert(cleanRecord, { onConflict: "id" })
+            .then(() => console.log("[Supabase] Academic record saved successfully."))
+            .catch(e => console.warn("[Supabase] Academic records cloud sync notice:", e.message));
+
+          // Also persist individual subjects into academic_subjects table if present
+          if (Array.isArray(termPayload.subjects) && termPayload.subjects.length > 0) {
+            const subjectRows = termPayload.subjects.map((sub, idx) => {
+              const obtained = parseFloat(sub.marks || sub.obtained_marks || 80);
+              const total = parseFloat(sub.total || sub.total_marks || 100);
+              const pct = total > 0 ? (obtained / total) * 100 : 80;
+              return {
+                id: `sub_${userId}_${idx}_${Date.now()}`,
+                user_id: userId,
+                stage: stage,
+                subject_name: sub.name || sub.subject_name || "Course Subject",
+                subject_category: sub.category || "Theory",
+                assessment_period: termPayload.term_name || "Current Term",
+                obtained_marks: obtained,
+                total_marks: total,
+                percentage: parseFloat(pct.toFixed(1)),
+                created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
+              };
+            });
+            window.authClient.client.from("academic_subjects").upsert(subjectRows, { onConflict: "id" })
+              .then(() => console.log("[Supabase] Course subjects saved to academic_subjects."))
+              .catch(e => console.warn("[Supabase] Subjects sync notice:", e.message));
+          }
         }
       }
 

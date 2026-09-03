@@ -3234,31 +3234,26 @@ document.addEventListener("DOMContentLoaded", () => {
       if (window.authClient && window.authClient.client) {
         const rawScore = typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0);
         const localNow = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
+        const featuresWithUser = {
+          ...(payload || {}),
+          user_id: currentUser?.id,
+          user_email: currentUser?.email,
+          student_id_code: userMeta.student_id || userMeta.id_code
+        };
+
         const cloudRecord = {
           stage: currentStage || "university",
-          input_features: payload || {},
+          input_features: featuresWithUser,
           predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
           predicted_grade: result.predicted_grade || result.grade || "Grade A",
           status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Attention Needed"),
           created_at: localNow
         };
 
-        if (currentUser?.id) {
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
-          if (isUuid) {
-            cloudRecord.user_id = currentUser.id;
-          }
-        }
-
         window.authClient.client.from("prediction_history").insert(cloudRecord).then(() => {
           console.log("[Supabase] Latest prediction successfully persisted to database.");
         }).catch((cloudErr) => {
           console.warn("[Supabase] Cloud history insert note:", cloudErr.message);
-          // If insert failed due to user_id UUID constraint, retry without user_id
-          if (cloudRecord.user_id) {
-            delete cloudRecord.user_id;
-            window.authClient.client.from("prediction_history").insert(cloudRecord).catch(() => {});
-          }
         });
       }
 
