@@ -809,8 +809,23 @@ document.addEventListener("DOMContentLoaded", () => {
           console.warn("LocalStorage save error:", storageErr);
         }
 
-        // 2. Save into Supabase prediction_history
+        // 2. Save into Supabase prediction_history (Direct Cloud Table + API)
         try {
+          if (window.authClient && window.authClient.client) {
+            const session = window.authClient.getSession();
+            window.authClient.client.from("prediction_history").insert({
+              user_id: session?.user?.id,
+              stage: stage,
+              input_features: evaluatedRecord,
+              predicted_score: typeof predictedScore === "number" ? predictedScore : 3.5,
+              predicted_grade: predictedGrade,
+              status_badge: statusBadge,
+              created_at: new Date().toISOString()
+            }).then(() => {
+              console.log("[Supabase] Teacher evaluation saved to prediction_history table.");
+            }).catch(e => console.warn("[Supabase] Teacher history insert notice:", e.message));
+          }
+
           if (window.apiClient) {
             const ciLow = typeof predictedScore === "number" ? +(predictedScore * 0.92).toFixed(2) : 3.2;
             const ciHigh = typeof predictedScore === "number" ? +(predictedScore * 1.05).toFixed(2) : 3.9;

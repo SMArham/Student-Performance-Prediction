@@ -99,6 +99,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!loginPortalRoleInput) return;
     loginPortalRoleInput.value = role;
 
+    const passField = document.getElementById("password");
+    if (passField) passField.value = "";
+
+    // If user switches away from the registered role, clear banner
+    if (urlParams.get("role") && urlParams.get("role") !== role) {
+      if (regSuccessBanner) regSuccessBanner.style.display = "none";
+    }
+
     if (role === "teacher") {
       if (loginPortalTeacher) {
         loginPortalTeacher.style.borderColor = "var(--color-lime)";
@@ -140,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (emailField) emailField.value = regEmail;
     }
     setLoginPortal(regRole);
-    showToast("Account created successfully! Please enter your password to sign in.", "success");
+    showToast(`Account created as ${regRole === "teacher" ? "Teacher" : "Student"}! Please enter your password to sign in.`, "success");
     const passField = document.getElementById("password");
     if (passField) passField.focus();
   }
@@ -223,7 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.innerText = "Verifying Credentials...";
         }
 
-        await window.authClient.signIn(email, password);
+        await window.authClient.signIn(email, password, activeRole);
         const u = window.authClient.getUser();
         const userRole = (u?.user_metadata?.role || activeRole || "student").toLowerCase();
         const isTeacher = userRole === "teacher";

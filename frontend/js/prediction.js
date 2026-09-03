@@ -1872,6 +1872,14 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     }
 
+    // View Detailed Analytics Navigation
+    const btnGotoHistoryCta = document.getElementById("btn-goto-history-cta");
+    if (btnGotoHistoryCta) {
+      btnGotoHistoryCta.onclick = () => {
+        window.location.href = "analytics.html";
+      };
+    }
+
     studentResultCard.style.display = "block";
     studentResultCard.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -3217,6 +3225,30 @@ document.addEventListener("DOMContentLoaded", () => {
       existingHistory.unshift(historyItem);
       localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(existingHistory.slice(0, 100)));
       localStorage.setItem("edumetrics_prediction_history", JSON.stringify(existingHistory.slice(0, 100)));
+
+      // 3. Persist into Supabase Cloud prediction_history table
+      if (window.authClient && window.authClient.client) {
+        const rawScore = typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0);
+        const cloudRecord = {
+          user_id: currentUser?.id,
+          stage: currentStage || "university",
+          input_features: payload || {},
+          predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
+          predicted_grade: result.predicted_grade || result.grade || "Grade A",
+          status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Attention Needed"),
+          created_at: new Date().toISOString()
+        };
+        window.authClient.client.from("prediction_history").insert(cloudRecord).then(() => {
+          console.log("[Supabase] Latest prediction successfully persisted to database.");
+        }).catch((cloudErr) => {
+          console.warn("[Supabase] Cloud history insert note:", cloudErr.message);
+        });
+      }
+
+      // 4. Also notify backend API history endpoint if active
+      if (window.apiClient && typeof window.apiClient.savePrediction === "function") {
+        window.apiClient.savePrediction(historyItem).catch(() => {});
+      }
     } catch (e) {
       console.warn("History save error:", e);
     }

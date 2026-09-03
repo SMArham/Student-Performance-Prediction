@@ -95,6 +95,37 @@ class APIClient {
     });
   }
 
+  async post(endpoint, body = {}) {
+    return this.request(endpoint, {
+      method: "POST",
+      body: JSON.stringify(body)
+    });
+  }
+
+  async savePrediction(predictionData) {
+    // 1. Asynchronously save directly to Supabase cloud table if active
+    if (window.authClient && window.authClient.client) {
+      const user = window.authClient.getUser();
+      const rawScore = typeof predictionData.score === "number" ? predictionData.score : parseFloat(predictionData.predicted_score || 85.0);
+      window.authClient.client.from("prediction_history").insert({
+        user_id: user?.id,
+        stage: predictionData.stage || "university",
+        input_features: predictionData.payload || predictionData.input_features || {},
+        predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
+        predicted_grade: predictionData.predicted_grade || predictionData.grade || "Grade A",
+        status_badge: predictionData.status_badge || "On Track",
+        created_at: new Date().toISOString()
+      }).then().catch(e => console.warn("[Supabase] Cloud savePrediction note:", e.message));
+    }
+
+    // 2. Try backend API if available
+    try {
+      return await this.post("/api/v1/history", predictionData);
+    } catch (err) {
+      return { success: true, local: true };
+    }
+  }
+
   async clearAllHistory() {
     return this.request("/api/v1/history", {
       method: "DELETE"

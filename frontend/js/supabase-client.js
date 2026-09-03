@@ -236,7 +236,7 @@ class SupabaseAuthClient {
     };
     this.saveAccountsRegistry(registry);
 
-    // 2. Attempt live Supabase cloud signup sync
+    // 2. Attempt live Supabase cloud signup sync & Database persistence
     if (this.client) {
       try {
         const { data, error } = await this.client.auth.signUp({
@@ -255,13 +255,49 @@ class SupabaseAuthClient {
       } catch (supabaseErr) {
         console.warn("[Auth] Live Supabase signup notice:", supabaseErr);
       }
+
+      // Persist directly into Supabase database tables
+      try {
+        await this.client.from("profiles").upsert({
+          id: userObj.id,
+          email: cleanEmail,
+          full_name: cleanName,
+          role: role,
+          stage: userObj.user_metadata.stage || "university",
+          institution_name: institutionName,
+          department_or_program: programName,
+          student_id_code: autoId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, { onConflict: "id" });
+      } catch (profErr) {
+        console.warn("[Auth] Supabase profiles initial insert note:", profErr);
+      }
+
+      if (role === "student") {
+        try {
+          await this.client.from("students").upsert({
+            id: userObj.id,
+            name: cleanName,
+            full_name: cleanName,
+            email: cleanEmail,
+            stage: userObj.user_metadata.stage || "university",
+            gender: metadata.gender || "male",
+            institution_name: institutionName,
+            program_name: programName,
+            created_at: new Date().toISOString()
+          }, { onConflict: "id" });
+        } catch (stuErr) {
+          console.warn("[Auth] Supabase students initial insert note:", stuErr);
+        }
+      }
     }
 
     // Return created user (Explicitly requires login on login.html)
     return { user: userObj, success: true };
   }
 
-  async signIn(email, password) {
+  async signIn(email, password, requiredRole = null) {
     const emailCheck = validateRealEmail(email);
     if (!emailCheck.valid) {
       throw new Error(emailCheck.error);
@@ -276,6 +312,8 @@ class SupabaseAuthClient {
     let existingAccount = registry[cleanEmail];
 
     // 1. Attempt live Supabase Cloud login
+    let cloudUser = null;
+    let cloudSession = null;
     if (this.client) {
       try {
         const { data, error } = await this.client.auth.signInWithPassword({
@@ -284,61 +322,71 @@ class SupabaseAuthClient {
         });
 
         if (!error && data?.session && data?.user) {
-          const userRole = data.user.user_metadata?.role || existingAccount?.user_metadata?.role || (cleanEmail.includes("teacher") ? "teacher" : "student");
-          const combinedMeta = {
-            ...(existingAccount?.user_metadata || {}),
-            ...(data.user?.user_metadata || {}),
-            role: userRole
-          };
-
-          const combinedUser = {
-            ...data.user,
-            user_metadata: combinedMeta
-          };
-
-          localStorage.setItem("sp_auth_token", data.session.access_token);
-          localStorage.setItem("sp_auth_user", JSON.stringify(combinedUser));
-
-          // Sync into local registry
-          registry[cleanEmail] = {
-            id: data.user.id,
-            email: cleanEmail,
-            password: password,
-            user_metadata: combinedMeta
-          };
-          this.saveAccountsRegistry(registry);
-
-          return { user: combinedUser, session: data.session };
+          cloudUser = data.user;
+          cloudSession = data.session;
         }
       } catch (err) {
         console.warn("[Auth] Supabase cloud login notice:", err);
       }
     }
 
-    // 2. Check persistent registered accounts registry
-    if (existingAccount) {
+    // 2. Check if account exists anywhere
+    if (!cloudUser && !existingAccount) {
+      const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
+      throw new Error(`No ${roleName} account found with this email. Please click 'Create Account' to sign up first.`);
+    }
+
+    // 3. Password Verification (Local registry check if not already verified by Supabase)
+    if (!cloudUser && existingAccount) {
       if (existingAccount.password && existingAccount.password !== password) {
         throw new Error("Incorrect password. Please check your password and try again.");
       }
-
-      const userRole = existingAccount.user_metadata?.role || "student";
-      const loggedUser = {
-        id: existingAccount.id || ("usr-" + Math.random().toString(36).substring(2, 9)),
-        email: cleanEmail,
-        user_metadata: {
-          ...existingAccount.user_metadata,
-          role: userRole
-        }
-      };
-
-      const token = "session-token-" + loggedUser.id;
-      localStorage.setItem("sp_auth_token", token);
-      localStorage.setItem("sp_auth_user", JSON.stringify(loggedUser));
-      return { user: loggedUser, session: { access_token: token } };
     }
 
-    // 3. DO NOT AUTO-CREATE! User must sign up first
-    throw new Error("No account found with this email. Please click 'Create Account' to sign up first.");
+    // 4. Strict Role Verification: Enforce separate Student vs Teacher access
+    const registeredRole = (
+      existingAccount?.user_metadata?.role ||
+      cloudUser?.user_metadata?.role ||
+      (cleanEmail.includes("teacher") ? "teacher" : "student")
+    ).toLowerCase();
+
+    if (requiredRole) {
+      const targetRole = requiredRole.toLowerCase();
+      if (targetRole === "teacher" && registeredRole !== "teacher") {
+        throw new Error("Access Denied: This account is registered as a Student. Please switch to the Student Portal to sign in, or create a Teacher account.");
+      }
+      if (targetRole === "student" && registeredRole !== "student") {
+        throw new Error("Access Denied: This account is registered as a Faculty Teacher. Please switch to the Teacher Portal to sign in.");
+      }
+    }
+
+    // 5. Build authenticated session
+    const combinedMeta = {
+      ...(existingAccount?.user_metadata || {}),
+      ...(cloudUser?.user_metadata || {}),
+      role: registeredRole
+    };
+
+    const loggedUser = {
+      id: cloudUser?.id || existingAccount?.id || ("usr-" + Math.random().toString(36).substring(2, 9)),
+      email: cleanEmail,
+      user_metadata: combinedMeta
+    };
+
+    const token = cloudSession?.access_token || ("session-token-" + loggedUser.id);
+    localStorage.setItem("sp_auth_token", token);
+    localStorage.setItem("sp_auth_user", JSON.stringify(loggedUser));
+
+    // Sync into local registry
+    registry[cleanEmail] = {
+      id: loggedUser.id,
+      email: cleanEmail,
+      password: password,
+      user_metadata: combinedMeta
+    };
+    this.saveAccountsRegistry(registry);
+
+    return { user: loggedUser, session: { access_token: token } };
   }
 
   async updateUser(metadataUpdates = {}) {
@@ -433,6 +481,7 @@ class SupabaseAuthClient {
           await this.client.from("prediction_history").delete().eq("user_id", userId);
           await this.client.from("academic_records").delete().eq("user_id", userId);
           await this.client.from("academic_subjects").delete().eq("user_id", userId);
+          await this.client.from("students").delete().eq("id", userId);
           await this.client.from("students").delete().eq("user_id", userId);
         }
         if (cleanEmail) {
@@ -442,6 +491,14 @@ class SupabaseAuthClient {
         }
       } catch (err) {
         console.warn("[Auth] Cloud database delete warning:", err);
+      }
+
+      // Also call backend API student and history deletion if reachable
+      if (window.apiClient) {
+        try {
+          if (userId) await window.apiClient.deleteStudent(userId);
+          await window.apiClient.clearAllHistory();
+        } catch (apiErr) {}
       }
 
       try {
