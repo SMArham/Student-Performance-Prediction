@@ -257,7 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    evaluatedStudentsList = Array.from(studentMap.values());
+    evaluatedStudentsList = Array.from(studentMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     applyFilters();
   }
 

@@ -554,7 +554,7 @@ class SupabaseService:
                     query = query.eq("teacher_id", instructor_id)
                 if stage and stage != "all":
                     query = query.eq("stage", stage)
-                res = query.order("student_name").execute()
+                res = query.order("created_at", desc=True).execute()
                 if res.data and len(res.data) > 0:
                     rows = [self._format_student_record(r) for r in res.data]
                     if search:

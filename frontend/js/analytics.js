@@ -342,42 +342,94 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 7. LOAD PREDICTION HISTORY (CONNECTED DIRECTLY TO SUPABASE BACKEND)
+  // --------------------------------------------------------------------------
+  // 7. LOAD PREDICTION HISTORY (OFFLINE-FIRST + LIVE SUPABASE CLOUD SYNC)
   // --------------------------------------------------------------------------
   async function loadHistory() {
     try {
       const user = window.authClient ? window.authClient.getUser() : null;
       let list = [];
 
-      // 1. Fetch live prediction runs from Supabase Backend API
-      if (window.apiClient) {
+      // Step 1: Immediate local storage load (0ms latency display)
+      const userKey = user?.id ? `edumetrics_prediction_history_v2_${user.id}` : "edumetrics_prediction_history_v2";
+      try {
+        const cached = localStorage.getItem(userKey) || localStorage.getItem("edumetrics_prediction_history_v2") || localStorage.getItem("edumetrics_prediction_history");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            list = parsed;
+            predictionHistory = list;
+            refreshAllViews();
+          }
+        }
+      } catch (cacheErr) {}
+
+      // Step 2: Live Supabase Cloud Database Table Query
+      if (window.authClient && window.authClient.client) {
+        try {
+          let query = window.authClient.client
+            .from("prediction_history")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+          if (user?.id) {
+            query = query.or(`user_id.eq.${user.id},user_id.is.null`);
+          }
+
+          const { data, error } = await query.limit(50);
+          if (!error && Array.isArray(data) && data.length > 0) {
+            const cloudRecords = data.map((item) => {
+              const stage = item.stage || "university";
+              const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
+              const isLowRisk = (item.status_badge || "").toLowerCase().includes("exemp") || (item.status_badge || "").toLowerCase().includes("on track");
+              return {
+                id: String(item.id || `pred-${Date.now()}`),
+                timestamp: item.created_at || new Date().toISOString(),
+                created_at: item.created_at,
+                role: item.role || "student",
+                stage: stage,
+                score: item.formatted_score || `${rawScore}`,
+                grade: item.predicted_grade || item.grade || "Grade A",
+                status_badge: item.status_badge || (isLowRisk ? "Exemplary" : "Proficient"),
+                status_color: item.status_color || (isLowRisk ? "badge-success" : "badge-info"),
+                payload: item.input_features || item.payload || {},
+                recommendations: item.recommendations || "Maintain steady academic momentum."
+              };
+            });
+            list = cloudRecords;
+            persistHistory(list);
+          }
+        } catch (cloudErr) {
+          console.warn("[Analytics] Supabase direct query notice:", cloudErr.message);
+        }
+      }
+
+      // Step 3: Backend API Fallback if cloud query didn't yield records
+      if (list.length === 0 && window.apiClient) {
         try {
           const apiRecords = await window.apiClient.getHistory(50);
           if (Array.isArray(apiRecords) && apiRecords.length > 0) {
             list = apiRecords;
-            if (user?.id) {
-              localStorage.setItem(`edumetrics_prediction_history_v2_${user.id}`, JSON.stringify(list));
-            }
-            localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(list));
-          } else {
-            list = [];
-            if (user?.id) {
-              localStorage.removeItem(`edumetrics_prediction_history_v2_${user.id}`);
-              localStorage.removeItem(`edumetrics_prediction_history_${user.id}`);
-            }
-            localStorage.removeItem("edumetrics_prediction_history_v2");
-            localStorage.removeItem("edumetrics_prediction_history");
+            persistHistory(list);
           }
         } catch (apiErr) {
-          console.warn("[Analytics] Could not fetch live history from API:", apiErr.message);
-          list = [];
+          console.warn("[Analytics] Backend API history notice:", apiErr.message);
         }
       }
 
-      predictionHistory = Array.isArray(list) ? list : [];
+      // Step 4: Strict newest-first sorting by timestamp/created_at
+      list.sort((a, b) => {
+        const tA = new Date(a.timestamp || a.created_at || 0).getTime();
+        const tB = new Date(b.timestamp || b.created_at || 0).getTime();
+        return tB - tA;
+      });
+
+      predictionHistory = list;
     } catch (e) {
       console.warn("[Analytics] Error loading history:", e);
-      predictionHistory = [];
+      if (!Array.isArray(predictionHistory)) {
+        predictionHistory = [];
+      }
     }
 
     refreshAllViews();
@@ -1606,6 +1658,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     predictionHistory = predictionHistory.filter((h) => h.id !== id);
     persistHistory(predictionHistory);
 
+    // Cloud Supabase Sync Deletion
+    if (window.authClient && window.authClient.client) {
+      try {
+        window.authClient.client.from("prediction_history").delete().eq("id", id).then().catch(() => {});
+      } catch (cloudErr) {}
+    }
+
     try {
       if (window.apiClient) {
         await window.apiClient.deleteHistoryItem(id);
@@ -1632,6 +1691,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       localStorage.removeItem("edumetrics_prediction_history_v2");
       localStorage.removeItem("edumetrics_prediction_history");
+
+      // Cloud Supabase Clear
+      if (window.authClient && window.authClient.client && user?.id) {
+        try {
+          window.authClient.client.from("prediction_history").delete().eq("user_id", user.id).then().catch(() => {});
+        } catch (cloudErr) {}
+      }
 
       try {
         if (window.apiClient) {
