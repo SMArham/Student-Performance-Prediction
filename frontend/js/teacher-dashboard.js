@@ -73,15 +73,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const profileForm = document.getElementById("profile-details-form");
 
   function openTeacherSettings() {
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const meta = user?.user_metadata || {};
+
     const nameInput = document.getElementById("setting-fullname");
+    const emailInput = document.getElementById("setting-email");
     const idInput = document.getElementById("setting-studentid");
-    const deptInput = document.getElementById("setting-department");
+    const deptInput = document.getElementById("setting-department") || document.getElementById("setting-program");
     const instInput = document.getElementById("setting-institution");
 
-    if (nameInput) nameInput.value = userMeta.full_name || "Dr. Muhammad Farooq";
-    if (idInput) idInput.value = userMeta.student_id || userMeta.id_code || "TCH-2026-001";
-    if (deptInput) deptInput.value = userMeta.department || "Computer Science / AI";
-    if (instInput) instInput.value = userMeta.institution_name || userMeta.institution || "Faculty of Engineering";
+    if (nameInput) nameInput.value = meta.full_name || (user?.email ? user.email.split("@")[0] : "");
+    if (emailInput) emailInput.value = user?.email || "";
+    if (idInput) idInput.value = meta.student_id || meta.id_code || "";
+    if (deptInput) deptInput.value = meta.department || meta.program || "";
+    if (instInput) instInput.value = meta.institution_name || meta.institution || "";
 
     // Reset and clear security password fields
     const secForm = document.getElementById("profile-security-form");
@@ -94,6 +99,8 @@ document.addEventListener("DOMContentLoaded", () => {
     profileModal?.classList.add("active");
   }
 
+  const userProfileBtn = document.getElementById("user-profile-btn");
+  if (userProfileBtn) userProfileBtn.addEventListener("click", openTeacherSettings);
   if (railProfileBtn) railProfileBtn.addEventListener("click", openTeacherSettings);
   if (btnCloseProfile && profileModal) {
     btnCloseProfile.addEventListener("click", () => profileModal.classList.remove("active"));

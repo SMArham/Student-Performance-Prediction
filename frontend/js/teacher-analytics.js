@@ -1426,13 +1426,117 @@ document.addEventListener("DOMContentLoaded", async () => {
   const modalTabContents = document.querySelectorAll(".profile-tab-content");
   const logoutBtn = document.getElementById("logout-btn");
 
+  function openTeacherSettings() {
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const meta = user?.user_metadata || {};
+
+    const nameInput = document.getElementById("setting-fullname");
+    const emailInput = document.getElementById("setting-email");
+    const idInput = document.getElementById("setting-studentid");
+    const deptInput = document.getElementById("setting-department") || document.getElementById("setting-program");
+    const instInput = document.getElementById("setting-institution");
+
+    if (nameInput) nameInput.value = meta.full_name || (user?.email ? user.email.split("@")[0] : "");
+    if (emailInput) emailInput.value = user?.email || "";
+    if (idInput) idInput.value = meta.student_id || meta.id_code || "";
+    if (deptInput) deptInput.value = meta.department || meta.program || "";
+    if (instInput) instInput.value = meta.institution_name || meta.institution || "";
+
+    // Reset security password fields
+    const secForm = document.getElementById("profile-security-form");
+    if (secForm) secForm.reset();
+    const newPassInput = document.getElementById("setting-new-password");
+    const confPassInput = document.getElementById("setting-confirm-password");
+    if (newPassInput) newPassInput.value = "";
+    if (confPassInput) confPassInput.value = "";
+
+    profileModal?.classList.add("active");
+  }
+
+  const userProfileBtn = document.getElementById("user-profile-btn");
+  if (userProfileBtn) userProfileBtn.addEventListener("click", openTeacherSettings);
   if (railProfileBtn && profileModal) {
-    railProfileBtn.addEventListener("click", () => {
-      profileModal.classList.add("active");
-    });
+    railProfileBtn.addEventListener("click", openTeacherSettings);
   }
   if (btnCloseProfile && profileModal) {
     btnCloseProfile.addEventListener("click", () => profileModal.classList.remove("active"));
+  }
+  if (profileModal) {
+    profileModal.addEventListener("click", (e) => {
+      if (e.target === profileModal) profileModal.classList.remove("active");
+    });
+  }
+
+  const profileForm = document.getElementById("profile-details-form");
+  if (profileForm) {
+    profileForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nameVal = document.getElementById("setting-fullname")?.value.trim() || "Instructor";
+      const idCodeVal = document.getElementById("setting-studentid")?.value.trim() || "TCH-01";
+      const deptVal = document.getElementById("setting-department")?.value.trim() || "Computer Science";
+      const instVal = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
+
+      if (window.authClient) {
+        await window.authClient.updateUser({
+          full_name: nameVal,
+          student_id: idCodeVal,
+          id_code: idCodeVal,
+          department: deptVal,
+          program: deptVal,
+          institution_name: instVal,
+          institution: instVal
+        });
+      }
+
+      const tNameEl = document.getElementById("teacher-name");
+      const tCodeEl = document.getElementById("teacher-id-code");
+      if (tNameEl) tNameEl.innerText = nameVal;
+      if (tCodeEl) tCodeEl.innerText = idCodeVal;
+
+      profileModal?.classList.remove("active");
+      showToast("Instructor profile updated successfully!", "success");
+    });
+  }
+
+  const securityForm = document.getElementById("profile-security-form");
+  if (securityForm) {
+    securityForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newPass = document.getElementById("setting-new-password")?.value || "";
+      const confPass = document.getElementById("setting-confirm-password")?.value || "";
+
+      if (newPass.length < 6) {
+        showToast("Password must be at least 6 characters long.", "error");
+        return;
+      }
+      if (newPass !== confPass) {
+        showToast("Passwords do not match.", "error");
+        return;
+      }
+
+      try {
+        if (window.authClient) {
+          await window.authClient.updatePassword(newPass);
+        }
+        profileModal?.classList.remove("active");
+        showToast("Password changed successfully!", "success");
+      } catch (err) {
+        showToast(err.message || "Failed to update password.", "error");
+      }
+    });
+  }
+
+  const btnDeleteAccount = document.getElementById("btn-delete-account-confirm");
+  if (btnDeleteAccount) {
+    btnDeleteAccount.addEventListener("click", async () => {
+      const confirmText = prompt("Type 'DELETE' to confirm permanent instructor account deletion:");
+      if (confirmText === "DELETE") {
+        if (window.authClient) {
+          await window.authClient.deleteAccount();
+        }
+        window.location.href = "login.html";
+      }
+    });
   }
 
   modalTabBtns.forEach((btn) => {

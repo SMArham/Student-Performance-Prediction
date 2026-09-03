@@ -168,11 +168,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Set values in Profile modal
     const settingNameInput = document.getElementById("setting-fullname");
+    const settingEmailInput = document.getElementById("setting-email");
     const settingStudentId = document.getElementById("setting-studentid");
     const settingProgram = document.getElementById("setting-program") || document.getElementById("setting-major");
     const settingInstitution = document.getElementById("setting-institution");
 
     if (settingNameInput) settingNameInput.value = displayName;
+    if (settingEmailInput) settingEmailInput.value = user?.email || "";
     if (settingStudentId) settingStudentId.value = idCode;
     if (settingProgram) settingProgram.value = program;
     if (settingInstitution) settingInstitution.value = institution;

@@ -3309,11 +3309,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const institution = userMeta.institution_name || userMeta.institution || "Faculty of Engineering";
 
       const settingName = document.getElementById("setting-fullname");
+      const settingEmail = document.getElementById("setting-email");
       const settingId = document.getElementById("setting-studentid");
       const settingProg = document.getElementById("setting-program") || document.getElementById("setting-major");
       const settingInst = document.getElementById("setting-institution");
 
-      if (settingName) settingName.value = userMeta.full_name || (user?.email ? user.email.split("@")[0] : "Muhammad Ali");
+      if (settingName) settingName.value = userMeta.full_name || (user?.email ? user.email.split("@")[0] : "");
+      if (settingEmail) settingEmail.value = user?.email || "";
       if (settingId) settingId.value = idCode;
       if (settingProg) settingProg.value = program;
       if (settingInst) settingInst.value = institution;

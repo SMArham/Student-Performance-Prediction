@@ -560,9 +560,21 @@
           <div class="profile-section-card">
             <div class="profile-section-heading">Personal & Academic Identification</div>
             
-            <div class="form-group" style="margin-bottom: var(--space-4);">
-              <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
-              <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Muhammad Ali" required>
+            <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+              <div class="form-group">
+                <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
+                <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Muhammad Ali" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="setting-email">
+                  Email Address <span class="badge-fixed-tag">🔒 Readonly</span>
+                </label>
+                <div class="fixed-input-wrapper">
+                  <input type="email" id="setting-email" class="form-input readonly-fixed-input" placeholder="student@university.edu" readonly>
+                </div>
+                <div class="field-hint-text">Your registered student email.</div>
+              </div>
             </div>
 
             <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">

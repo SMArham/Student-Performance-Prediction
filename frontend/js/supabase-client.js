@@ -315,19 +315,21 @@ class SupabaseAuthClient {
 
       // Persist directly into Supabase database tables with exact local time
       const localNow = getLocalTimestamp();
+      const validStage = (role === "teacher" || !userObj.user_metadata.stage || userObj.user_metadata.stage === "all") ? "university" : userObj.user_metadata.stage;
       try {
         await this.client.from("profiles").upsert({
           id: userObj.id,
+          short_id: autoId,
           email: cleanEmail,
           full_name: cleanName,
           role: role,
-          stage: userObj.user_metadata.stage || "university",
+          stage: validStage,
           institution_name: institutionName,
           department_or_program: programName,
-          student_id_code: autoId,
           created_at: localNow,
           updated_at: localNow
         }, { onConflict: "id" });
+        console.log(`[Auth] ${role} profile saved to Supabase profiles table successfully!`);
       } catch (profErr) {
         console.warn("[Auth] Supabase profiles initial insert note:", profErr);
       }
@@ -405,7 +407,7 @@ class SupabaseAuthClient {
       try {
         const { data: prof } = await this.client
           .from("profiles")
-          .select("id, role, email, full_name")
+          .select("id, role, email, full_name, short_id, stage, institution_name, department_or_program")
           .eq("email", cleanEmail)
           .maybeSingle();
 
@@ -421,7 +423,7 @@ class SupabaseAuthClient {
         try {
           const { data: profById } = await this.client
             .from("profiles")
-            .select("id, role, email, full_name")
+            .select("id, role, email, full_name, short_id, stage, institution_name, department_or_program")
             .eq("id", cloudUser.id)
             .maybeSingle();
 
@@ -432,15 +434,16 @@ class SupabaseAuthClient {
             const localNow = getLocalTimestamp();
             const uRole = meta.role || requiredRole || "teacher";
             const autoId = meta.student_id || meta.id_code || (uRole === "teacher" ? "TCH-01" : "STU-01");
+            const validStage = (uRole === "teacher" || !meta.stage || meta.stage === "all") ? "university" : meta.stage;
             const { data: syncedProf } = await this.client.from("profiles").upsert({
               id: cloudUser.id,
+              short_id: autoId,
               email: cleanEmail,
               full_name: meta.full_name || cleanEmail.split("@")[0],
               role: uRole,
-              stage: meta.stage || (uRole === "teacher" ? "all" : "university"),
+              stage: validStage,
               institution_name: meta.institution_name || meta.institution || "Faculty Campus",
               department_or_program: meta.department || meta.program || "Computer Science",
-              student_id_code: autoId,
               created_at: localNow,
               updated_at: localNow
             }, { onConflict: "id" }).select().maybeSingle();
@@ -489,6 +492,17 @@ class SupabaseAuthClient {
 
     // 5. Build authenticated session
     const combinedMeta = {
+      ...(cloudProfile ? {
+        full_name: cloudProfile.full_name,
+        role: cloudProfile.role,
+        stage: cloudProfile.stage,
+        student_id: cloudProfile.short_id,
+        id_code: cloudProfile.short_id,
+        institution_name: cloudProfile.institution_name,
+        institution: cloudProfile.institution_name,
+        department: cloudProfile.department_or_program,
+        program: cloudProfile.department_or_program
+      } : {}),
       ...(existingAccount?.user_metadata || {}),
       ...(cloudUser?.user_metadata || {}),
       role: registeredRole
@@ -539,18 +553,22 @@ class SupabaseAuthClient {
 
       if (userId) {
         try {
+          const role = newMeta.role || "student";
+          const validStage = (role === "teacher" || !newMeta.stage || newMeta.stage === "all") ? "university" : newMeta.stage;
+          const autoId = newMeta.student_id || newMeta.id_code || (role === "teacher" ? "TCH-01" : "STU-01");
           const profilePayload = {
             id: userId,
+            short_id: autoId,
             email: cleanEmail,
             full_name: newMeta.full_name || cleanEmail.split("@")[0],
-            role: newMeta.role || "student",
-            stage: newMeta.stage || "university",
-            institution_name: newMeta.institution_name || newMeta.institution || "Faculty of Engineering",
-            department_or_program: newMeta.program || newMeta.major || newMeta.department || "Software Engineering",
-            student_id_code: newMeta.student_id || newMeta.id_code || `STU-${userId.slice(0, 4).toUpperCase()}`,
+            role: role,
+            stage: validStage,
+            institution_name: newMeta.institution_name || newMeta.institution || "Faculty Campus",
+            department_or_program: newMeta.department || newMeta.program || newMeta.major || "Software Engineering",
             updated_at: getLocalTimestamp()
           };
           await this.client.from("profiles").upsert(profilePayload, { onConflict: "id" });
+          console.log(`[Supabase] ${role} profile updated successfully in profiles table!`);
         } catch (dbErr) {
           console.warn("[Auth] Cloud profiles table upsert warning:", dbErr);
         }

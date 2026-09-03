@@ -157,11 +157,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Prefill Settings Modal Inputs
     const settingFullname = document.getElementById("setting-fullname");
+    const settingEmail = document.getElementById("setting-email");
     const settingStudentId = document.getElementById("setting-studentid");
     const settingProgram = document.getElementById("setting-program") || document.getElementById("setting-major");
     const settingInstitution = document.getElementById("setting-institution");
 
     if (settingFullname) settingFullname.value = displayName;
+    if (settingEmail) settingEmail.value = user?.email || "";
     if (settingStudentId) settingStudentId.value = idCode;
     if (settingProgram) settingProgram.value = program;
     if (settingInstitution) settingInstitution.value = institution;

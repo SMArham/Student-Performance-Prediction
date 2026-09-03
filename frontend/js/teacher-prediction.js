@@ -991,15 +991,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function populateTeacherSettings() {
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const meta = user?.user_metadata || {};
+
     const nameInput = document.getElementById("setting-fullname");
+    const emailInput = document.getElementById("setting-email");
     const idInput = document.getElementById("setting-studentid");
-    const progInput = document.getElementById("setting-program");
+    const progInput = document.getElementById("setting-program") || document.getElementById("setting-department");
     const instInput = document.getElementById("setting-institution");
 
-    if (nameInput) nameInput.value = userMeta.full_name || "Instructor";
-    if (idInput) idInput.value = userMeta.student_id || userMeta.id_code || "TCH-2026-001";
-    if (progInput) progInput.value = userMeta.program || userMeta.major || "Computer Science";
-    if (instInput) instInput.value = userMeta.institution_name || userMeta.institution || "Faculty of Engineering";
+    if (nameInput) nameInput.value = meta.full_name || (user?.email ? user.email.split("@")[0] : "");
+    if (emailInput) emailInput.value = user?.email || "";
+    if (idInput) idInput.value = meta.student_id || meta.id_code || "";
+    if (progInput) progInput.value = meta.department || meta.program || meta.major || "";
+    if (instInput) instInput.value = meta.institution_name || meta.institution || "";
 
     // Reset and clear security password fields
     const secForm = document.getElementById("password-change-form") || document.getElementById("profile-security-form");
@@ -1024,7 +1029,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const teacherHeaderBtn = document.getElementById("teacher-profile-header-btn");
+  const teacherHeaderBtn = document.getElementById("teacher-profile-header-btn") || document.getElementById("user-profile-btn");
   if (teacherHeaderBtn && profileModal) {
     teacherHeaderBtn.addEventListener("click", () => {
       populateTeacherSettings();
@@ -1063,15 +1068,20 @@ document.addEventListener("DOMContentLoaded", () => {
     profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = document.getElementById("setting-fullname")?.value.trim() || "Instructor";
-      const prog = document.getElementById("setting-program")?.value.trim() || "Computer Science";
+      const idCode = document.getElementById("setting-studentid")?.value.trim() || "TCH-01";
+      const prog = (document.getElementById("setting-program") || document.getElementById("setting-department"))?.value.trim() || "Computer Science";
       const inst = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
 
       if (window.authClient) {
         await window.authClient.updateUser({
           full_name: name,
+          student_id: idCode,
+          id_code: idCode,
           program: prog,
+          department: prog,
           major: prog,
-          institution_name: inst
+          institution_name: inst,
+          institution: inst
         });
       }
       syncTeacherProfile();
