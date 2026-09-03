@@ -22,6 +22,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   const userRole = "student";
   let currentStage = userMeta.stage || "university";
 
+  // Live Database Health Check
+  if (window.authClient && typeof window.authClient.checkDatabaseHealth === "function") {
+    window.authClient.checkDatabaseHealth().then((status) => {
+      const text = document.getElementById("db-health-text");
+      if (text) {
+        if (status.connected) {
+          text.innerText = `Supabase Cloud (${status.latency}ms)`;
+        } else {
+          text.innerText = "Local Cache Active";
+        }
+      }
+    });
+  }
+
   // DOM Elements - Shell & Navigation
   const logoutBtn = document.getElementById("logout-btn");
   const stageSelector = document.getElementById("stage-selector");

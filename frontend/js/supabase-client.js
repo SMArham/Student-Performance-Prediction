@@ -204,6 +204,23 @@ class SupabaseAuthClient {
     }
   }
 
+  async checkDatabaseHealth() {
+    if (!this.client) {
+      return { connected: false, message: "Local Resilient Storage Active" };
+    }
+    try {
+      const start = Date.now();
+      const { data, error } = await this.client.from("profiles").select("id").limit(1);
+      const latency = Date.now() - start;
+      if (error) {
+        return { connected: false, message: error.message };
+      }
+      return { connected: true, latency: latency, message: `Connected to Supabase Cloud (${latency}ms)` };
+    } catch (e) {
+      return { connected: false, message: e.message };
+    }
+  }
+
   async signUp(email, password, metadata = {}) {
     const emailCheck = validateRealEmail(email);
     if (!emailCheck.valid) {
@@ -389,13 +406,19 @@ class SupabaseAuthClient {
       }
     }
 
-    // 2. Reject if account was deleted from database and local registry
+    // 2. Reject if account does not exist in Supabase Cloud Database
+    if (this.client && !cloudProfile) {
+      await this.client.auth.signOut().catch(() => {});
+      const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
+      throw new Error(`No ${roleName} account found in the database with this email. You must create an account first before signing in.`);
+    }
+
     if (!cloudProfile && !existingAccount) {
       if (this.client) {
         await this.client.auth.signOut().catch(() => {});
       }
       const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
-      throw new Error(`No ${roleName} account found with this email. This account does not exist or was deleted. Please click 'Create Account' to sign up.`);
+      throw new Error(`No ${roleName} account found with this email. This account does not exist. Please click 'Create Account' to sign up first.`);
     }
 
     // 3. Check if account exists anywhere

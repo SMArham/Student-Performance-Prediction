@@ -24,15 +24,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 4500);
   };
 
-  // If already authenticated and on login/signup page, redirect based on role
-  if (window.authClient && window.authClient.isAuthenticated()) {
-    const isAuthPage = window.location.pathname.includes("login.html") || window.location.pathname.includes("signup.html");
-    if (isAuthPage) {
-      const u = window.authClient.getUser();
-      const isTeacher = u?.user_metadata?.role === "teacher";
-      window.location.href = isTeacher ? "teacher-dashboard.html" : "dashboard.html";
-      return;
-    }
+  // Live Database Health Check: Verify Supabase database is online and accessible
+  if (window.authClient && typeof window.authClient.checkDatabaseHealth === "function") {
+    window.authClient.checkDatabaseHealth().then((status) => {
+      const textEl = document.getElementById("db-health-text");
+      const dotEl = document.getElementById("db-health-dot");
+      if (textEl && dotEl) {
+        if (status.connected) {
+          dotEl.style.background = "#52c41a";
+          dotEl.style.boxShadow = "0 0 6px rgba(82,196,26,0.6)";
+          textEl.innerHTML = `<strong style="color: #52c41a;">Database Connected</strong> • Supabase Cloud (${status.latency}ms)`;
+        } else {
+          dotEl.style.background = "#faad14";
+          dotEl.style.boxShadow = "0 0 6px rgba(250,173,20,0.6)";
+          textEl.innerHTML = `<strong style="color: #faad14;">Offline Store Active</strong> • Local Storage Synced`;
+        }
+      }
+    });
   }
 
   // ----------------------------------------------------------------------------

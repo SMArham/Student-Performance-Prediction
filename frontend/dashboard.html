@@ -39,6 +39,14 @@
           </a>
         </div>
 
+        <!-- Live Database Status Pill -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-left: auto; margin-right: 16px;">
+          <div id="db-health-badge" style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; background: rgba(82, 196, 26, 0.08); border: 1px solid rgba(82, 196, 26, 0.25); border-radius: 20px; font-size: 11.5px; color: #52c41a; font-weight: 600;">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #52c41a; display: inline-block; box-shadow: 0 0 5px rgba(82,196,26,0.8);"></span>
+            <span id="db-health-text">Supabase Cloud: Synced</span>
+          </div>
+        </div>
+
         <!-- Upper Right User Identity Block -->
         <div class="navbar-user-block" id="user-profile-btn" title="Profile & Account Settings" role="button" tabindex="0">
           <div class="user-avatar-badge">
