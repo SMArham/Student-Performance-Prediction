@@ -145,7 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let remoteEvals = [];
 
     // Direct live Supabase Cloud Database Table Query (prediction_history & teacher_class_roster)
-    if (window.authClient && window.authClient.client) {
+    if (window.authClient && window.authClient.client && (teacher.id || teacher.code)) {
       try {
         let q = window.authClient.client
           .from("prediction_history")
@@ -155,7 +155,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (teacher.id) {
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacher.id);
           if (isUuid) {
-            q = q.or(`user_id.eq.${teacher.id},user_id.is.null`);
+            q = q.eq("user_id", teacher.id);
           }
         }
 
@@ -163,9 +163,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!error && Array.isArray(data)) {
           data.forEach((item) => {
             const p = item.input_features || item.payload || {};
-            const isTeacher = (item.role === "teacher" || p.role === "teacher" || !!p.student_id || !!p.teacher_id);
-            const matchesTeacher = !p.teacher_id || p.teacher_id === teacher.id || p.teacher_id === teacher.code || item.user_id === teacher.id;
-            if (isTeacher && matchesTeacher) {
+            const matchesTeacher = (teacher.id && (item.user_id === teacher.id || p.teacher_id === teacher.id)) ||
+                                   (teacher.code && p.teacher_id === teacher.code);
+            if (matchesTeacher) {
               const sId = p.student_id || item.student_id || "STU-" + String(item.id).slice(0, 4);
               remoteEvals.push({
                 student_id: sId,
@@ -195,15 +195,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       try {
-        const { data: rosterData, error: rosterErr } = await window.authClient.client
+        let rosterQuery = window.authClient.client
           .from("teacher_class_roster")
           .select("*")
-          .order("created_at", { ascending: false })
-          .limit(100);
+          .order("created_at", { ascending: false });
+
+        if (teacher.id && teacher.code) {
+          rosterQuery = rosterQuery.or(`teacher_id.eq.${teacher.id},teacher_id.eq.${teacher.code}`);
+        } else if (teacher.id) {
+          rosterQuery = rosterQuery.eq("teacher_id", teacher.id);
+        } else if (teacher.code) {
+          rosterQuery = rosterQuery.eq("teacher_id", teacher.code);
+        }
+
+        const { data: rosterData, error: rosterErr } = await rosterQuery.limit(100);
 
         if (!rosterErr && Array.isArray(rosterData)) {
           rosterData.forEach((r) => {
-            if (!r.teacher_id || r.teacher_id === teacher.code || r.teacher_id === teacher.id || r.teacher_id === "TCH-01") {
+            if ((teacher.id && r.teacher_id === teacher.id) || (teacher.code && r.teacher_id === teacher.code)) {
               const sId = r.student_id_code || r.roll_no || r.id;
               remoteEvals.push({
                 student_id: sId,
