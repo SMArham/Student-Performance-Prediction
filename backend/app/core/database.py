@@ -19,7 +19,10 @@ def get_supabase_client() -> Optional[Client]:
 
     if settings.SUPABASE_URL and not settings.SUPABASE_URL.startswith("https://your-project"):
         try:
-            _supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+            auth_key = getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", None) or settings.SUPABASE_ANON_KEY
+            if not auth_key or auth_key == "mock_anon_key":
+                auth_key = settings.SUPABASE_ANON_KEY
+            _supabase_client = create_client(settings.SUPABASE_URL, auth_key)
             logger.info("Connected to live Supabase client successfully.")
             return _supabase_client
         except Exception as e:

@@ -4,8 +4,8 @@ Student Performance Prediction & Analytics System
 """
 
 import os
-from typing import List
-from pydantic_settings import BaseSettings
+from typing import List, Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # Supabase Credentials
     SUPABASE_URL: str = "https://your-project-id.supabase.co"
     SUPABASE_ANON_KEY: str = "mock_anon_key"
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
     SUPABASE_DB_PASSWORD: str = "your_database_password"
 
     # ML Artifacts Directory (relative to project root)
@@ -35,9 +36,10 @@ class Settings(BaseSettings):
         "*",
     ]
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore"
+    )
 
 
 settings = Settings()
