@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Student Performance Prediction & Analytics System E2E Testing",
   "scripts": {
+    "start": "python run.py",
     "test:e2e": "playwright test tests/e2e/test_user_flow.spec.js"
   },
   "devDependencies": {
