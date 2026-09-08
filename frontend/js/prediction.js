@@ -372,15 +372,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function goToStudentStep(stepIndex) {
     if (stepIndex < 1 || stepIndex > 5) return;
 
-    // Strict sequential validation: Validate every step leading up to the target step
+    // Validate current step before moving forward
     if (stepIndex > currentStudentStep) {
-      for (let s = currentStudentStep; s < stepIndex; s++) {
-        const isValid = validateStudentStep(s);
-        if (!isValid) {
-          // Keep user at the first failing step
-          return;
-        }
-      }
+      const isValid = validateStudentStep(currentStudentStep);
+      if (!isValid) return;
     }
 
     currentStudentStep = stepIndex;
@@ -415,23 +410,10 @@ document.addEventListener("DOMContentLoaded", () => {
   stepItems.forEach((item) => {
     item.addEventListener("click", () => {
       const targetStep = parseInt(item.getAttribute("data-step"));
-      goToStudentStep(targetStep);
+      if (targetStep <= currentStudentStep || validateStudentStep(currentStudentStep)) {
+        goToStudentStep(targetStep);
+      }
     });
-  });
-
-  // Clear input error highlight on user typing
-  document.addEventListener("input", (e) => {
-    if (e.target && e.target.classList.contains("input-error")) {
-      e.target.classList.remove("input-error");
-      hideErrorBanner();
-    }
-  });
-
-  document.addEventListener("change", (e) => {
-    if (e.target && e.target.classList.contains("input-error")) {
-      e.target.classList.remove("input-error");
-      hideErrorBanner();
-    }
   });
 
   // Step 1 Next Button
@@ -751,16 +733,16 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
       <div class="form-grid-3col">
         <div class="form-group">
-          <label class="form-label" for="f_self_motivation">Academic Motivation (1 - 10) <span style="color:var(--accent-rose)">*</span></label>
-          <input type="number" id="f_self_motivation" class="form-input" min="1" max="10" placeholder="e.g. 9" required>
+          <label class="form-label" for="f_self_motivation">Academic Motivation (1 - 10)</label>
+          <input type="number" id="f_self_motivation" class="form-input" min="1" max="10" placeholder="e.g. 9">
         </div>
         <div class="form-group">
-          <label class="form-label" for="f_self_confidence">Exam Confidence (1 - 10) <span style="color:var(--accent-rose)">*</span></label>
-          <input type="number" id="f_self_confidence" class="form-input" min="1" max="10" placeholder="e.g. 8" required>
+          <label class="form-label" for="f_self_confidence">Exam Confidence (1 - 10)</label>
+          <input type="number" id="f_self_confidence" class="form-input" min="1" max="10" placeholder="e.g. 8">
         </div>
         <div class="form-group">
-          <label class="form-label" for="f_self_consistency">Study Consistency (1 - 10) <span style="color:var(--accent-rose)">*</span></label>
-          <input type="number" id="f_self_consistency" class="form-input" min="1" max="10" placeholder="e.g. 9" required>
+          <label class="form-label" for="f_self_consistency">Study Consistency (1 - 10)</label>
+          <input type="number" id="f_self_consistency" class="form-input" min="1" max="10" placeholder="e.g. 9">
         </div>
       </div>
     `;
@@ -772,182 +754,46 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================================
   function validateStudentStep(step) {
     hideErrorBanner();
-    // Remove existing error highlights
-    document.querySelectorAll(".input-error").forEach((el) => el.classList.remove("input-error"));
-
     let errors = [];
-    let firstErrorElement = null;
 
-    function markError(el, message) {
-      errors.push(message);
-      if (el) {
-        el.classList.add("input-error");
-        if (!firstErrorElement) firstErrorElement = el;
-      }
-    }
-
-    if (step === 1) {
-      const validStages = ["university", "intermediate", "matric", "secondary", "primary"];
-      if (!validStages.includes(currentStage)) {
-        errors.push("Please select an educational target level to begin.");
-      }
-      const activeCard = document.querySelector(".stage-select-card.active");
-      if (!activeCard) {
-        errors.push("Please click on one of the education stage cards (University, Intermediate, Matric, Secondary, or Primary).");
-      }
-    } else if (step === 2) {
+    if (step === 2) {
       if (currentStage === "university") {
-        const cgpaEl = document.getElementById("f_uni_cgpa");
-        const cgpaVal = cgpaEl?.value.trim();
-        const cgpa = parseFloat(cgpaVal);
-        if (!cgpaVal || isNaN(cgpa) || cgpa < 0.0 || cgpa > 4.0) {
-          markError(cgpaEl, "Current / Baseline CGPA is required (between 0.00 and 4.00).");
-        }
-
-        const attEl = document.getElementById("f_uni_att");
-        const attVal = attEl?.value.trim();
-        const att = parseFloat(attVal);
-        if (!attVal || isNaN(att) || att < 0 || att > 100) {
-          markError(attEl, "Lecture Attendance is required (between 0% and 100%).");
-        }
-
-        const creditsEl = document.getElementById("f_uni_credits");
-        if (creditsEl && creditsEl.value.trim()) {
-          const cr = parseInt(creditsEl.value);
-          if (isNaN(cr) || cr < 1 || cr > 36) {
-            markError(creditsEl, "Enrolled credit hours must be between 1 and 36.");
-          }
-        }
+        const cgpa = parseFloat(document.getElementById("f_uni_cgpa")?.value);
+        const att = parseFloat(document.getElementById("f_uni_att")?.value);
+        if (isNaN(cgpa) || cgpa < 0.0 || cgpa > 4.0) errors.push("Current CGPA must be between 0.00 and 4.00.");
+        if (isNaN(att) || att < 0 || att > 100) errors.push("Attendance must be between 0% and 100%.");
       } else if (currentStage === "intermediate") {
-        const sscEl = document.getElementById("f_inter_ssc");
-        const sscVal = sscEl?.value.trim();
-        const ssc = parseFloat(sscVal);
-        if (!sscVal || isNaN(ssc) || ssc < 0 || ssc > 1100) {
-          markError(sscEl, "Matric (10th) Overall Marks are required (between 0 and 1100).");
-        }
-
-        const hssc1El = document.getElementById("f_inter_hssc1");
-        const hssc1Val = hssc1El?.value.trim();
-        const hssc1 = parseFloat(hssc1Val);
-        if (!hssc1Val || isNaN(hssc1) || hssc1 < 0 || hssc1 > 550) {
-          markError(hssc1El, "1st Year (11th) Marks are required (between 0 and 550).");
-        }
-
-        const attEl = document.getElementById("f_inter_att");
-        const attVal = attEl?.value.trim();
-        const att = parseFloat(attVal);
-        if (!attVal || isNaN(att) || att < 0 || att > 100) {
-          markError(attEl, "College Attendance is required (between 0% and 100%).");
-        }
+        const ssc = parseFloat(document.getElementById("f_inter_ssc")?.value);
+        const hssc1 = parseFloat(document.getElementById("f_inter_hssc1")?.value);
+        const att = parseFloat(document.getElementById("f_inter_att")?.value);
+        if (isNaN(ssc) || ssc < 0 || ssc > 1100) errors.push("Matric marks must be between 0 and 1100.");
+        if (isNaN(hssc1) || hssc1 < 0 || hssc1 > 550) errors.push("1st Year marks must be between 0 and 550.");
+        if (isNaN(att) || att < 0 || att > 100) errors.push("Attendance must be between 0% and 100%.");
       } else if (currentStage === "matric") {
-        const ssc1El = document.getElementById("f_matric_ssc1");
-        const ssc1Val = ssc1El?.value.trim();
-        const ssc1 = parseFloat(ssc1Val);
-        if (!ssc1Val || isNaN(ssc1) || ssc1 < 0 || ssc1 > 550) {
-          markError(ssc1El, "9th Class (SSC-I) Marks are required (between 0 and 550).");
-        }
-
-        const attEl = document.getElementById("f_matric_att");
-        const attVal = attEl?.value.trim();
-        const att = parseFloat(attVal);
-        if (!attVal || isNaN(att) || att < 0 || att > 100) {
-          markError(attEl, "School Attendance is required (between 0% and 100%).");
-        }
+        const ssc1 = parseFloat(document.getElementById("f_matric_ssc1")?.value);
+        const att = parseFloat(document.getElementById("f_matric_att")?.value);
+        if (isNaN(ssc1) || ssc1 < 0 || ssc1 > 550) errors.push("9th class marks must be between 0 and 550.");
+        if (isNaN(att) || att < 0 || att > 100) errors.push("Attendance must be between 0% and 100%.");
       } else if (currentStage === "secondary") {
-        const g1El = document.getElementById("f_sec_g1");
-        const g1Val = g1El?.value.trim();
-        const g1 = parseFloat(g1Val);
-        if (!g1Val || isNaN(g1) || g1 < 0 || g1 > 20) {
-          markError(g1El, "Period 1 Quiz / Grade average is required (between 0 and 20).");
-        }
-
-        const g2El = document.getElementById("f_sec_g2");
-        const g2Val = g2El?.value.trim();
-        const g2 = parseFloat(g2Val);
-        if (!g2Val || isNaN(g2) || g2 < 0 || g2 > 20) {
-          markError(g2El, "Period 2 Midterm score is required (between 0 and 20).");
-        }
-
-        const absEl = document.getElementById("f_sec_absences");
-        const absVal = absEl?.value.trim();
-        const abs = parseFloat(absVal);
-        if (!absVal || isNaN(abs) || abs < 0 || abs > 60) {
-          markError(absEl, "Class absences are required (between 0 and 60 days).");
-        }
+        const g1 = parseFloat(document.getElementById("f_sec_g1")?.value);
+        const g2 = parseFloat(document.getElementById("f_sec_g2")?.value);
+        if (isNaN(g1) || g1 < 0 || g1 > 20) errors.push("Period 1 score must be between 0 and 20.");
+        if (isNaN(g2) || g2 < 0 || g2 > 20) errors.push("Period 2 score must be between 0 and 20.");
       } else if (currentStage === "primary") {
-        const mathEl = document.getElementById("f_prim_math");
-        const mathVal = mathEl?.value.trim();
-        const math = parseFloat(mathVal);
-        if (!mathVal || isNaN(math) || math < 0 || math > 100) {
-          markError(mathEl, "Mathematics Score is required (between 0% and 100%).");
-        }
-
-        const readEl = document.getElementById("f_prim_read");
-        const readVal = readEl?.value.trim();
-        const read = parseFloat(readVal);
-        if (!readVal || isNaN(read) || read < 0 || read > 100) {
-          markError(readEl, "Reading & Literacy Score is required (between 0% and 100%).");
-        }
-
-        const attEl = document.getElementById("f_prim_att");
-        const attVal = attEl?.value.trim();
-        const att = parseFloat(attVal);
-        if (!attVal || isNaN(att) || att < 0 || att > 100) {
-          markError(attEl, "Attendance Track is required (between 0% and 100%).");
-        }
-      }
-
-      const subjects = subjectsStore[currentStage] || [];
-      if (subjects.length === 0) {
-        errors.push("Please keep at least 1 course logged in the enrolled subjects table.");
+        const math = parseFloat(document.getElementById("f_prim_math")?.value);
+        const read = parseFloat(document.getElementById("f_prim_read")?.value);
+        if (isNaN(math) || math < 0 || math > 100) errors.push("Math score must be between 0 and 100.");
+        if (isNaN(read) || read < 0 || read > 100) errors.push("Reading score must be between 0 and 100.");
       }
     } else if (step === 3) {
-      const studyHoursEl = document.getElementById("f_study_hours");
-      const studyVal = studyHoursEl?.value.trim();
-      const studyHours = parseFloat(studyVal);
-      if (!studyVal || isNaN(studyHours) || studyHours < 0.5 || studyHours > 16) {
-        markError(studyHoursEl, "Daily Study Hours are required (enter between 0.5 and 16 hours/day).");
-      }
-    } else if (step === 4) {
-      const motivationEl = document.getElementById("f_self_motivation");
-      const motVal = motivationEl?.value.trim();
-      if (!motVal) {
-        markError(motivationEl, "Academic Motivation score (1-10) is required.");
-      } else {
-        const mot = parseInt(motVal);
-        if (isNaN(mot) || mot < 1 || mot > 10) markError(motivationEl, "Academic Motivation score must be between 1 and 10.");
-      }
-
-      const confEl = document.getElementById("f_self_confidence");
-      const confVal = confEl?.value.trim();
-      if (!confVal) {
-        markError(confEl, "Exam Confidence score (1-10) is required.");
-      } else {
-        const conf = parseInt(confVal);
-        if (isNaN(conf) || conf < 1 || conf > 10) markError(confEl, "Exam Confidence score must be between 1 and 10.");
-      }
-
-      const consistEl = document.getElementById("f_self_consistency");
-      const consistVal = consistEl?.value.trim();
-      if (!consistVal) {
-        markError(consistEl, "Study Consistency score (1-10) is required.");
-      } else {
-        const consist = parseInt(consistVal);
-        if (isNaN(consist) || consist < 1 || consist > 10) markError(consistEl, "Study Consistency score must be between 1 and 10.");
-      }
+      const studyHours = parseFloat(document.getElementById("f_study_hours")?.value);
+      if (isNaN(studyHours) || studyHours < 0 || studyHours > 16) errors.push("Daily study hours must be between 0 and 16 hours.");
     }
 
     if (errors.length > 0) {
-      const mainError = errors[0];
-      showErrorBanner(mainError);
-      showToast(mainError, "error");
-      if (firstErrorElement) {
-        firstErrorElement.focus();
-        firstErrorElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      showErrorBanner(errors[0]);
       return false;
     }
-
     return true;
   }
 
