@@ -320,6 +320,12 @@
   box-shadow: 0 0 0 3px var(--border-focus);
 }
 
+.form-input.input-error, .form-select.input-error {
+  border-color: #EF4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+  background-color: rgba(239, 68, 68, 0.05) !important;
+}
+
 .form-input::placeholder {
   color: var(--text-muted);
 }
