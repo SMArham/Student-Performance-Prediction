@@ -24,6 +24,11 @@
       padding: 0;
       overflow-x: hidden;
     }
+    @media (min-width: 500px) and (min-height: 450px) {
+      html, body {
+        overflow-y: hidden;
+      }
+    }
     .auth-viewport {
       height: 100vh;
       min-height: 100vh;
@@ -162,7 +167,11 @@
     }
 
     /* Small mobile screens */
-    @media (max-height: 560px), (max-width: 480px) {
+    @media (max-height: 480px), (max-width: 480px) {
+      html, body {
+        height: auto !important;
+        overflow-y: auto !important;
+      }
       .auth-viewport {
         height: auto;
         min-height: 100vh;
