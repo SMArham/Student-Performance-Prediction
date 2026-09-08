@@ -619,29 +619,90 @@ a.cta-btn-primary:hover * {
 }
 
 /* ------------------------------------------------------------------------------
-   10. Toast Notifications
+   10. Modern Glassmorphism Toast Notifications
    ------------------------------------------------------------------------------ */
 .toast-container {
   position: fixed;
-  bottom: var(--space-6);
-  right: var(--space-6);
+  bottom: 24px;
+  right: 24px;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  z-index: 1100;
+  flex-direction: column-reverse;
+  gap: 10px;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: 420px;
 }
 
 .toast {
-  background-color: #1e1f25;
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-pill);
-  padding: 0.75rem 1.25rem;
-  color: #ffffff;
-  font-size: var(--font-size-sm);
+  pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  box-shadow: var(--shadow-card);
+  gap: 12px;
+  padding: 12px 18px;
+  background: rgba(18, 19, 23, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color: #F8FAFC;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: all 0.25s ease;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toast-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+/* Theme Signature Lime Green Toast (For All Alerts, Lock & Missing Info) */
+.toast, .toast-info, .toast-warning, .toast-lock, .toast-error, .toast-success {
+  border-color: rgba(163, 230, 53, 0.45) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 22px rgba(163, 230, 53, 0.22) !important;
+}
+
+.toast-icon-wrap, .toast-info .toast-icon-wrap, .toast-warning .toast-icon-wrap, .toast-lock .toast-icon-wrap, .toast-error .toast-icon-wrap, .toast-success .toast-icon-wrap {
+  background: rgba(163, 230, 53, 0.18) !important;
+  color: #A3E635 !important;
+  border: 1px solid rgba(163, 230, 53, 0.45) !important;
+}
+
+.toast-msg-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.toast-msg-title, .toast-info .toast-msg-title, .toast-warning .toast-msg-title, .toast-lock .toast-msg-title, .toast-error .toast-msg-title, .toast-success .toast-msg-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+  color: #A3E635 !important;
+}
+
+.toast-msg-body {
+  font-size: 12.5px;
+  color: #F1F5F9;
+  line-height: 1.45;
+  font-weight: 500;
 }
 
 /* ------------------------------------------------------------------------------
@@ -1188,4 +1249,23 @@ select.form-select option {
     height: 34px;
     font-size: 12px;
   }
+}
+
+/* Invalid Field Alert & Lock Highlighting */
+.input-error, input.input-error, select.input-error, .form-control.input-error, .form-input.input-error {
+  border-color: #EF4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  animation: shakeError 0.35s ease-in-out;
+}
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.step-item.locked {
+  opacity: 0.5;
+  cursor: not-allowed !important;
 }

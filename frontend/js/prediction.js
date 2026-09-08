@@ -303,16 +303,48 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================================
   // 3. TOAST & NOTIFICATION SYSTEM
   // ============================================================================
+  let activeToastTimer = null;
   function showToast(message, type = "info") {
     if (!toastContainer) return;
+
+    // Clear existing toast so multiple toasts never stack up
+    const existingToasts = toastContainer.querySelectorAll(".toast");
+    existingToasts.forEach((t) => t.remove());
+
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
-    const icon = type === "success" ? "✓" : type === "error" ? "⚠️" : "ℹ️";
-    toast.innerHTML = `<span style="font-weight:700;">${icon}</span> <span>${message}</span>`;
+
+    let icon = "ℹ️";
+    let title = "Platform Notice";
+
+    if (type === "success") {
+      icon = "✓";
+      title = "Success";
+    } else if (type === "error") {
+      icon = "⚠️";
+      title = "Required Info Missing";
+    } else if (message.toLowerCase().includes("lock") || message.includes("🔒")) {
+      icon = "🔒";
+      title = "Step Locked";
+    }
+
+    // Clean any duplicated emojis from message body
+    const cleanMsg = message.replace(/^[ℹ️⚠️✓🔒]+\s*/, "").replace(/^Step \d+ is locked:\s*/i, "");
+
+    toast.innerHTML = `
+      <div class="toast-icon-wrap">${icon}</div>
+      <div class="toast-msg-content">
+        <div class="toast-msg-title">${title}</div>
+        <div class="toast-msg-body">${cleanMsg}</div>
+      </div>
+    `;
+
     toastContainer.appendChild(toast);
-    setTimeout(() => {
+
+    if (activeToastTimer) clearTimeout(activeToastTimer);
+    activeToastTimer = setTimeout(() => {
       toast.style.opacity = "0";
-      toast.style.transform = "translateY(10px)";
+      toast.style.transform = "translateY(12px) scale(0.95)";
       setTimeout(() => toast.remove(), 300);
     }, 3500);
   }
@@ -395,16 +427,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ============================================================================
   // 5. STUDENT STEPPER & PROGRESSIVE DISCLOSURE
   // ============================================================================
   function goToStudentStep(stepIndex) {
-    if (stepIndex < 1 || stepIndex > 5) return;
+    if (stepIndex < 1 || stepIndex > 5) return false;
 
-    // Validate current step before moving forward
+    // Strict sequential validation: Must pass every prior step before advancing
     if (stepIndex > currentStudentStep) {
-      const isValid = validateStudentStep(currentStudentStep);
-      if (!isValid) return;
+      for (let s = 1; s < stepIndex; s++) {
+        const isValid = validateStudentStep(s);
+        if (!isValid) {
+          return false;
+        }
+      }
     }
 
     currentStudentStep = stepIndex;
@@ -434,15 +469,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     window.scrollTo({ top: 120, behavior: "smooth" });
+    return true;
   }
 
   stepItems.forEach((item) => {
     item.addEventListener("click", () => {
       const targetStep = parseInt(item.getAttribute("data-step"));
-      if (targetStep <= currentStudentStep || validateStudentStep(currentStudentStep)) {
-        goToStudentStep(targetStep);
+      if (targetStep > currentStudentStep) {
+        showToast(`🔒 Step ${targetStep} is locked: Please complete Step ${currentStudentStep} and click the button at the bottom to proceed.`, "info");
+        return;
       }
+      goToStudentStep(targetStep);
     });
+  });
+
+  // Remove input-error highlight as soon as user types or updates a field
+  document.addEventListener("input", (e) => {
+    if (e.target && e.target.classList.contains("input-error")) {
+      e.target.classList.remove("input-error");
+      hideErrorBanner();
+    }
+  });
+
+  document.addEventListener("change", (e) => {
+    if (e.target && e.target.classList.contains("input-error")) {
+      e.target.classList.remove("input-error");
+      hideErrorBanner();
+    }
   });
 
   // Step 1 Next Button
@@ -933,48 +986,129 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================================
   function validateStudentStep(step) {
     hideErrorBanner();
-    let errors = [];
+    // Clear existing error marks
+    document.querySelectorAll(".input-error").forEach((el) => el.classList.remove("input-error"));
 
-    if (step === 2) {
+    let errors = [];
+    let firstErrorEl = null;
+
+    function recordError(el, message) {
+      errors.push(message);
+      if (el) {
+        el.classList.add("input-error");
+        if (!firstErrorEl) firstErrorEl = el;
+      }
+    }
+
+    if (step === 1) {
+      const validStages = ["university", "intermediate", "matric", "secondary", "primary"];
+      if (!validStages.includes(currentStage)) {
+        errors.push("Please select an education stage to begin.");
+      }
+      const activeCard = document.querySelector(".stage-select-card.active");
+      if (!activeCard) {
+        errors.push("Please select your current education level.");
+      }
+    } else if (step === 2) {
       if (currentStage === "university" || currentStage === "secondary" || currentStage === "primary") {
         if (!loggedTerms || loggedTerms.length === 0) {
           const unit = currentStage === "university" ? "semester" : currentStage === "secondary" ? "class (e.g. Class 6)" : "primary grade";
-          showToast(`Please click '+ Add ${currentStage === 'university' ? 'Semester' : 'Class Record'}' to log at least one completed ${unit} with subjects before proceeding.`, "info");
-          if (btnAddSemester) btnAddSemester.click();
+          const msg = `Please click '+ Add ${currentStage === 'university' ? 'Semester' : 'Class Record'}' to enter your academic record & subjects before moving to Step 3.`;
+          errors.push(msg);
+          showToast(msg, "error");
+          if (btnAddSemester) {
+            btnAddSemester.classList.add("input-error");
+            btnAddSemester.click();
+          }
           return false;
         }
       } else if (currentStage === "intermediate") {
         const targetLevel = document.querySelector('input[name="f_inter_target_level"]:checked')?.value || "hssc1";
-        const ssc1 = parseFloat(document.getElementById("f_inter_ssc1")?.value);
-        const ssc2 = parseFloat(document.getElementById("f_inter_ssc2")?.value);
-        const ssc = parseFloat(document.getElementById("f_inter_ssc")?.value);
-        const att = parseFloat(document.getElementById("f_inter_att")?.value);
-
-        if (!isNaN(ssc1) && (ssc1 < 0 || ssc1 > 550)) errors.push("9th Class marks must be between 0 and 550.");
-        if (!isNaN(ssc2) && (ssc2 < 0 || ssc2 > 550)) errors.push("10th Class marks must be between 0 and 550.");
-        if (isNaN(ssc) || ssc < 0 || ssc > 1100) errors.push("Total Matric marks must be between 0 and 1100.");
-
-        if (targetLevel === "hssc2") {
-          const hssc1 = parseFloat(document.getElementById("f_inter_hssc1")?.value);
-          if (isNaN(hssc1) || hssc1 < 0 || hssc1 > 550) errors.push("Please enter your 1st Year (11th) marks (0 to 550) to forecast 2nd Year & Total.");
+        const sscEl = document.getElementById("f_inter_ssc");
+        const sscVal = sscEl?.value.trim();
+        const ssc = parseFloat(sscVal);
+        if (!sscVal || isNaN(ssc) || ssc < 0 || ssc > 1100) {
+          recordError(sscEl, "Total Matric (10th) marks are required (0 to 1100).");
         }
 
-        if (isNaN(att) || att < 0 || att > 100) errors.push("Attendance must be between 0% and 100%.");
+        if (targetLevel === "hssc2") {
+          const hssc1El = document.getElementById("f_inter_hssc1");
+          const hssc1Val = hssc1El?.value.trim();
+          const hssc1 = parseFloat(hssc1Val);
+          if (!hssc1Val || isNaN(hssc1) || hssc1 < 0 || hssc1 > 550) {
+            recordError(hssc1El, "1st Year (11th) marks are required (0 to 550) to forecast 2nd Year.");
+          }
+        }
+
+        const attEl = document.getElementById("f_inter_att");
+        const attVal = attEl?.value.trim();
+        const att = parseFloat(attVal);
+        if (!attVal || isNaN(att) || att < 0 || att > 100) {
+          recordError(attEl, "Attendance % is required (0% to 100%).");
+        }
       } else if (currentStage === "matric") {
-        const ssc1 = parseFloat(document.getElementById("f_matric_ssc1")?.value);
-        const att = parseFloat(document.getElementById("f_matric_att")?.value);
-        if (isNaN(ssc1) || ssc1 < 0 || ssc1 > 550) errors.push("9th class marks must be between 0 and 550.");
-        if (isNaN(att) || att < 0 || att > 100) errors.push("Attendance must be between 0% and 100%.");
+        const ssc1El = document.getElementById("f_matric_ssc1");
+        const ssc1Val = ssc1El?.value.trim();
+        const ssc1 = parseFloat(ssc1Val);
+        if (!ssc1Val || isNaN(ssc1) || ssc1 < 0 || ssc1 > 550) {
+          recordError(ssc1El, "9th Class (SSC-I) marks are required (0 to 550).");
+        }
+
+        const attEl = document.getElementById("f_matric_att");
+        const attVal = attEl?.value.trim();
+        const att = parseFloat(attVal);
+        if (!attVal || isNaN(att) || att < 0 || att > 100) {
+          recordError(attEl, "Attendance % is required (0% to 100%).");
+        }
       }
     } else if (step === 3) {
-      const studyHours = parseFloat(document.getElementById("f_study_hours")?.value);
-      if (isNaN(studyHours) || studyHours < 0 || studyHours > 16) errors.push("Daily study hours must be between 0 and 16 hours.");
+      const studyEl = document.getElementById("f_study_hours");
+      const studyVal = studyEl?.value.trim();
+      const studyHours = parseFloat(studyVal);
+      if (!studyVal || isNaN(studyHours) || studyHours < 0.5 || studyHours > 16) {
+        recordError(studyEl, "Daily study hours are required (between 0.5 and 16 hours/day).");
+      }
+
+      const revEl = document.getElementById("f_revision_freq");
+      if (revEl && !revEl.value) {
+        recordError(revEl, "Please select your revision frequency.");
+      }
+
+      const assignEl = document.getElementById("f_assignment_disc");
+      if (assignEl && !assignEl.value) {
+        recordError(assignEl, "Please select your assignment discipline.");
+      }
+    } else if (step === 4) {
+      const motEl = document.getElementById("f_self_motivation");
+      const motVal = motEl?.value.trim();
+      if (!motVal || isNaN(parseInt(motVal)) || parseInt(motVal) < 1 || parseInt(motVal) > 10) {
+        recordError(motEl, "Academic Motivation score (1-10) is required.");
+      }
+
+      const confEl = document.getElementById("f_self_confidence");
+      const confVal = confEl?.value.trim();
+      if (!confVal || isNaN(parseInt(confVal)) || parseInt(confVal) < 1 || parseInt(confVal) > 10) {
+        recordError(confEl, "Exam Confidence score (1-10) is required.");
+      }
+
+      const consistEl = document.getElementById("f_self_consistency");
+      const consistVal = consistEl?.value.trim();
+      if (!consistVal || isNaN(parseInt(consistVal)) || parseInt(consistVal) < 1 || parseInt(consistVal) > 10) {
+        recordError(consistEl, "Study Routine Consistency score (1-10) is required.");
+      }
     }
 
     if (errors.length > 0) {
-      showErrorBanner(errors[0]);
+      const mainError = errors[0];
+      showErrorBanner(mainError);
+      showToast(mainError, "error");
+      if (firstErrorEl) {
+        firstErrorEl.focus();
+        firstErrorEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return false;
     }
+
     return true;
   }
 
