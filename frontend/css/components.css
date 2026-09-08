@@ -853,7 +853,7 @@ select.form-select option {
   background: rgba(0, 0, 0, 0.82) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
-  display: flex !important;
+  display: none !important;
   align-items: center !important;
   justify-content: center !important;
   z-index: 100000 !important;
@@ -865,6 +865,7 @@ select.form-select option {
 }
 
 .modal-backdrop.active {
+  display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
