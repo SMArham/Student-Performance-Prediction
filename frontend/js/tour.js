@@ -14,6 +14,7 @@
       this.currentStep = 0;
       this.steps = [];
       this.backdropEl = null;
+      this.maskCutoutEl = null;
       this.highlightEl = null;
       this.popoverEl = null;
       this.activeTarget = null;
@@ -40,10 +41,52 @@
     createTourDOMElements() {
       if (document.getElementById("spp-tour-backdrop")) return;
 
-      // 1. Backdrop Glass Blur
-      this.backdropEl = document.createElement("div");
-      this.backdropEl.id = "spp-tour-backdrop";
+      // 1. Backdrop SVG with Cutout Mask (Allows target element to be 100% sharp and unblurred)
+      const svgNS = "http://www.w3.org/2000/svg";
+      this.backdropEl = document.createElementNS(svgNS, "svg");
+      this.backdropEl.setAttribute("id", "spp-tour-backdrop");
+      this.backdropEl.setAttribute("class", "spp-tour-backdrop");
       this.backdropEl.style.display = "none";
+
+      const defs = document.createElementNS(svgNS, "defs");
+      const mask = document.createElementNS(svgNS, "mask");
+      mask.setAttribute("id", "spp-tour-cutout-mask");
+
+      // White base covers everything (rendered as dark overlay outside cutout)
+      const maskBg = document.createElementNS(svgNS, "rect");
+      maskBg.setAttribute("x", "0");
+      maskBg.setAttribute("y", "0");
+      maskBg.setAttribute("width", "100%");
+      maskBg.setAttribute("height", "100%");
+      maskBg.setAttribute("fill", "#ffffff");
+      mask.appendChild(maskBg);
+
+      // Black cutout rectangle (100% transparent optical window - zero overlay & zero blur)
+      this.maskCutoutEl = document.createElementNS(svgNS, "rect");
+      this.maskCutoutEl.setAttribute("id", "spp-tour-mask-cutout");
+      this.maskCutoutEl.setAttribute("x", "0");
+      this.maskCutoutEl.setAttribute("y", "0");
+      this.maskCutoutEl.setAttribute("width", "0");
+      this.maskCutoutEl.setAttribute("height", "0");
+      this.maskCutoutEl.setAttribute("rx", "12");
+      this.maskCutoutEl.setAttribute("ry", "12");
+      this.maskCutoutEl.setAttribute("fill", "#000000");
+      mask.appendChild(this.maskCutoutEl);
+
+      defs.appendChild(mask);
+      this.backdropEl.appendChild(defs);
+
+      // Dark backdrop surface with cutout mask applied
+      const overlayRect = document.createElementNS(svgNS, "rect");
+      overlayRect.setAttribute("x", "0");
+      overlayRect.setAttribute("y", "0");
+      overlayRect.setAttribute("width", "100%");
+      overlayRect.setAttribute("height", "100%");
+      overlayRect.setAttribute("fill", "rgba(6, 8, 12, 0.78)");
+      overlayRect.setAttribute("mask", "url(#spp-tour-cutout-mask)");
+      overlayRect.style.cursor = "pointer";
+      this.backdropEl.appendChild(overlayRect);
+
       document.body.appendChild(this.backdropEl);
 
       // 2. Spotlight Cutout / Glow Ring
@@ -83,7 +126,20 @@
       document.getElementById("spp-tour-btn-skip").addEventListener("click", () => this.skip());
       document.getElementById("spp-tour-btn-prev").addEventListener("click", () => this.prev());
       document.getElementById("spp-tour-btn-next").addEventListener("click", () => this.next());
-      this.backdropEl.addEventListener("click", () => this.skip());
+      this.backdropEl.addEventListener("click", (e) => {
+        if (this.activeTarget) {
+          const rect = this.activeTarget.getBoundingClientRect();
+          if (
+            e.clientX >= rect.left &&
+            e.clientX <= rect.right &&
+            e.clientY >= rect.top &&
+            e.clientY <= rect.bottom
+          ) {
+            return;
+          }
+        }
+        this.skip();
+      });
     }
 
     bindSidebarButtons() {
@@ -392,6 +448,11 @@
         nextBtn.innerText = "Next →";
       }
 
+      // Remove class from previously active target
+      if (this.activeTarget) {
+        this.activeTarget.classList.remove("spp-tour-target-active");
+      }
+
       // Handle Target Highlighting
       let targetEl = null;
       if (step.target) {
@@ -401,6 +462,7 @@
       this.activeTarget = targetEl;
 
       if (targetEl) {
+        targetEl.classList.add("spp-tour-target-active");
         // Smooth scroll element into view if not visible
         targetEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
 
@@ -418,11 +480,28 @@
     positionHighlight(el) {
       const rect = el.getBoundingClientRect();
       const pad = 6;
-      this.highlightEl.style.top = `${Math.max(0, rect.top - pad)}px`;
-      this.highlightEl.style.left = `${Math.max(0, rect.left - pad)}px`;
-      this.highlightEl.style.width = `${rect.width + pad * 2}px`;
-      this.highlightEl.style.height = `${rect.height + pad * 2}px`;
-      this.highlightEl.style.borderRadius = "12px";
+      const top = Math.max(0, rect.top - pad);
+      const left = Math.max(0, rect.left - pad);
+      const width = rect.width + pad * 2;
+      const height = rect.height + pad * 2;
+      const radius = 12;
+
+      // Update SVG Cutout Hole
+      if (this.maskCutoutEl) {
+        this.maskCutoutEl.setAttribute("x", left);
+        this.maskCutoutEl.setAttribute("y", top);
+        this.maskCutoutEl.setAttribute("width", width);
+        this.maskCutoutEl.setAttribute("height", height);
+        this.maskCutoutEl.setAttribute("rx", radius);
+        this.maskCutoutEl.setAttribute("ry", radius);
+      }
+
+      // Update Highlight Ring
+      this.highlightEl.style.top = `${top}px`;
+      this.highlightEl.style.left = `${left}px`;
+      this.highlightEl.style.width = `${width}px`;
+      this.highlightEl.style.height = `${height}px`;
+      this.highlightEl.style.borderRadius = `${radius}px`;
       this.highlightEl.style.opacity = "1";
     }
 
@@ -477,7 +556,11 @@
     }
 
     positionCenter() {
-      // Hide highlight ring or center it
+      // Hide highlight ring and close cutout hole
+      if (this.maskCutoutEl) {
+        this.maskCutoutEl.setAttribute("width", "0");
+        this.maskCutoutEl.setAttribute("height", "0");
+      }
       this.highlightEl.style.opacity = "0";
 
       const popover = this.popoverEl;
@@ -542,6 +625,14 @@
     }
 
     cleanup() {
+      if (this.activeTarget) {
+        this.activeTarget.classList.remove("spp-tour-target-active");
+        this.activeTarget = null;
+      }
+      if (this.maskCutoutEl) {
+        this.maskCutoutEl.setAttribute("width", "0");
+        this.maskCutoutEl.setAttribute("height", "0");
+      }
       if (this.backdropEl) {
         this.backdropEl.classList.remove("active");
         this.backdropEl.style.display = "none";
