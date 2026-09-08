@@ -12,12 +12,17 @@
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   opacity: 0;
-  pointer-events: auto;
+  display: none;
+  pointer-events: none;
+  visibility: hidden;
   transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #spp-tour-backdrop.active {
+  display: block;
   opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
 }
 
 /* 2. Spotlight Cutout & Glowing Focus Ring */
@@ -25,6 +30,8 @@
   position: fixed;
   z-index: 99995;
   pointer-events: none;
+  display: none;
+  visibility: hidden;
   border-radius: 12px;
   border: 2px solid var(--color-lime, #a8f04b);
   box-shadow: 
@@ -41,7 +48,9 @@
 }
 
 #spp-tour-highlight-box.active {
+  display: block;
   opacity: 1;
+  visibility: visible;
 }
 
 /* 3. Floating Explanatory Popover Card */
@@ -60,18 +69,23 @@
   color: #ffffff;
   font-family: var(--font-family-base, 'Inter', -apple-system, sans-serif);
   opacity: 0;
+  display: none;
+  pointer-events: none;
+  visibility: hidden;
   transform: translateY(8px) scale(0.98);
   transition: 
     top 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     left 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     opacity 0.25s ease,
     transform 0.25s ease;
-  pointer-events: auto;
   box-sizing: border-box;
 }
 
 #spp-tour-popover.active {
+  display: block;
   opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
   transform: translateY(0) scale(1);
 }
 

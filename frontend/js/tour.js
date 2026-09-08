@@ -43,16 +43,19 @@
       // 1. Backdrop Glass Blur
       this.backdropEl = document.createElement("div");
       this.backdropEl.id = "spp-tour-backdrop";
+      this.backdropEl.style.display = "none";
       document.body.appendChild(this.backdropEl);
 
       // 2. Spotlight Cutout / Glow Ring
       this.highlightEl = document.createElement("div");
       this.highlightEl.id = "spp-tour-highlight-box";
+      this.highlightEl.style.display = "none";
       document.body.appendChild(this.highlightEl);
 
       // 3. Floating Popover Card
       this.popoverEl = document.createElement("div");
       this.popoverEl.id = "spp-tour-popover";
+      this.popoverEl.style.display = "none";
       this.popoverEl.innerHTML = `
         <div class="spp-tour-header">
           <span class="spp-tour-badge" id="spp-tour-step-badge">Step 1 of 5</span>
@@ -341,9 +344,18 @@
       if (!this.steps || this.steps.length === 0) return;
 
       this.currentStep = 0;
-      this.backdropEl.classList.add("active");
-      this.highlightEl.classList.add("active");
-      this.popoverEl.classList.add("active");
+      if (this.backdropEl) {
+        this.backdropEl.style.display = "block";
+        this.backdropEl.classList.add("active");
+      }
+      if (this.highlightEl) {
+        this.highlightEl.style.display = "block";
+        this.highlightEl.classList.add("active");
+      }
+      if (this.popoverEl) {
+        this.popoverEl.style.display = "block";
+        this.popoverEl.classList.add("active");
+      }
 
       window.addEventListener("resize", this.boundReposition, { passive: true });
       window.addEventListener("scroll", this.boundReposition, { passive: true });
@@ -530,9 +542,18 @@
     }
 
     cleanup() {
-      if (this.backdropEl) this.backdropEl.classList.remove("active");
-      if (this.highlightEl) this.highlightEl.classList.remove("active");
-      if (this.popoverEl) this.popoverEl.classList.remove("active");
+      if (this.backdropEl) {
+        this.backdropEl.classList.remove("active");
+        this.backdropEl.style.display = "none";
+      }
+      if (this.highlightEl) {
+        this.highlightEl.classList.remove("active");
+        this.highlightEl.style.display = "none";
+      }
+      if (this.popoverEl) {
+        this.popoverEl.classList.remove("active");
+        this.popoverEl.style.display = "none";
+      }
 
       window.removeEventListener("resize", this.boundReposition);
       window.removeEventListener("scroll", this.boundReposition);

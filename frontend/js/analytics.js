@@ -30,6 +30,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 2. DOM ELEMENT REFERENCES
   // --------------------------------------------------------------------------
   const logoutBtn = document.getElementById("logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      if (window.authClient) await window.authClient.signOut();
+      window.location.href = "login.html";
+    });
+  }
   const userProfileBtn = document.getElementById("user-profile-btn");
   const railProfileBtn = document.getElementById("rail-profile-btn");
   const btnOpenSettings = document.getElementById("btn-open-settings");

@@ -1425,6 +1425,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const modalTabBtns = document.querySelectorAll(".modal-tab-btn");
   const modalTabContents = document.querySelectorAll(".profile-tab-content");
   const logoutBtn = document.getElementById("logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      if (window.authClient) await window.authClient.signOut();
+      window.location.href = "login.html";
+    });
+  }
 
   function openTeacherSettings() {
     const user = window.authClient ? window.authClient.getUser() : null;
