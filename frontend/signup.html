@@ -18,31 +18,41 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   
   <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
     .auth-viewport {
+      height: 100vh;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: var(--space-6);
+      padding: 12px 16px;
       background-color: var(--color-canvas);
+      box-sizing: border-box;
+      overflow: hidden;
     }
     .auth-card-panel {
       width: 100%;
-      max-width: 480px;
+      max-width: 530px;
       background: var(--color-card);
       border: 1px solid var(--border-card);
-      border-radius: 22px;
-      padding: var(--space-8);
+      border-radius: 20px;
+      padding: 18px 24px;
       box-shadow: var(--shadow-shell);
+      box-sizing: border-box;
     }
     .auth-header-block {
       text-align: center;
-      margin-bottom: var(--space-6);
+      margin-bottom: 8px;
     }
     .auth-logo-em {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto var(--space-3);
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 4px;
       background: #101115;
       border: 1.5px solid var(--color-lime);
       border-radius: 50%;
@@ -50,18 +60,136 @@
       align-items: center;
       justify-content: center;
       font-family: var(--font-family-display);
-      font-size: 19px;
+      font-size: 15px;
       font-weight: 800;
       color: var(--color-lime);
     }
+    .auth-brand-subtitle {
+      font-family: var(--font-family-display);
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--color-lime);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+      line-height: 1.15;
+    }
     .auth-title-condensed {
       font-family: var(--font-family-display);
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 800;
       color: #ffffff;
       letter-spacing: -0.01em;
       text-transform: uppercase;
-      margin-bottom: var(--space-1);
+      margin-bottom: 2px;
+      line-height: 1.1;
+    }
+    .auth-desc-text {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin: 0 0 8px 0;
+      line-height: 1.3;
+    }
+    .auth-role-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .auth-role-tabs button {
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .auth-role-tabs button.active {
+      border: 1.5px solid var(--color-lime);
+      background: rgba(168, 240, 75, 0.12);
+      color: #ffffff;
+    }
+    .auth-role-tabs button:not(.active) {
+      border: 1.5px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-muted);
+    }
+    .signup-grid-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 7px;
+    }
+    .auth-card-panel .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-bottom: 0;
+    }
+    .auth-card-panel .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin: 0;
+    }
+    .auth-card-panel .form-input,
+    .auth-card-panel .form-select {
+      height: 38px;
+      font-size: 13px;
+      padding: 0 10px;
+      border-radius: 8px;
+      background-color: var(--color-control);
+      border: 1px solid var(--border-control);
+      color: #ffffff;
+      box-sizing: border-box;
+      outline: none;
+    }
+    .auth-card-panel .form-input:focus,
+    .auth-card-panel .form-select:focus {
+      border-color: var(--color-lime);
+    }
+    .btn-auth-submit {
+      width: 100%;
+      height: 40px;
+      font-size: 13.5px;
+      font-weight: 700;
+      border-radius: 8px;
+      margin-top: 5px;
+    }
+    .auth-footer-link {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Responsive adjustments for smaller screens */
+    @media (max-height: 570px), (max-width: 540px) {
+      .auth-viewport {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        padding: 14px 10px;
+      }
+      .auth-card-panel {
+        padding: 16px 16px;
+      }
+    }
+    @media (max-width: 440px) {
+      .signup-grid-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .auth-card-panel .form-group {
+        margin-bottom: 2px;
+      }
     }
   </style>
 </head>
@@ -70,43 +198,46 @@
     <div class="auth-card-panel">
       <div class="auth-header-block">
         <div class="auth-logo-em">SP</div>
-        <div style="font-family: var(--font-family-display); font-size: 23px; font-weight: 800; color: var(--color-lime); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; line-height: 1.2;">
+        <div class="auth-brand-subtitle">
           Student Performance Prediction
         </div>
-        <h1 class="auth-title-condensed" style="font-size: 30px; margin-bottom: 4px;">CREATE ACCOUNT</h1>
-        <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: var(--space-4);">Select your role and create an account to access machine learning intelligence</p>
+        <h1 class="auth-title-condensed">CREATE ACCOUNT</h1>
+        <p class="auth-desc-text">Select your role and create an account to access machine learning intelligence</p>
       </div>
 
       <!-- Role Selection Tabs -->
-      <div class="auth-role-tabs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px;">
-        <button type="button" class="auth-role-tab active" id="signup-role-student" data-role="student" style="padding: 10px; border-radius: 10px; border: 1.5px solid var(--color-lime); background: rgba(168, 240, 75, 0.12); color: #ffffff; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+      <div class="auth-role-tabs">
+        <button type="button" class="auth-role-tab active" id="signup-role-student" data-role="student">
           <span>🎓 Student</span>
         </button>
-        <button type="button" class="auth-role-tab" id="signup-role-teacher" data-role="teacher" style="padding: 10px; border-radius: 10px; border: 1.5px solid var(--border-subtle); background: rgba(255, 255, 255, 0.03); color: var(--text-muted); font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+        <button type="button" class="auth-role-tab" id="signup-role-teacher" data-role="teacher">
           <span>👨‍🏫 Teacher</span>
         </button>
       </div>
       <input type="hidden" id="account_role" value="student">
 
       <form id="signup-form">
-        <div class="form-group">
-          <label class="form-label" for="full_name" id="label-full-name">Full Name</label>
-          <input type="text" id="full_name" class="form-input" placeholder="e.g. Ali Ahmed" required>
-        </div>
-
-        <div class="form-group">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-1);">
-            <label class="form-label" for="email" style="margin-bottom: 0;">Email Address</label>
-            <span style="font-size: 11px; color: var(--text-muted);">Real & active emails only</span>
+        <!-- Row 1: Full Name & Email Address -->
+        <div class="signup-grid-row">
+          <div class="form-group">
+            <label class="form-label" for="full_name" id="label-full-name">Full Name</label>
+            <input type="text" id="full_name" class="form-input" placeholder="e.g. Ali Ahmed" required>
           </div>
-          <input type="email" id="email" class="form-input" placeholder="e.g. name@university.edu or name@gmail.com" required autocomplete="email">
-          <div id="email-validation-msg" style="font-size: 12px; margin-top: 5px; display: none; line-height: 1.3;"></div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label class="form-label" for="email">Email Address</label>
+              <span style="font-size: 10px; color: var(--text-muted);">Real & active</span>
+            </div>
+            <input type="email" id="email" class="form-input" placeholder="name@domain.com" required autocomplete="email">
+            <div id="email-validation-msg" style="font-size: 11px; margin-top: 2px; display: none; line-height: 1.2;"></div>
+          </div>
         </div>
 
-        <!-- Dynamic Student Fields -->
+        <!-- Row 2 (Student): Educational Stage & Program -->
         <div id="student-fields-block">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3);">
-            <div class="form-group" style="margin-bottom:0;">
+          <div class="signup-grid-row">
+            <div class="form-group">
               <label class="form-label" for="stage">Educational Stage</label>
               <select id="stage" class="form-select">
                 <option value="university" selected>University / Higher Ed</option>
@@ -115,21 +246,21 @@
                 <option value="primary">Primary School</option>
               </select>
             </div>
-            <div class="form-group" style="margin-bottom:0;">
+            <div class="form-group">
               <label class="form-label" for="program">Enrolled Major / Program</label>
               <input type="text" id="program" class="form-input" placeholder="e.g. Software Engineering">
             </div>
           </div>
         </div>
 
-        <!-- Dynamic Teacher Fields (Hidden by default) -->
+        <!-- Row 2 (Teacher): Department & Designation -->
         <div id="teacher-fields-block" style="display: none;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3);">
-            <div class="form-group" style="margin-bottom:0;">
+          <div class="signup-grid-row">
+            <div class="form-group">
               <label class="form-label" for="teacher_department">Faculty / Department</label>
               <input type="text" id="teacher_department" class="form-input" placeholder="e.g. Computer Science">
             </div>
-            <div class="form-group" style="margin-bottom:0;">
+            <div class="form-group">
               <label class="form-label" for="teacher_designation">Academic Designation</label>
               <select id="teacher_designation" class="form-select">
                 <option value="Lecturer" selected>Lecturer</option>
@@ -142,7 +273,8 @@
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+        <!-- Row 3: Institution & Gender -->
+        <div class="signup-grid-row">
           <div class="form-group">
             <label class="form-label" for="institution_name">Institution / College</label>
             <input type="text" id="institution_name" class="form-input" placeholder="e.g. Faculty of Engineering" required>
@@ -156,7 +288,8 @@
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+        <!-- Row 4: Password & Confirm Password -->
+        <div class="signup-grid-row">
           <div class="form-group">
             <label class="form-label" for="password">Create Password</label>
             <input type="password" id="password" class="form-input" placeholder="Min. 6 characters" required autocomplete="new-password">
@@ -167,20 +300,14 @@
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="btn-signup-submit" style="width: 100%; height: 46px; margin-top: var(--space-3);">
+        <button type="submit" class="btn btn-primary btn-auth-submit" id="btn-signup-submit">
           CREATE STUDENT ACCOUNT
         </button>
       </form>
 
-      <div style="text-align: center; margin-top: var(--space-6); font-size: var(--font-size-sm); color: var(--text-muted);">
+      <div class="auth-footer-link">
         Already have an account? 
         <a href="login.html" style="font-weight: 700; color: var(--color-lime);">Sign In here</a>
-      </div>
-
-      <!-- Live Database Status Indicator -->
-      <div id="db-health-badge" style="margin-top: 18px; padding: 9px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: var(--text-muted);">
-        <span id="db-health-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #52c41a; display: inline-block; box-shadow: 0 0 6px rgba(82,196,26,0.6);"></span>
-        <span id="db-health-text">Checking Database Status...</span>
       </div>
     </div>
   </div>
