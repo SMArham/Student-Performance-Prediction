@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'instructor', 'admin', 'advisor')),
-    avatar_url TEXT,
     stage TEXT NOT NULL DEFAULT 'university' CHECK (stage IN ('university', 'matric_inter', 'secondary', 'primary')),
     phone_number TEXT,
     bio TEXT,
@@ -49,14 +48,35 @@ CREATE TABLE IF NOT EXISTS public.student_profiles (
     previous_failures INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
-    CONSTRAINT uq_student_profiles_user_stage UNIQUE (user_id, stage)
+    CONSTRAINT uq_student_profiles_user UNIQUE (user_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_student_profiles_user_id ON public.student_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_student_profiles_stage ON public.student_profiles(stage);
 
 -- ------------------------------------------------------------------------------
--- 3. Academic Records (Term-by-term GPA and course history)
+-- 3. Teacher Profiles (Faculty / Instructor details - 1:1 with profiles)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.teacher_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
+    faculty_id_code TEXT UNIQUE,
+    department TEXT DEFAULT 'Faculty of Computer Science',
+    designation TEXT DEFAULT 'Senior Instructor / Professor',
+    institution_name TEXT DEFAULT 'University Campus',
+    office_room TEXT DEFAULT 'Room 402, Block B',
+    education_level TEXT DEFAULT 'Ph.D. / M.Sc.',
+    years_of_experience INTEGER DEFAULT 5,
+    specialization TEXT DEFAULT 'Data Science & Pedagogical Analytics',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_teacher_profiles_user_id ON public.teacher_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_teacher_profiles_code ON public.teacher_profiles(faculty_id_code);
+
+-- ------------------------------------------------------------------------------
+-- 4. Academic Records (Term-by-term GPA and course history)
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.academic_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -123,40 +143,65 @@ CREATE INDEX IF NOT EXISTS idx_model_registry_stage_active ON public.model_regis
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    user_role TEXT;
+    user_stage TEXT;
 BEGIN
-    INSERT INTO public.profiles (id, full_name, email, role, stage, avatar_url)
+    user_role := COALESCE(NEW.raw_user_meta_data->>'role', 'student');
+    user_stage := COALESCE(NEW.raw_user_meta_data->>'stage', 'university');
+
+    -- 1. Insert Base Profile
+    INSERT INTO public.profiles (id, full_name, email, role, stage)
     VALUES (
         NEW.id,
         COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
         NEW.email,
-        COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
-        COALESCE(NEW.raw_user_meta_data->>'stage', 'university'),
-        COALESCE(NEW.raw_user_meta_data->>'avatar_url', 'https://api.dicebear.com/7.x/avataaars/svg?seed=' || NEW.email)
-    );
-
-    -- Create initial default student profile record
-    INSERT INTO public.student_profiles (
-        user_id,
-        stage,
-        student_id_code,
-        institution_name,
-        program_or_major,
-        current_grade_level,
-        current_cgpa,
-        current_gpa,
-        target_cgpa
+        user_role,
+        user_stage
     )
-    VALUES (
-        NEW.id,
-        COALESCE(NEW.raw_user_meta_data->>'stage', 'university'),
-        'STU-' || UPPER(SUBSTRING(NEW.id::text FROM 1 FOR 6)),
-        'National University of Sciences & Technology',
-        'Computer Science',
-        'Year 3 (Junior)',
-        3.42,
-        3.55,
-        3.80
-    );
+    ON CONFLICT (id) DO UPDATE
+    SET 
+        full_name = EXCLUDED.full_name,
+        email = EXCLUDED.email,
+        role = EXCLUDED.role,
+        stage = EXCLUDED.stage,
+        updated_at = NOW();
+
+    -- 2. Route to specialized profile table based on role (Separate Entities)
+    IF user_role IN ('instructor', 'teacher') THEN
+        INSERT INTO public.teacher_profiles (user_id, faculty_id_code, institution_name, department)
+        VALUES (
+            NEW.id,
+            'TCH-' || UPPER(SUBSTRING(NEW.id::text FROM 1 FOR 6)),
+            COALESCE(NEW.raw_user_meta_data->>'institution_name', 'University Campus'),
+            COALESCE(NEW.raw_user_meta_data->>'department', 'Faculty of Computer Science')
+        )
+        ON CONFLICT (user_id) DO NOTHING;
+    ELSE
+        INSERT INTO public.student_profiles (
+            user_id,
+            stage,
+            student_id_code,
+            institution_name,
+            program_or_major,
+            current_grade_level,
+            current_cgpa,
+            current_gpa,
+            target_cgpa
+        )
+        VALUES (
+            NEW.id,
+            user_stage,
+            'STU-' || UPPER(SUBSTRING(NEW.id::text FROM 1 FOR 6)),
+            'Faculty of Computer Science & Engineering',
+            'Software Engineering',
+            'Year 3 (6th Semester)',
+            3.48,
+            3.65,
+            3.80
+        )
+        ON CONFLICT (user_id) DO NOTHING;
+    END IF;
 
     RETURN NEW;
 END;

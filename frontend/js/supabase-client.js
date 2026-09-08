@@ -1,9 +1,12 @@
 /**
- * Supabase Client & Authentication Helper
+ * Supabase Client & Authentication Engine
  * Student Performance Prediction & Analytics System
  * 
- * Safe client-side integration: Uses only SUPABASE_ANON_KEY (never service-role key)
- * Includes robust local session fallback for standalone development and evaluation.
+ * Features:
+ * - Safe client-side Supabase Auth integration (using anon key)
+ * - Full multi-account local persistence registry (sp_registered_accounts)
+ * - 100% resilient fallback for offline demo / network limitations / email rate limits
+ * - Instant profile sync & avatar management
  */
 
 const SUPABASE_CONFIG = {
@@ -11,10 +14,153 @@ const SUPABASE_CONFIG = {
   anonKey: "sb_publishable_97_-DqS2UcA9W4w7qi8Qog_ig3ipXx3"
 };
 
+/**
+ * High-Security Blocklist of Disposable / Temporary Email Domains
+ */
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  "tempmail.com", "temp-mail.org", "temp-mail.io", "tempmail.net", "tempmail.ninja",
+  "10minutemail.com", "10minutemail.net", "10minutemail.org", "10minmail.com", "minutemail.com",
+  "guerrillamail.com", "guerrillamail.net", "guerrillamail.biz", "guerrillamail.org", "guerrillamailblock.com", "sharklasers.com", "grr.la", "pokemail.net",
+  "mailinator.com", "mailinater.com", "mailinator2.com", "suremail.info", "spamherelots.com",
+  "throwawaymail.com", "throwaway.email",
+  "yopmail.com", "yopmail.fr", "yopmail.net", "cool.fr.nf", "jetable.fr.nf", "courriel.fr.nf", "moncourrier.fr.nf",
+  "trashmail.com", "trashmail.net", "trashmail.me", "trashmail.org", "rcpt.at", "damnthespam.com",
+  "dispostable.com", "getairmail.com", "airmail.news", "inboxkitten.com",
+  "nada.ltd", "getnada.com", "abovethecurv.com", "dropmail.me",
+  "mohmal.com", "mohmal.im", "mohmal.in", "crazymailing.com", "maildrop.cc",
+  "fakeinbox.com", "fakemailgenerator.com", "generator.email", "emailondeck.com",
+  "burnermail.io", "mytemp.email", "minuteinbox.com", "tmail.link", "disposablemail.com",
+  "fakemail.net", "armyspy.com", "cuvox.de", "dayrep.com", "fleckens.hu", "gustr.com",
+  "jourrapide.com", "rhyta.com", "superrito.com", "teleworm.us", "tinypm.com",
+  "binkmail.com", "bobmail.info", "chacuo.net", "devnullmail.com", "emailgo.de",
+  "filzmail.com", "incognitotube.com", "kasmail.com", "maildrop.com", "mailforspam.com",
+  "mailimate.com", "mailnull.com", "meltmail.com", "mytempemail.com", "no-spam.ws",
+  "nowmymail.com", "oneoffmail.com", "pookmail.com", "shortmail.net", "sogetthis.com",
+  "spambox.us", "spamex.com", "spamfree24.org", "spamgourmet.com", "tempemail.net",
+  "tempsky.com", "thankyou2010.com", "trash-mail.com", "wegwerfmail.de", "wegwerfmail.net",
+  "whyspam.me", "zoemail.org", "mailtothis.com", "mailsac.com", "harakirimail.com",
+  "mailnesia.com", "disposable.com", "tempinbox.com", "inboxbear.com", "inboxclean.com",
+  "mailcatch.com", "mailscrap.com", "mytempmail.com", "trashymail.com"
+]);
+
+/**
+ * Blocklist of Obvious Fake / Placeholder Domains
+ */
+const FAKE_EMAIL_DOMAINS = new Set([
+  "test.com", "example.com", "example.org", "example.net", "fake.com", "dummy.com", "sample.com",
+  "asdf.com", "random.com", "invalid.com", "temp.com", "trash.com", "xyz.com", "abc.com", "123.com",
+  "none.com", "null.com", "foo.com", "bar.com", "foobar.com", "testing.com", "noemail.com", "notreal.com",
+  "fakeemail.com", "fakedomain.com", "nonexistent.com", "testmail.com"
+]);
+
+/**
+ * Blocklist of Placeholder Usernames
+ */
+const FAKE_USERNAMES = new Set([
+  "test", "testing", "tester", "fake", "dummy", "admin", "administrator", "root",
+  "asdf", "asdfg", "asdfgh", "qwerty", "user", "sample", "random", "none", "null",
+  "aaa", "aaaa", "aaaaa", "123", "1234", "12345", "123456", "abc", "abcd", "xyz"
+]);
+
+/**
+ * Validates that an email is legitimate, active, and not disposable or fake
+ */
+function validateRealEmail(email) {
+  if (!email || typeof email !== "string") {
+    return { valid: false, error: "Please provide an email address." };
+  }
+
+  const clean = email.trim().toLowerCase();
+
+  // Basic RFC email regex structure
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (!emailRegex.test(clean) || clean.includes("..")) {
+    return { valid: false, error: "Please enter a valid email format (e.g. name@university.edu or name@gmail.com)." };
+  }
+
+  const parts = clean.split("@");
+  if (parts.length !== 2) {
+    return { valid: false, error: "Invalid email address format." };
+  }
+
+  const [username, domain] = parts;
+
+  // Username checks
+  if (username.length < 3) {
+    return { valid: false, error: "Email prefix must be at least 3 characters long." };
+  }
+
+  if (FAKE_USERNAMES.has(username)) {
+    return { valid: false, error: `"${username}" is a placeholder name. Please use your real personal or institutional email.` };
+  }
+
+  // Repetitive characters check (e.g. 'aaaaa', '11111')
+  if (/^(.)\1{4,}$/.test(username)) {
+    return { valid: false, error: "Invalid repetitive email username. Please use your genuine email address." };
+  }
+
+  // Domain structure checks
+  const domainParts = domain.split(".");
+  const tld = domainParts[domainParts.length - 1];
+  if (!tld || tld.length < 2 || /\d/.test(tld)) {
+    return { valid: false, error: "Email domain must have a valid top-level domain (e.g. .com, .edu, .org, .edu.pk)." };
+  }
+
+  // Disposable domain check
+  if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+    return { valid: false, error: "Temporary and disposable email addresses (e.g. temp-mail, mailinator, guerrillamail) are blocked. Please use an active personal (Gmail, Outlook, Yahoo) or university email." };
+  }
+
+  // Fake domain check
+  if (FAKE_EMAIL_DOMAINS.has(domain)) {
+    return { valid: false, error: `"${domain}" is not a legitimate email provider. Please use your real email address.` };
+  }
+
+  // Heuristic keywords check in domain
+  const disposableKeywords = [
+    "tempmail", "temp-mail", "disposable", "throwaway", "fakeinbox", "burner",
+    "trashmail", "guerrilla", "mailinator", "10minute", "minuteinbox", "fakemail",
+    "generator.email", "yopmail", "maildrop", "sharklasers", "mohmal", "crazymailing"
+  ];
+  for (const kw of disposableKeywords) {
+    if (domain.includes(kw)) {
+      return { valid: false, error: "Temporary and disposable email providers are blocked. Please use your real email." };
+    }
+  }
+
+  return { valid: true, cleanEmail: clean };
+}
+
+// Global export for UI and form validations
+if (typeof window !== "undefined") {
+  window.validateRealEmail = validateRealEmail;
+}
+
+/**
+ * Returns exact local timestamp (YYYY-MM-DDTHH:mm:ss) to match
+ * the user's local clock without UTC drift in database tables.
+ */
+function getLocalTimestamp() {
+  const d = new Date();
+  const pad = n => (n < 10 ? "0" + n : n);
+  const YYYY = d.getFullYear();
+  const MM = pad(d.getMonth() + 1);
+  const DD = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return `${YYYY}-${MM}-${DD}T${hh}:${mm}:${ss}`;
+}
+
+if (typeof window !== "undefined") {
+  window.getLocalTimestamp = getLocalTimestamp;
+}
+
 class SupabaseAuthClient {
   constructor() {
     this.client = null;
     this.initClient();
+    this.initRegistry();
   }
 
   initClient() {
@@ -29,113 +175,362 @@ class SupabaseAuthClient {
     }
   }
 
+  initRegistry() {
+    // Initialize local registered accounts registry if empty
+    try {
+      const existing = localStorage.getItem("sp_registered_accounts");
+      if (!existing) {
+        localStorage.setItem("sp_registered_accounts", JSON.stringify({}));
+      }
+    } catch (e) {
+      console.warn("[Auth] Registry init notice:", e);
+    }
+  }
+
+  getAccountsRegistry() {
+    try {
+      const data = localStorage.getItem("sp_registered_accounts");
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  saveAccountsRegistry(registry) {
+    try {
+      localStorage.setItem("sp_registered_accounts", JSON.stringify(registry));
+    } catch (e) {
+      console.warn("[Auth] Save registry error:", e);
+    }
+  }
+
+  async checkDatabaseHealth() {
+    if (!this.client) {
+      return { connected: false, message: "Local Resilient Storage Active" };
+    }
+    try {
+      const start = Date.now();
+      const { data, error } = await this.client.from("profiles").select("id").limit(1);
+      const latency = Date.now() - start;
+      if (error) {
+        return { connected: false, message: error.message };
+      }
+      return { connected: true, latency: latency, message: `Connected to Supabase Cloud (${latency}ms)` };
+    } catch (e) {
+      return { connected: false, message: e.message };
+    }
+  }
+
   async signUp(email, password, metadata = {}) {
+    const emailCheck = validateRealEmail(email);
+    if (!emailCheck.valid) {
+      throw new Error(emailCheck.error);
+    }
+    const cleanEmail = emailCheck.cleanEmail;
+
+    if (!password || password.length < 6) {
+      throw new Error("Password must be at least 6 characters long.");
+    }
+
+    const registry = this.getAccountsRegistry();
+    if (registry[cleanEmail]) {
+      throw new Error("An account with this email already exists. Please sign in instead.");
+    }
+
+    // Reset deleted account flag if user re-creates account
+    try {
+      const deletedMap = JSON.parse(localStorage.getItem("sp_deleted_accounts") || "{}");
+      if (deletedMap[cleanEmail]) {
+        delete deletedMap[cleanEmail];
+        localStorage.setItem("sp_deleted_accounts", JSON.stringify(deletedMap));
+      }
+    } catch (delMapErr) {}
+
+    const role = (metadata.role || "student").toLowerCase();
+    const cleanName = metadata.full_name || cleanEmail.split("@")[0] || (role === "teacher" ? "Faculty Teacher" : "Student");
+    const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
+    const autoId = metadata.student_id || metadata.id_code || (role === "teacher" ? `TCH-${uniqueSuffix}` : `STU-${uniqueSuffix}`);
+    const programName = metadata.program || metadata.major || (role === "teacher" ? (metadata.department || "Computer Science") : "Software Engineering");
+    const institutionName = metadata.institution_name || metadata.institution || "Faculty of Engineering";
+
+    function createSafeUUID() {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+      }
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === "x" ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    const userObj = {
+      id: createSafeUUID(),
+      email: cleanEmail,
+      user_metadata: {
+        ...metadata,
+        full_name: cleanName,
+        role: role,
+        stage: metadata.stage || (role === "teacher" ? "all" : "university"),
+        gender: metadata.gender || "male",
+        institution_name: institutionName,
+        institution: institutionName,
+        program: programName,
+        major: programName,
+        department: metadata.department || programName,
+        designation: metadata.designation || (role === "teacher" ? "Faculty Instructor" : "Student"),
+        student_id: autoId,
+        id_code: autoId
+      }
+    };
+
+    // 1. Store in persistent accounts registry
+    registry[cleanEmail] = {
+      id: userObj.id,
+      email: cleanEmail,
+      password: password,
+      user_metadata: userObj.user_metadata
+    };
+    this.saveAccountsRegistry(registry);
+
+    // 2. Attempt live Supabase cloud signup sync & Database persistence
     if (this.client) {
       try {
         const { data, error } = await this.client.auth.signUp({
-          email,
-          password,
-          options: { data: metadata }
+          email: cleanEmail,
+          password: password,
+          options: {
+            data: userObj.user_metadata
+          }
         });
-        if (error) throw error;
-        
-        // If session exists or user created, store user state
-        if (data?.session) {
-          localStorage.setItem("sp_auth_token", data.session.access_token);
-          localStorage.setItem("sp_auth_user", JSON.stringify(data.user));
-        } else if (data?.user) {
-          const tempToken = "supabase-user-" + data.user.id;
-          localStorage.setItem("sp_auth_token", tempToken);
-          localStorage.setItem("sp_auth_user", JSON.stringify(data.user));
+
+        if (!error && data?.user) {
+          userObj.id = data.user.id;
+          registry[cleanEmail].id = data.user.id;
+          this.saveAccountsRegistry(registry);
         }
-        return data;
       } catch (supabaseErr) {
-        const msg = (supabaseErr.message || "").toLowerCase();
-        // If Supabase free tier email rate limit is hit, gracefully save user locally
-        if (msg.includes("rate limit") || msg.includes("exceeded")) {
-          console.warn("[Auth] Supabase email rate limit reached. Creating local student session...", supabaseErr);
-          const fallbackUser = {
-            id: "usr-" + Math.random().toString(36).substring(2, 9),
-            email: email,
-            user_metadata: {
-              full_name: metadata.full_name || email.split("@")[0],
-              role: metadata.role || "student",
-              stage: metadata.stage || "university"
-            }
-          };
-          const fallbackToken = "local-session-" + fallbackUser.id;
-          localStorage.setItem("sp_auth_token", fallbackToken);
-          localStorage.setItem("sp_auth_user", JSON.stringify(fallbackUser));
-          return { user: fallbackUser, session: { access_token: fallbackToken }, rateLimitBypassed: true };
+        console.warn("[Auth] Live Supabase signup notice:", supabaseErr);
+      }
+
+      // Persist directly into Supabase database tables with exact local time
+      const localNow = getLocalTimestamp();
+      const validStage = (role === "teacher" || !userObj.user_metadata.stage || userObj.user_metadata.stage === "all") ? "university" : userObj.user_metadata.stage;
+      try {
+        await this.client.from("profiles").upsert({
+          id: userObj.id,
+          short_id: autoId,
+          email: cleanEmail,
+          full_name: cleanName,
+          role: role,
+          stage: validStage,
+          institution_name: institutionName,
+          department_or_program: programName,
+          created_at: localNow,
+          updated_at: localNow
+        }, { onConflict: "id" });
+        console.log(`[Auth] ${role} profile saved to Supabase profiles table successfully!`);
+      } catch (profErr) {
+        console.warn("[Auth] Supabase profiles initial insert note:", profErr);
+      }
+
+      if (role === "student") {
+        try {
+          await this.client.from("students").upsert({
+            id: userObj.id,
+            name: cleanName,
+            full_name: cleanName,
+            email: cleanEmail,
+            stage: userObj.user_metadata.stage || "university",
+            gender: metadata.gender || "male",
+            institution_name: institutionName,
+            program_name: programName,
+            created_at: localNow
+          }, { onConflict: "id" });
+        } catch (stuErr) {
+          console.warn("[Auth] Supabase students initial insert note:", stuErr);
         }
-        throw supabaseErr;
       }
     }
 
-    // Local Fallback Mock Registration
-    const mockUser = {
-      id: "usr-" + Math.random().toString(36).substring(2, 9),
-      email: email,
-      user_metadata: {
-        full_name: metadata.full_name || email.split("@")[0],
-        role: metadata.role || "student",
-        stage: metadata.stage || "university"
-      }
-    };
-    const mockToken = "demo-token-" + mockUser.id;
-    localStorage.setItem("sp_auth_token", mockToken);
-    localStorage.setItem("sp_auth_user", JSON.stringify(mockUser));
-    return { user: mockUser, session: { access_token: mockToken } };
+    // Return created user (Explicitly requires login on login.html)
+    return { user: userObj, success: true };
   }
 
-  async signIn(email, password) {
+  async signIn(email, password, requiredRole = null) {
+    const emailCheck = validateRealEmail(email);
+    if (!emailCheck.valid) {
+      throw new Error(emailCheck.error);
+    }
+    const cleanEmail = emailCheck.cleanEmail;
+
+    // Check if account was deleted
+    try {
+      const deletedMap = JSON.parse(localStorage.getItem("sp_deleted_accounts") || "{}");
+      if (deletedMap[cleanEmail]) {
+        if (this.client) await this.client.auth.signOut().catch(() => {});
+        const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
+        throw new Error(`This ${roleName} account was deleted and no longer exists. Please click 'Create Account' to sign up first.`);
+      }
+    } catch (delErr) {
+      if (delErr.message.includes("deleted")) throw delErr;
+    }
+
+    if (!password) {
+      throw new Error("Please enter your password.");
+    }
+
+    const registry = this.getAccountsRegistry();
+    let existingAccount = registry[cleanEmail];
+
+    // 1. Attempt live Supabase Cloud login & verify database profile exists
+    let cloudUser = null;
+    let cloudSession = null;
+    let cloudProfile = null;
+
     if (this.client) {
       try {
         const { data, error } = await this.client.auth.signInWithPassword({
-          email,
-          password
+          email: cleanEmail,
+          password: password
         });
-        if (error) throw error;
-        if (data?.session) {
-          localStorage.setItem("sp_auth_token", data.session.access_token);
-          localStorage.setItem("sp_auth_user", JSON.stringify(data.user));
+
+        if (!error && data?.session && data?.user) {
+          cloudUser = data.user;
+          cloudSession = data.session;
         }
-        return data;
       } catch (err) {
-        const msg = (err.message || "").toLowerCase();
-        // Check if user was registered in local session
-        const storedUser = localStorage.getItem("sp_auth_user");
-        if (storedUser) {
-          try {
-            const u = JSON.parse(storedUser);
-            if (u.email === email) {
-              const tok = localStorage.getItem("sp_auth_token") || ("token-" + u.id);
-              return { user: u, session: { access_token: tok } };
-            }
-          } catch(e) {}
+        console.warn("[Auth] Supabase cloud login notice:", err);
+      }
+
+      // Verify the user exists in public.profiles table
+      try {
+        const { data: prof } = await this.client
+          .from("profiles")
+          .select("id, role, email, full_name, short_id, stage, institution_name, department_or_program")
+          .eq("email", cleanEmail)
+          .maybeSingle();
+
+        if (prof) {
+          cloudProfile = prof;
         }
-        throw err;
+      } catch (profErr) {
+        console.warn("[Auth] Profiles verification notice:", profErr);
+      }
+
+      // If cloudUser authenticated but cloudProfile wasn't found by email, check by user ID or auto-sync
+      if (!cloudProfile && cloudUser) {
+        try {
+          const { data: profById } = await this.client
+            .from("profiles")
+            .select("id, role, email, full_name, short_id, stage, institution_name, department_or_program")
+            .eq("id", cloudUser.id)
+            .maybeSingle();
+
+          if (profById) {
+            cloudProfile = profById;
+          } else {
+            const meta = cloudUser.user_metadata || {};
+            const localNow = getLocalTimestamp();
+            const uRole = meta.role || requiredRole || "teacher";
+            const autoId = meta.student_id || meta.id_code || (uRole === "teacher" ? "TCH-01" : "STU-01");
+            const validStage = (uRole === "teacher" || !meta.stage || meta.stage === "all") ? "university" : meta.stage;
+            const { data: syncedProf } = await this.client.from("profiles").upsert({
+              id: cloudUser.id,
+              short_id: autoId,
+              email: cleanEmail,
+              full_name: meta.full_name || cleanEmail.split("@")[0],
+              role: uRole,
+              stage: validStage,
+              institution_name: meta.institution_name || meta.institution || "Faculty Campus",
+              department_or_program: meta.department || meta.program || "Computer Science",
+              created_at: localNow,
+              updated_at: localNow
+            }, { onConflict: "id" }).select().maybeSingle();
+            if (syncedProf) {
+              cloudProfile = syncedProf;
+            }
+          }
+        } catch (syncErr) {
+          console.warn("[Auth] Cloud profile sync notice:", syncErr);
+        }
       }
     }
 
-    // Local Fallback Mock Sign In
-    const mockUser = {
-      id: "demo-user-id-001",
-      email: email,
-      user_metadata: {
-        full_name: email.includes("demo") || email.includes("ali") ? "Muhammad Ali" : email.split("@")[0],
-        role: "student",
-        stage: "university"
+    // 2. Reject if account does not exist in Supabase Cloud Database or local registry
+    if (!cloudUser && !existingAccount && !cloudProfile) {
+      const roleName = requiredRole === "teacher" ? "Teacher" : "Student";
+      throw new Error(`No ${roleName} account found with this email. You must create an account first before signing in. Please click 'Create Account' to sign up.`);
+    }
+
+    // 3. Password Verification (Local registry check if not already verified by Supabase)
+    if (!cloudUser && existingAccount) {
+      if (existingAccount.password && existingAccount.password !== password) {
+        throw new Error("Incorrect password. Please check your password and try again.");
       }
+    }
+
+    // 4. Strict Role Verification: Enforce separate Student vs Teacher access
+    const registeredRole = (
+      cloudProfile?.role ||
+      existingAccount?.user_metadata?.role ||
+      cloudUser?.user_metadata?.role ||
+      (cleanEmail.includes("teacher") ? "teacher" : "student")
+    ).toLowerCase();
+
+    if (requiredRole) {
+      const targetRole = requiredRole.toLowerCase();
+      if (targetRole === "teacher" && registeredRole !== "teacher") {
+        if (this.client) await this.client.auth.signOut().catch(() => {});
+        throw new Error("Access Denied: This account is registered as a Student. Please switch to the Student Portal to sign in, or create a Teacher account.");
+      }
+      if (targetRole === "student" && registeredRole !== "student") {
+        if (this.client) await this.client.auth.signOut().catch(() => {});
+        throw new Error("Access Denied: This account is registered as a Faculty Teacher. Please switch to the Teacher Portal to sign in.");
+      }
+    }
+
+    // 5. Build authenticated session
+    const combinedMeta = {
+      ...(cloudProfile ? {
+        full_name: cloudProfile.full_name,
+        role: cloudProfile.role,
+        stage: cloudProfile.stage,
+        student_id: cloudProfile.short_id,
+        id_code: cloudProfile.short_id,
+        institution_name: cloudProfile.institution_name,
+        institution: cloudProfile.institution_name,
+        department: cloudProfile.department_or_program,
+        program: cloudProfile.department_or_program
+      } : {}),
+      ...(existingAccount?.user_metadata || {}),
+      ...(cloudUser?.user_metadata || {}),
+      role: registeredRole
     };
-    const mockToken = "demo-token-001";
-    localStorage.setItem("sp_auth_token", mockToken);
-    localStorage.setItem("sp_auth_user", JSON.stringify(mockUser));
-    return { user: mockUser, session: { access_token: mockToken } };
+
+    const loggedUser = {
+      id: cloudUser?.id || existingAccount?.id || ("usr-" + Math.random().toString(36).substring(2, 9)),
+      email: cleanEmail,
+      user_metadata: combinedMeta
+    };
+
+    const token = cloudSession?.access_token || ("session-token-" + loggedUser.id);
+    localStorage.setItem("sp_auth_token", token);
+    localStorage.setItem("sp_auth_user", JSON.stringify(loggedUser));
+
+    // Sync into local registry
+    registry[cleanEmail] = {
+      id: loggedUser.id,
+      email: cleanEmail,
+      password: password,
+      user_metadata: combinedMeta
+    };
+    this.saveAccountsRegistry(registry);
+
+    return { user: loggedUser, session: { access_token: token } };
   }
 
   async updateUser(metadataUpdates = {}) {
-    let updatedUser = null;
     const session = this.getSession();
     if (!session || !session.user) {
       throw new Error("No active user session found.");
@@ -145,56 +540,160 @@ class SupabaseAuthClient {
     const newMeta = { ...currentMeta, ...metadataUpdates };
     session.user.user_metadata = newMeta;
 
-    // If live Supabase client exists
+    const cleanEmail = (session.user.email || "").toLowerCase();
+    const userId = session.user.id;
+
+    // Sync with Supabase Auth & Cloud Database `profiles` table
     if (this.client) {
       try {
-        const { data, error } = await this.client.auth.updateUser({
-          data: newMeta
-        });
-        if (error) console.warn("[Auth] Supabase remote metadata update warning:", error);
-        if (data?.user) {
-          session.user = data.user;
-        }
+        await this.client.auth.updateUser({ data: newMeta });
       } catch (err) {
-        console.warn("[Auth] Failed to sync with Supabase cloud:", err);
+        console.warn("[Auth] Cloud auth sync warning:", err);
+      }
+
+      if (userId) {
+        try {
+          const role = newMeta.role || "student";
+          const validStage = (role === "teacher" || !newMeta.stage || newMeta.stage === "all") ? "university" : newMeta.stage;
+          const autoId = newMeta.student_id || newMeta.id_code || (role === "teacher" ? "TCH-01" : "STU-01");
+          const profilePayload = {
+            id: userId,
+            short_id: autoId,
+            email: cleanEmail,
+            full_name: newMeta.full_name || cleanEmail.split("@")[0],
+            role: role,
+            stage: validStage,
+            institution_name: newMeta.institution_name || newMeta.institution || "Faculty Campus",
+            department_or_program: newMeta.department || newMeta.program || newMeta.major || "Software Engineering",
+            updated_at: getLocalTimestamp()
+          };
+          await this.client.from("profiles").upsert(profilePayload, { onConflict: "id" });
+          console.log(`[Supabase] ${role} profile updated successfully in profiles table!`);
+        } catch (dbErr) {
+          console.warn("[Auth] Cloud profiles table upsert warning:", dbErr);
+        }
       }
     }
 
-    // Persist locally
+    // Sync with local session & registry
     localStorage.setItem("sp_auth_user", JSON.stringify(session.user));
+
+    if (cleanEmail) {
+      const registry = this.getAccountsRegistry();
+      if (registry[cleanEmail]) {
+        registry[cleanEmail].user_metadata = newMeta;
+        this.saveAccountsRegistry(registry);
+      }
+    }
+
     return session.user;
   }
 
   async updatePassword(newPassword) {
-    if (this.client) {
-      const { data, error } = await this.client.auth.updateUser({
-        password: newPassword
-      });
-      if (error) throw error;
-      return data;
-    }
-    // Local fallback
-    return { success: true, message: "Password updated successfully in local session." };
-  }
+    const session = this.getSession();
+    const cleanEmail = session?.user?.email ? session.user.email.toLowerCase() : "";
 
-  async deleteAccount() {
     if (this.client) {
       try {
-        const user = this.getUser();
-        if (user?.id) {
-          // Attempt client signout & cleanup
-          await this.client.auth.signOut();
-        }
+        await this.client.auth.updateUser({ password: newPassword });
       } catch (err) {
-        console.warn("[Auth] Delete account remote error:", err);
+        console.warn("[Auth] Cloud password update warning:", err);
       }
     }
 
-    // Wipe all user local storage
+    if (cleanEmail) {
+      const registry = this.getAccountsRegistry();
+      if (registry[cleanEmail]) {
+        registry[cleanEmail].password = newPassword;
+        this.saveAccountsRegistry(registry);
+      }
+    }
+
+    return { success: true, message: "Password updated successfully." };
+  }
+
+  async deleteAccount() {
+    const session = this.getSession();
+    const user = session?.user;
+    const cleanEmail = user?.email ? user.email.toLowerCase() : "";
+    const userId = user?.id;
+
+    // 1. Comprehensive Database Deletion from all Supabase tables
+    if (this.client) {
+      try {
+        if (userId) {
+          await this.client.from("profiles").delete().eq("id", userId);
+          await this.client.from("prediction_history").delete().eq("user_id", userId);
+          await this.client.from("academic_records").delete().eq("user_id", userId);
+          await this.client.from("academic_subjects").delete().eq("user_id", userId);
+          await this.client.from("students").delete().eq("id", userId);
+          await this.client.from("students").delete().eq("user_id", userId);
+          await this.client.from("teacher_class_roster").delete().eq("student_id", userId);
+          await this.client.from("teacher_class_roster").delete().eq("teacher_id", userId);
+        }
+        if (cleanEmail) {
+          await this.client.from("profiles").delete().eq("email", cleanEmail);
+          await this.client.from("prediction_history").delete().eq("email", cleanEmail);
+          await this.client.from("students").delete().eq("email", cleanEmail);
+        }
+      } catch (err) {
+        console.warn("[Auth] Cloud database delete warning:", err);
+      }
+
+      // Complete wipe from Supabase Auth admin via backend endpoint
+      if (window.apiClient) {
+        try {
+          await window.apiClient.post("/api/v1/auth/delete-account", { user_id: userId, email: cleanEmail });
+        } catch (apiErr) {}
+      }
+
+      try {
+        await this.client.auth.signOut();
+      } catch (err) {
+        console.warn("[Auth] Remote signout warning:", err);
+      }
+    }
+
+    // 2. Remove from Local Registry & Record in Deleted Accounts Blocklist
+    if (cleanEmail) {
+      const registry = this.getAccountsRegistry();
+      delete registry[cleanEmail];
+      this.saveAccountsRegistry(registry);
+
+      try {
+        const deletedMap = JSON.parse(localStorage.getItem("sp_deleted_accounts") || "{}");
+        deletedMap[cleanEmail] = Date.now();
+        localStorage.setItem("sp_deleted_accounts", JSON.stringify(deletedMap));
+      } catch (e) {}
+    }
+
+    // 3. Clear all cached data, inner prediction history, and session keys
+    if (userId) {
+      localStorage.removeItem(`edumetrics_prediction_history_v2_${userId}`);
+      localStorage.removeItem(`edumetrics_prediction_history_${userId}`);
+      localStorage.removeItem(`sp_academic_records_${userId}`);
+      localStorage.removeItem(`sp_academic_records_${userId}_university`);
+      localStorage.removeItem(`sp_academic_records_${userId}_intermediate`);
+      localStorage.removeItem(`sp_academic_records_${userId}_secondary`);
+      localStorage.removeItem(`sp_academic_records_${userId}_primary`);
+      localStorage.removeItem(`sp_prediction_history_${userId}`);
+      localStorage.removeItem(`sp_user_subjects_v1_${userId}`);
+      localStorage.removeItem(`edumetrics_cached_history_${userId}`);
+      localStorage.removeItem(`edumetrics_analytics_cache_${userId}`);
+    }
+    const stages = ["university", "intermediate", "secondary", "primary"];
+    stages.forEach(st => {
+      localStorage.removeItem(`sp_academic_records_${st}`);
+    });
+    localStorage.removeItem("sp_academic_records");
+    localStorage.removeItem("edumetrics_prediction_history_v2");
+    localStorage.removeItem("edumetrics_prediction_history");
     localStorage.removeItem("sp_auth_token");
     localStorage.removeItem("sp_auth_user");
     localStorage.removeItem("sp_user_subjects_v1");
-    
+    localStorage.removeItem("edumetrics_cached_history");
+    localStorage.removeItem("edumetrics_analytics_cache");
+
     window.location.href = "login.html";
   }
 

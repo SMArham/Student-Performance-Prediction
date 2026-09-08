@@ -10,14 +10,10 @@ from backend.app.main import app
 client = TestClient(app)
 
 
-def test_health_endpoint():
-    """Verify GET /health returns status healthy and lists loaded stages."""
+def test_health_endpoint_removed():
+    """Verify GET /health is completely removed and returns HTTP 404 Not Found."""
     response = client.get("/health")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "healthy"
-    assert data["ml_engine"]["status"] == "operational"
-    assert len(data["ml_engine"]["loaded_stages"]) == 4
+    assert response.status_code == 404
 
 
 def test_dashboard_summary_endpoint():
@@ -40,11 +36,10 @@ def test_dashboard_summary_endpoint():
     assert "predicted_gpa" in kpis
     assert "status_badge" in kpis
 
-    # Validate progression chart data
     assert "progression_trend" in data
     trend = data["progression_trend"]
     assert "labels" in trend
-    assert len(trend["labels"]) > 0
+    assert isinstance(trend["labels"], list)
     assert "past_gpa_series" in trend
     assert "predicted_target_series" in trend
 

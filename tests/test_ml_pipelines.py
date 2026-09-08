@@ -99,8 +99,8 @@ def test_secondary_prediction():
     }
     res = ml_service.predict("secondary", sample_input)
     assert res["success"] is True
-    assert 0.0 <= res["predicted_score"] <= 20.0
-    assert "/ 20" in res["formatted_score"]
+    assert 0.0 <= res["predicted_score"] <= 100.0
+    assert "%" in res["formatted_score"]
 
 
 def test_primary_prediction():
@@ -120,7 +120,7 @@ def test_primary_prediction():
     res = ml_service.predict("primary", sample_input)
     assert res["success"] is True
     assert 0.0 <= res["predicted_score"] <= 100.0
-    assert "/ 100" in res["formatted_score"]
+    assert "%" in res["formatted_score"]
 
 
 def test_performance_badge_calibration():

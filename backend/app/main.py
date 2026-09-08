@@ -18,7 +18,7 @@ from backend.app.core.exceptions import (
     app_exception_handler,
     generic_exception_handler,
 )
-from backend.app.routes import health, dashboard, predictions, history, models_registry, auth
+from backend.app.routes import dashboard, predictions, history, models_registry, students, academic_records
 from backend.app.services.ml_service import ml_service
 
 
@@ -35,17 +35,19 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Student Performance API service...")
 
 
+# Initialize FastAPI app with Swagger and ReDoc documentation explicitly disabled
 app = FastAPI(
     title="Student Performance Prediction & Analytics API",
-    description="Multi-stage AI-driven student academic forecasting, calibrated performance monitoring, and analytics engine.",
-    version="1.0.0",
+    description="Multi-Stage Machine Learning Engine & Analytics System",
+    version="2.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None,       # Swagger UI disabled as requested
+    redoc_url=None,      # ReDoc disabled as requested
+    openapi_url=None,    # OpenAPI JSON disabled
 )
 
 # ------------------------------------------------------------------------------
-# 1. CORS Middleware
+# 1. Production-Grade CORS Configuration
 # ------------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -80,24 +82,33 @@ app.add_exception_handler(Exception, generic_exception_handler)
 # ------------------------------------------------------------------------------
 # 4. API Route Registrations
 # ------------------------------------------------------------------------------
-app.include_router(health.router)
 app.include_router(dashboard.router)
 app.include_router(predictions.router)
 app.include_router(history.router)
 app.include_router(models_registry.router)
-app.include_router(auth.router, prefix="/api/v1")
+app.include_router(students.router)
+app.include_router(academic_records.router)
+
+from backend.app.services.supabase_service import supabase_service
+
+@app.post("/api/v1/auth/delete-account", summary="Permanent Account Deletion")
+@app.delete("/api/v1/auth/delete-account", summary="Permanent Account Deletion")
+async def delete_account_endpoint(payload: dict):
+    user_id = payload.get("user_id")
+    email = payload.get("email")
+    success = supabase_service.delete_account_complete(user_id=user_id, email=email)
+    return {"success": success, "message": "Account completely wiped from Supabase Auth & Database."}
 
 
 # ------------------------------------------------------------------------------
 # 5. Robust Static Frontend & HTML Route Serving
 # ------------------------------------------------------------------------------
-# Calculate absolute frontend path robustly
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 if not os.path.exists(FRONTEND_DIR):
     FRONTEND_DIR = os.path.abspath("frontend")
 
 if os.path.exists(FRONTEND_DIR):
-    # Direct HTML file endpoints for seamless navigation
+    # Direct HTML file endpoints for seamless navigation across all 3 pages
     @app.get("/login", include_in_schema=False)
     @app.get("/login.html", include_in_schema=False)
     async def serve_login():
@@ -120,6 +131,46 @@ if os.path.exists(FRONTEND_DIR):
         dash_file = os.path.join(FRONTEND_DIR, "dashboard.html")
         if os.path.exists(dash_file):
             return FileResponse(dash_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
+    @app.get("/prediction", include_in_schema=False)
+    @app.get("/prediction.html", include_in_schema=False)
+    async def serve_prediction():
+        pred_file = os.path.join(FRONTEND_DIR, "prediction.html")
+        if os.path.exists(pred_file):
+            return FileResponse(pred_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
+    @app.get("/analytics", include_in_schema=False)
+    @app.get("/analytics.html", include_in_schema=False)
+    async def serve_analytics():
+        analytics_file = os.path.join(FRONTEND_DIR, "analytics.html")
+        if os.path.exists(analytics_file):
+            return FileResponse(analytics_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
+    @app.get("/teacher-dashboard", include_in_schema=False)
+    @app.get("/teacher-dashboard.html", include_in_schema=False)
+    async def serve_teacher_dashboard():
+        dash_file = os.path.join(FRONTEND_DIR, "teacher-dashboard.html")
+        if os.path.exists(dash_file):
+            return FileResponse(dash_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
+    @app.get("/teacher-prediction", include_in_schema=False)
+    @app.get("/teacher-prediction.html", include_in_schema=False)
+    async def serve_teacher_prediction():
+        pred_file = os.path.join(FRONTEND_DIR, "teacher-prediction.html")
+        if os.path.exists(pred_file):
+            return FileResponse(pred_file, media_type="text/html")
+        return RedirectResponse(url="/")
+
+    @app.get("/teacher-analytics", include_in_schema=False)
+    @app.get("/teacher-analytics.html", include_in_schema=False)
+    async def serve_teacher_analytics():
+        analytics_file = os.path.join(FRONTEND_DIR, "teacher-analytics.html")
+        if os.path.exists(analytics_file):
+            return FileResponse(analytics_file, media_type="text/html")
         return RedirectResponse(url="/")
 
     @app.get("/index.html", include_in_schema=False)
