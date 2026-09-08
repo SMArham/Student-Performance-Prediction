@@ -2691,12 +2691,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
       calculateModalGpaFromRows();
 
-      if (modalAddTerm) modalAddTerm.classList.add("active");
+      if (modalAddTerm) {
+        modalAddTerm.style.setProperty("display", "flex", "important");
+        modalAddTerm.classList.add("active");
+      }
     });
   }
 
-  if (btnCloseTermModal) btnCloseTermModal.addEventListener("click", () => modalAddTerm?.classList.remove("active"));
-  if (btnCancelTermModal) btnCancelTermModal.addEventListener("click", () => modalAddTerm?.classList.remove("active"));
+  function closeTermModal() {
+    if (modalAddTerm) {
+      modalAddTerm.style.setProperty("display", "none", "important");
+      modalAddTerm.classList.remove("active");
+    }
+  }
+
+  if (btnCloseTermModal) btnCloseTermModal.addEventListener("click", closeTermModal);
+  if (btnCancelTermModal) btnCancelTermModal.addEventListener("click", closeTermModal);
+  if (modalAddTerm) {
+    modalAddTerm.addEventListener("click", (e) => {
+      if (e.target === modalAddTerm) closeTermModal();
+    });
+  }
 
   if (addTermForm) {
     addTermForm.addEventListener("submit", async (e) => {
@@ -2759,7 +2774,7 @@ document.addEventListener("DOMContentLoaded", () => {
           });
         }
         showToast(`Saved ${termName} successfully!`, "success");
-        if (modalAddTerm) modalAddTerm.classList.remove("active");
+        closeTermModal();
         await loadAcademicTerms(currentStage);
       } catch (err) {
         showToast(`Failed to save record: ${err.message}`, "error");
@@ -2807,7 +2822,10 @@ document.addEventListener("DOMContentLoaded", () => {
         addModalSubjectRow("", "", "", 100);
       }
     }
-    if (modalAddTerm) modalAddTerm.classList.add("active");
+    if (modalAddTerm) {
+      modalAddTerm.style.setProperty("display", "flex", "important");
+      modalAddTerm.classList.add("active");
+    }
   };
 
   window.deleteSemester = async (termName) => {
@@ -3405,17 +3423,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // 13. USER PROFILE & SETTINGS MODAL (PRESERVED)
   // ============================================================================
   function initProfileSettings() {
-    const userProfileBtn = document.getElementById("user-profile-btn");
-    const btnOpenSettings = document.getElementById("btn-open-settings");
-    const profileModal = document.getElementById("profile-settings-modal");
-    const btnCloseProfile = document.getElementById("btn-close-profile-modal");
-    const btnCancelProfile = document.getElementById("btn-cancel-profile");
-    const profileTabs = document.querySelectorAll(".modal-tab-btn");
-    const tabContents = document.querySelectorAll(".profile-tab-content");
-    const profileForm = document.getElementById("profile-details-form");
-    const studentNameEl = document.getElementById("student-name");
-    const studentIdCodeEl = document.getElementById("student-id-code");
-    const btnDeleteAccount = document.getElementById("btn-delete-account");
     const sidebarToggle = document.getElementById("sidebar-toggle");
     const sidebar = document.getElementById("sidebar");
     const logoutBtn = document.getElementById("logout-btn");
@@ -3431,149 +3438,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    function populateSettingsInputs() {
-      const user = window.authClient ? window.authClient.getUser() : null;
-      const userMeta = user?.user_metadata || {};
-      const idCode = userMeta.student_id || userMeta.id_code || (userMeta.role === "teacher" ? "TCH-2026-001" : "STU-2026-001");
-      const program = userMeta.program || userMeta.major || "Software Engineering";
-      const institution = userMeta.institution_name || userMeta.institution || "Faculty of Engineering";
-
-      const settingName = document.getElementById("setting-fullname");
-      const settingEmail = document.getElementById("setting-email");
-      const settingId = document.getElementById("setting-studentid");
-      const settingProg = document.getElementById("setting-program") || document.getElementById("setting-major");
-      const settingInst = document.getElementById("setting-institution");
-
-      if (settingName) settingName.value = userMeta.full_name || (user?.email ? user.email.split("@")[0] : "");
-      if (settingEmail) settingEmail.value = user?.email || "";
-      if (settingId) settingId.value = idCode;
-      if (settingProg) settingProg.value = program;
-      if (settingInst) settingInst.value = institution;
-
-      // Reset and clear security password fields
-      const secForm = document.getElementById("profile-security-form");
-      if (secForm) secForm.reset();
-      const newPassInput = document.getElementById("setting-new-password");
-      const confPassInput = document.getElementById("setting-confirm-password");
-      if (newPassInput) newPassInput.value = "";
-      if (confPassInput) confPassInput.value = "";
-
-      // Reset tabs to show first tab by default
-      profileTabs.forEach((t, i) => {
-        if (i === 0) t.classList.add("active");
-        else t.classList.remove("active");
-      });
-      tabContents.forEach((c, i) => {
-        if (i === 0) {
-          c.classList.add("active");
-          c.style.display = "block";
-        } else {
-          c.classList.remove("active");
-          c.style.display = "none";
-        }
-      });
-    }
-
-    const railProfileBtn = document.getElementById("rail-profile-btn");
-    if (railProfileBtn && profileModal) {
-      railProfileBtn.addEventListener("click", () => {
-        populateSettingsInputs();
-        profileModal.classList.add("active");
-      });
-    }
-    if (btnOpenSettings && profileModal) {
-      btnOpenSettings.addEventListener("click", () => {
-        populateSettingsInputs();
-        profileModal.classList.add("active");
-      });
-    }
-    if (userProfileBtn && profileModal) {
-      userProfileBtn.addEventListener("click", () => {
-        populateSettingsInputs();
-        profileModal.classList.add("active");
-      });
-    }
-    if (btnCloseProfile && profileModal) {
-      btnCloseProfile.addEventListener("click", () => profileModal.classList.remove("active"));
-    }
-    if (btnCancelProfile && profileModal) {
-      btnCancelProfile.addEventListener("click", () => profileModal.classList.remove("active"));
-    }
-
-    profileTabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        const target = tab.getAttribute("data-tab");
-        profileTabs.forEach((t) => t.classList.remove("active"));
-        tabContents.forEach((c) => {
-          c.classList.remove("active");
-          c.style.display = "none";
-        });
-        tab.classList.add("active");
-        const targetEl = document.getElementById(target);
-        if (targetEl) {
-          targetEl.classList.add("active");
-          targetEl.style.display = "block";
-        }
-      });
-    });
-
-    populateSettingsInputs();
-
-    if (profileForm) {
-      profileForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const fullName = document.getElementById("setting-fullname")?.value.trim() || "User";
-        const programVal = (document.getElementById("setting-program") || document.getElementById("setting-major"))?.value.trim() || "Software Engineering";
-        const instVal = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
-
-        if (window.authClient) {
-          await window.authClient.updateUser({
-            full_name: fullName,
-            program: programVal,
-            major: programVal,
-            institution_name: instVal
-          });
-        }
-
-        syncUserProfile();
-        profileModal?.classList.remove("active");
-        showToast("Profile settings saved successfully!", "success");
-      });
-    }
-
-    const secForm = document.getElementById("profile-security-form");
-    if (secForm) {
-      secForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const newPass = document.getElementById("setting-new-password")?.value;
-        const confPass = document.getElementById("setting-confirm-password")?.value;
-
-        if (!newPass || newPass.length < 6) {
-          return showToast("Password must be at least 6 characters long.", "error");
-        }
-        if (newPass !== confPass) {
-          return showToast("Passwords do not match.", "error");
-        }
-
-        try {
-          if (window.authClient) await window.authClient.updatePassword(newPass);
-          profileModal?.classList.remove("active");
-          secForm.reset();
-          showToast("Password updated securely!", "success");
-        } catch (err) {
-          showToast(err.message || "Failed to update password.", "error");
-        }
-      });
-    }
-
-    if (btnDeleteAccount) {
-      btnDeleteAccount.addEventListener("click", async () => {
-        if (confirm("Permanently delete account and all historical predictions? This cannot be undone.")) {
-          if (window.authClient) await window.authClient.deleteAccount();
-          window.location.href = "login.html";
-        }
-      });
-    }
+    syncUserProfile();
   }
 
   // ============================================================================

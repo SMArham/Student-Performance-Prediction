@@ -70,15 +70,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const advisoryDescEl = document.getElementById("advisory-desc");
   const recentHistoryBody = document.getElementById("dashboard-recent-history-body");
 
-  // Profile Settings Modal DOMs
-  const userProfileBtn = document.getElementById("user-profile-btn");
-  const btnOpenSettings = document.getElementById("btn-open-settings");
-  const btnEditProfileOverview = document.getElementById("btn-edit-profile-overview");
-  const profileModal = document.getElementById("profile-settings-modal");
-  const btnCloseProfile = document.getElementById("btn-close-profile-modal");
-  const profileForm = document.getElementById("profile-details-form");
-  const btnDeleteAccount = document.getElementById("btn-delete-account-confirm");
-
   let predictionHistory = [];
 
   // Toast Helper
@@ -133,26 +124,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (institutionEl) institutionEl.innerText = institution;
     if (gradeLevelEl) gradeLevelEl.innerText = stageDisplay;
 
-    // Set values in Profile modal
-    const settingNameInput = document.getElementById("setting-fullname");
-    const settingEmailInput = document.getElementById("setting-email");
-    const settingStudentId = document.getElementById("setting-studentid");
-    const settingProgram = document.getElementById("setting-program") || document.getElementById("setting-major");
-    const settingInstitution = document.getElementById("setting-institution");
-
-    if (settingNameInput) settingNameInput.value = displayName;
-    if (settingEmailInput) settingEmailInput.value = user?.email || "";
-    if (settingStudentId) settingStudentId.value = idCode;
-    if (settingProgram) settingProgram.value = program;
-    if (settingInstitution) settingInstitution.value = institution;
-
-    // Reset and clear security password fields
-    const secForm = document.getElementById("profile-security-form");
-    if (secForm) secForm.reset();
-    const newPassInput = document.getElementById("setting-new-password");
-    const confPassInput = document.getElementById("setting-confirm-password");
-    if (newPassInput) newPassInput.value = "";
-    if (confPassInput) confPassInput.value = "";
   }
 
   // --------------------------------------------------------------------------
@@ -371,98 +342,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     stageSelector.addEventListener("change", (e) => {
       currentStage = e.target.value;
       loadStudentPortalData(currentStage);
-    });
-  }
-
-  // --------------------------------------------------------------------------
-  // Profile & Settings Modal Bindings
-  // --------------------------------------------------------------------------
-  const railProfileBtn = document.getElementById("rail-profile-btn");
-  if (railProfileBtn) railProfileBtn.onclick = () => { renderUserProfile(); profileModal?.classList.add("active"); };
-  if (userProfileBtn) userProfileBtn.onclick = () => { renderUserProfile(); profileModal?.classList.add("active"); };
-  if (btnOpenSettings) btnOpenSettings.onclick = () => { renderUserProfile(); profileModal?.classList.add("active"); };
-  if (btnEditProfileOverview) btnEditProfileOverview.onclick = () => { renderUserProfile(); profileModal?.classList.add("active"); };
-  if (btnCloseProfile) btnCloseProfile.onclick = () => profileModal?.classList.remove("active");
-  if (profileModal) profileModal.onclick = (e) => { if (e.target === profileModal) profileModal.classList.remove("active"); };
-
-  // Profile Modal Tab Switching
-  const modalTabBtns = document.querySelectorAll(".modal-tab-btn");
-  const modalTabContents = document.querySelectorAll(".profile-tab-content");
-
-  modalTabBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const targetTab = btn.getAttribute("data-tab");
-      modalTabBtns.forEach((b) => b.classList.remove("active"));
-      modalTabContents.forEach((c) => {
-        c.classList.remove("active");
-        c.style.display = "none";
-      });
-
-      btn.classList.add("active");
-      const activeContent = document.getElementById(targetTab);
-      if (activeContent) {
-        activeContent.classList.add("active");
-        activeContent.style.display = "block";
-      }
-    });
-  });
-
-  // Profile Form Save
-  if (profileForm) {
-    profileForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = document.getElementById("setting-fullname")?.value.trim() || "User";
-      const program = (document.getElementById("setting-program") || document.getElementById("setting-major"))?.value.trim() || "Software Engineering";
-      const inst = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
-
-      if (window.authClient) {
-        await window.authClient.updateUser({
-          full_name: name,
-          program: program,
-          major: program,
-          institution_name: inst
-        });
-      }
-
-      renderUserProfile();
-      profileModal?.classList.remove("active");
-      showToast("Profile details updated successfully!", "success");
-    });
-  }
-
-  // Password Security Form Save
-  const profileSecurityForm = document.getElementById("profile-security-form");
-  if (profileSecurityForm) {
-    profileSecurityForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const newPass = document.getElementById("setting-new-password")?.value;
-      const confPass = document.getElementById("setting-confirm-password")?.value;
-
-      if (!newPass || newPass.length < 6) {
-        return showToast("Password must be at least 6 characters long.", "error");
-      }
-      if (newPass !== confPass) {
-        return showToast("Passwords do not match.", "error");
-      }
-
-      try {
-        if (window.authClient) await window.authClient.updatePassword(newPass);
-        profileModal?.classList.remove("active");
-        profileSecurityForm.reset();
-        showToast("Password updated securely!", "success");
-      } catch (err) {
-        showToast(err.message || "Failed to update password.", "error");
-      }
-    });
-  }
-
-  // Delete Account Action
-  if (btnDeleteAccount) {
-    btnDeleteAccount.addEventListener("click", async () => {
-      if (confirm("Permanently delete your account and all data? This cannot be undone.")) {
-        if (window.authClient) await window.authClient.deleteAccount();
-        window.location.href = "login.html";
-      }
     });
   }
 

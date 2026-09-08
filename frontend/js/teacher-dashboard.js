@@ -66,135 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Profile Modal Elements
-  const railProfileBtn = document.getElementById("rail-profile-btn");
-  const profileModal = document.getElementById("profile-settings-modal");
-  const btnCloseProfile = document.getElementById("btn-close-profile-modal");
-  const profileForm = document.getElementById("profile-details-form");
 
-  function openTeacherSettings() {
-    const user = window.authClient ? window.authClient.getUser() : null;
-    const meta = user?.user_metadata || {};
-
-    const nameInput = document.getElementById("setting-fullname");
-    const emailInput = document.getElementById("setting-email");
-    const idInput = document.getElementById("setting-studentid");
-    const deptInput = document.getElementById("setting-department") || document.getElementById("setting-program");
-    const instInput = document.getElementById("setting-institution");
-
-    if (nameInput) nameInput.value = meta.full_name || (user?.email ? user.email.split("@")[0] : "");
-    if (emailInput) emailInput.value = user?.email || "";
-    if (idInput) idInput.value = meta.student_id || meta.id_code || "";
-    if (deptInput) deptInput.value = meta.department || meta.program || "";
-    if (instInput) instInput.value = meta.institution_name || meta.institution || "";
-
-    // Reset and clear security password fields
-    const secForm = document.getElementById("profile-security-form");
-    if (secForm) secForm.reset();
-    const newPassInput = document.getElementById("setting-new-password");
-    const confPassInput = document.getElementById("setting-confirm-password");
-    if (newPassInput) newPassInput.value = "";
-    if (confPassInput) confPassInput.value = "";
-
-    profileModal?.classList.add("active");
-  }
-
-  const userProfileBtn = document.getElementById("user-profile-btn");
-  if (userProfileBtn) userProfileBtn.addEventListener("click", openTeacherSettings);
-  if (railProfileBtn) railProfileBtn.addEventListener("click", openTeacherSettings);
-  if (btnCloseProfile && profileModal) {
-    btnCloseProfile.addEventListener("click", () => profileModal.classList.remove("active"));
-  }
-  if (profileModal) {
-    profileModal.addEventListener("click", (e) => {
-      if (e.target === profileModal) profileModal.classList.remove("active");
-    });
-  }
-
-  // Profile Modal Tab Switching
-  const modalTabBtns = profileModal ? profileModal.querySelectorAll(".modal-tab-btn") : [];
-  const modalTabContents = profileModal ? profileModal.querySelectorAll(".profile-tab-content") : [];
-
-  modalTabBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const targetTab = btn.getAttribute("data-tab");
-      modalTabBtns.forEach((b) => b.classList.remove("active"));
-      modalTabContents.forEach((c) => {
-        c.classList.remove("active");
-        c.style.display = "none";
-      });
-
-      btn.classList.add("active");
-      const activeContent = document.getElementById(targetTab);
-      if (activeContent) {
-        activeContent.classList.add("active");
-        activeContent.style.display = "block";
-      }
-    });
-  });
-
-  // Profile Details Form Submission Handler
-  if (profileForm) {
-    profileForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const nameVal = document.getElementById("setting-fullname")?.value.trim() || "Instructor";
-      const idCodeVal = document.getElementById("setting-studentid")?.value.trim() || "TCH-01";
-      const deptVal = document.getElementById("setting-department")?.value.trim() || "Computer Science";
-      const instVal = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
-
-      if (window.authClient) {
-        await window.authClient.updateUser({
-          full_name: nameVal,
-          student_id: idCodeVal,
-          id_code: idCodeVal,
-          department: deptVal,
-          program: deptVal,
-          institution_name: instVal,
-          institution: instVal
-        });
-      }
-
-      if (teacherNameEl) teacherNameEl.innerText = nameVal;
-      if (teacherIdCodeEl) teacherIdCodeEl.innerText = idCodeVal;
-      profileModal?.classList.remove("active");
-      showToast("Instructor profile updated successfully!", "success");
-    });
-  }
-
-  const securityForm = document.getElementById("profile-security-form");
-  if (securityForm) {
-    securityForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const newPass = document.getElementById("setting-new-password")?.value;
-      const confPass = document.getElementById("setting-confirm-password")?.value;
-
-      if (!newPass || newPass.length < 6) {
-        return showToast("Password must be at least 6 characters long.", "error");
-      }
-      if (newPass !== confPass) {
-        return showToast("Passwords do not match.", "error");
-      }
-
-      try {
-        if (window.authClient) await window.authClient.updatePassword(newPass);
-        profileModal?.classList.remove("active");
-        securityForm.reset();
-        showToast("Password updated securely!", "success");
-      } catch (err) {
-        showToast(err.message || "Failed to update password.", "error");
-      }
-    });
-  }
-
-  const btnDeleteAccount = document.getElementById("btn-delete-account-confirm");
-  if (btnDeleteAccount) {
-    btnDeleteAccount.addEventListener("click", async () => {
-      if (confirm("Permanently delete your instructor account and all cohort records? This action cannot be undone.")) {
-        if (window.authClient) await window.authClient.deleteAccount();
-        window.location.href = "login.html";
-      }
-    });
-  }
 
   // ============================================================================
   // EVALUATED STUDENTS & DIAGNOSTIC LEDGER
@@ -549,13 +421,23 @@ document.addEventListener("DOMContentLoaded", () => {
         if (targetNameEl) targetNameEl.innerText = name || "Student";
         if (targetIdEl) targetIdEl.innerText = `ID: ${id}`;
 
-        if (modalDeleteTStudent) modalDeleteTStudent.classList.add("active");
+        if (modalDeleteTStudent) {
+          modalDeleteTStudent.style.setProperty("display", "flex", "important");
+          modalDeleteTStudent.classList.add("active");
+        }
       });
     });
   }
 
-  if (btnCloseDelTModal) btnCloseDelTModal.addEventListener("click", () => modalDeleteTStudent?.classList.remove("active"));
-  if (btnCancelDelTModal) btnCancelDelTModal.addEventListener("click", () => modalDeleteTStudent?.classList.remove("active"));
+  const closeDelTModal = () => {
+    if (modalDeleteTStudent) {
+      modalDeleteTStudent.classList.remove("active");
+      modalDeleteTStudent.style.setProperty("display", "none", "important");
+    }
+  };
+
+  if (btnCloseDelTModal) btnCloseDelTModal.addEventListener("click", closeDelTModal);
+  if (btnCancelDelTModal) btnCancelDelTModal.addEventListener("click", closeDelTModal);
 
   if (btnConfirmDelTStudent) {
     btnConfirmDelTStudent.addEventListener("click", () => {
@@ -565,7 +447,7 @@ document.addEventListener("DOMContentLoaded", () => {
       evaluatedStudentsStore = evaluatedStudentsStore.filter((x) => String(x.student_id) !== String(pendingDeleteStudentId));
       localStorage.setItem(teacher.storageKey, JSON.stringify(evaluatedStudentsStore));
 
-      if (modalDeleteTStudent) modalDeleteTStudent.classList.remove("active");
+      closeDelTModal();
       pendingDeleteStudentId = null;
 
       renderRosterTable();

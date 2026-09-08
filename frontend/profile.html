@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Profile & Settings | Student Performance Prediction</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Production API Base URL -->
+  <meta name="api-base-url" content="">
+
+  <!-- Stylesheets (v3.0.0 cache-buster) -->
+  <link rel="stylesheet" href="css/variables.css?v=3.0.0">
+  <link rel="stylesheet" href="css/layout.css?v=3.0.0">
+  <link rel="stylesheet" href="css/components.css?v=3.0.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
+  <link rel="stylesheet" href="css/tour.css?v=3.0.0">
+  
+  <!-- Google Fonts: Barlow Condensed & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  
+  <!-- APPLICATION MAIN SHELL WRAPPER -->
+  <div class="app-viewport">
+    
+    <!-- FLOATING DASHBOARD PANEL SHELL -->
+    <div class="dashboard-shell">
+      
+      <!-- 1. TOP NAVBAR -->
+      <header class="top-navbar">
+        <div class="navbar-brand-group">
+          <a href="dashboard.html" class="brand-logo-badge" title="Student Performance Prediction">
+            SP
+          </a>
+        </div>
+
+        <!-- Live Database Status Pill -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-left: auto; margin-right: 16px;">
+          <div id="db-health-badge" style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; background: rgba(82, 196, 26, 0.08); border: 1px solid rgba(82, 196, 26, 0.25); border-radius: 20px; font-size: 11.5px; color: #52c41a; font-weight: 600;">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #52c41a; display: inline-block; box-shadow: 0 0 5px rgba(82,196,26,0.8);"></span>
+            <span id="db-health-text">Supabase Cloud: Synced</span>
+          </div>
+        </div>
+
+        <!-- Upper Right User Identity Block -->
+        <a href="profile.html" class="navbar-user-block active" id="user-profile-btn" title="Profile & Account Settings" style="text-decoration: none;">
+          <div class="user-avatar-badge">
+            <div class="user-avatar-circle" id="navbar-user-avatar">SP</div>
+            <div class="user-status-indicator"></div>
+          </div>
+          <div class="user-text-meta">
+            <div class="user-display-name" id="student-name">Loading...</div>
+            <div class="user-subrole" id="student-id-code">Student</div>
+          </div>
+        </a>
+      </header>
+
+      <!-- 2. SHELL BODY: LEFT UTILITY RAIL + MAIN CONTENT CANVAS -->
+      <div class="shell-body-wrapper">
+        
+        <!-- Left Action Rail -->
+        <aside class="left-action-rail">
+          <div class="action-rail-stack">
+            <a href="dashboard.html" class="rail-icon-btn" title="Dashboard">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+              <span class="rail-label">Dashboard</span>
+            </a>
+            <a href="prediction.html" class="rail-icon-btn" title="Run Forecast">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span class="rail-label">Forecast</span>
+            </a>
+            <a href="analytics.html" class="rail-icon-btn" title="Analytics Hub">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span class="rail-label">Analytics</span>
+            </a>
+            <a href="profile.html" class="rail-icon-btn active" id="rail-profile-btn" title="Profile & Account Settings">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span class="rail-label">Profile</span>
+            </a>
+            <button type="button" class="rail-icon-btn tour-btn" id="rail-tour-btn" title="Quick Platform Tour">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+              <span class="rail-label">Tour</span>
+              <span class="tour-badge-dot"></span>
+            </button>
+            <button type="button" class="rail-icon-btn" id="logout-btn" title="Sign Out">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span class="rail-label">Logout</span>
+            </button>
+          </div>
+        </aside>
+
+        <!-- Main Content Canvas -->
+        <main class="main-content-canvas" style="max-width: 960px; margin: 0 auto; width: 100%;">
+          
+          <!-- Top Row: Page Title -->
+          <div class="dashboard-top-row" style="margin-bottom: var(--space-4);">
+            <div>
+              <h1 class="page-title-display" style="font-size: 32px; letter-spacing: 0.04em; margin-bottom: 4px;">
+                STUDENT PROFILE & SETTINGS
+              </h1>
+              <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
+                Manage personal information, academic credentials, security credentials, and system preferences.
+              </p>
+            </div>
+            <div style="margin-left: auto;">
+              <a href="dashboard.html" class="btn btn-secondary btn-sm">
+                <span>← Back to Dashboard</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Profile Card Container -->
+          <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--border-subtle); background: var(--color-surface-base);">
+            
+            <!-- Navigation Tabs Bar -->
+            <div class="profile-tabs-bar" style="background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border-subtle); padding: 12px 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+              <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Academic Profile</span>
+              </button>
+              <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Security</span>
+              </button>
+              <button type="button" class="modal-tab-btn danger-tab" data-tab="tab-profile-danger">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>Danger Zone</span>
+              </button>
+            </div>
+
+            <div style="padding: var(--space-6);">
+              
+              <!-- TAB 1: Academic & Personal Profile -->
+              <div class="profile-tab-content active" id="tab-profile-general">
+                <form id="profile-details-form">
+                  <div class="profile-section-card" style="background: var(--color-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: var(--space-6); margin-bottom: var(--space-6);">
+                    <div class="profile-section-heading" style="font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: var(--space-4); text-transform: uppercase; letter-spacing: 0.05em;">
+                      Personal & Academic Identification
+                    </div>
+                    
+                    <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+                      <div class="form-group">
+                        <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
+                        <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Muhammad Ali" required>
+                      </div>
+
+                      <div class="form-group">
+                        <label class="form-label" for="setting-email">
+                          Email Address <span class="badge-fixed-tag">🔒 Readonly</span>
+                        </label>
+                        <div class="fixed-input-wrapper">
+                          <input type="email" id="setting-email" class="form-input readonly-fixed-input" placeholder="student@university.edu" readonly>
+                        </div>
+                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Your registered student email address.</div>
+                      </div>
+                    </div>
+
+                    <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+                      <div class="form-group">
+                        <label class="form-label" for="setting-studentid">
+                          Student ID Code <span class="badge-fixed-tag">🔒 Fixed</span>
+                        </label>
+                        <div class="fixed-input-wrapper">
+                          <input type="text" id="setting-studentid" class="form-input readonly-fixed-input" placeholder="STU-2026-001" readonly>
+                        </div>
+                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Generated automatically upon registration. Immutable.</div>
+                      </div>
+
+                      <div class="form-group">
+                        <label class="form-label" for="setting-stage">Academic Stage</label>
+                        <select id="setting-stage" class="form-select">
+                          <option value="university">University (0.00 – 4.00 CGPA)</option>
+                          <option value="intermediate">Intermediate (HSSC / FSC)</option>
+                          <option value="matric">Matriculation (SSC / 9th-10th)</option>
+                          <option value="secondary">Secondary School</option>
+                          <option value="primary">Primary School</option>
+                        </select>
+                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Active educational tier for ML model routing.</div>
+                      </div>
+                    </div>
+
+                    <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+                      <div class="form-group">
+                        <label class="form-label" for="setting-program">Enrolled Program / Major</label>
+                        <input type="text" id="setting-program" class="form-input" placeholder="e.g. Software Engineering / Computer Science">
+                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Your primary degree or academic stream.</div>
+                      </div>
+
+                      <div class="form-group">
+                        <label class="form-label" for="setting-institution">Institution Name</label>
+                        <input type="text" id="setting-institution" class="form-input" placeholder="e.g. Faculty of Engineering / Govt College">
+                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Your registered school, college, or university.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="profile-action-row" style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary" style="height: 44px; padding: 0 28px; font-size: 14px; font-weight: 700;">
+                      💾 Save Profile Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- TAB 2: Security & Password -->
+              <div class="profile-tab-content" id="tab-profile-security" style="display: none;">
+                <form id="profile-security-form">
+                  <div class="profile-section-card" style="background: var(--color-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: var(--space-6); margin-bottom: var(--space-6);">
+                    <div class="profile-section-heading" style="font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: var(--space-4); text-transform: uppercase; letter-spacing: 0.05em;">
+                      Password & Authentication Security
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: var(--space-4); max-width: 480px;">
+                      <label class="form-label" for="setting-new-password">New Password</label>
+                      <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: var(--space-2); max-width: 480px;">
+                      <label class="form-label" for="setting-confirm-password">Confirm New Password</label>
+                      <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter new password to confirm" required autocomplete="new-password">
+                    </div>
+                  </div>
+
+                  <div class="profile-action-row" style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary" style="height: 44px; padding: 0 28px; font-size: 14px; font-weight: 700;">
+                      🔒 Update Password Securely
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- TAB 3: Danger Zone -->
+              <div class="profile-tab-content" id="tab-profile-danger" style="display: none;">
+                <div class="danger-zone-card" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-card); padding: var(--space-6);">
+                  <div class="danger-zone-header" style="display: flex; gap: 14px; align-items: flex-start; margin-bottom: var(--space-4);">
+                    <span class="danger-icon" style="font-size: 28px;">⚠️</span>
+                    <div>
+                      <div class="danger-title" style="font-size: 16px; font-weight: 700; color: var(--color-red); margin-bottom: 4px;">
+                        Permanent Account & Data Deletion
+                      </div>
+                      <div class="danger-desc" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                        Permanently deletes your account authentication profile, stored student grades, custom ML history forecasts, and saved preferences.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="danger-warning-note" style="font-size: 12px; color: #fca5a5; background: rgba(239, 68, 68, 0.1); padding: 10px 14px; border-radius: 6px; margin-bottom: var(--space-5);">
+                    This action cannot be undone. All your academic diagnostic records and profile details will be permanently wiped from the database.
+                  </div>
+
+                  <button type="button" class="btn btn-danger" id="btn-delete-account-confirm" style="height: 44px; font-size: 14px; font-weight: 700;">
+                    🗑️ Permanently Delete My Account
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </main>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/supabase-client.js?v=3.0.0"></script>
+  <script src="js/api.js?v=3.0.0"></script>
+  <script src="js/profile.js?v=3.0.0"></script>
+</body>
+</html>

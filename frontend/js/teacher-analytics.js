@@ -1122,7 +1122,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (btnEdit) {
       btnEdit.onclick = () => {
-        modalViewCohort.classList.remove("active");
+        closeViewModal();
         openEditModal(s.student_id);
       };
     }
@@ -1130,6 +1130,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       btnPredict.href = `teacher-prediction.html?student_id=${encodeURIComponent(s.student_id)}&name=${encodeURIComponent(s.student_name)}&stage=${encodeURIComponent(s.stage)}`;
     }
 
+    modalViewCohort.style.setProperty("display", "flex", "important");
     modalViewCohort.classList.add("active");
   }
 
@@ -1152,6 +1153,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("edit-predicted-score").value = s.predicted_score !== undefined ? s.predicted_score : "";
     document.getElementById("edit-strategy").value = s.notes || s.strategy || "";
 
+    modalEditCohort.style.setProperty("display", "flex", "important");
     modalEditCohort.classList.add("active");
   }
 
@@ -1224,7 +1226,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const teacher = getTeacherIdentity();
       localStorage.setItem(teacher.storageKey, JSON.stringify(cohortStudents));
 
-      modalEditCohort.classList.remove("active");
+      closeEditModal();
       updateAnalyticsView();
       showToast(`Student '${newName}' evaluation updated successfully!`, "success");
     });
@@ -1242,6 +1244,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (targetNameEl) targetNameEl.innerText = s.student_name || "Student";
     if (targetIdEl) targetIdEl.innerText = `Roll / ID: ${s.student_id} • Stage: ${(s.stage || "").toUpperCase()}`;
 
+    modalDeleteCohort.style.setProperty("display", "flex", "important");
     modalDeleteCohort.classList.add("active");
   }
 
@@ -1257,7 +1260,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const teacher = getTeacherIdentity();
       localStorage.setItem(teacher.storageKey, JSON.stringify(cohortStudents));
 
-      modalDeleteCohort.classList.remove("active");
+      closeDeleteModal();
       pendingDeleteStudentId = null;
 
       updateAnalyticsView();
@@ -1265,13 +1268,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  const closeViewModal = () => {
+    if (modalViewCohort) {
+      modalViewCohort.classList.remove("active");
+      modalViewCohort.style.setProperty("display", "none", "important");
+    }
+  };
+  const closeEditModal = () => {
+    if (modalEditCohort) {
+      modalEditCohort.classList.remove("active");
+      modalEditCohort.style.setProperty("display", "none", "important");
+    }
+  };
+  const closeDeleteModal = () => {
+    if (modalDeleteCohort) {
+      modalDeleteCohort.classList.remove("active");
+      modalDeleteCohort.style.setProperty("display", "none", "important");
+    }
+  };
+
   // Close triggers for View, Edit, Delete modals
-  document.getElementById("btn-close-view-modal")?.addEventListener("click", () => modalViewCohort?.classList.remove("active"));
-  document.getElementById("btn-close-view-modal-bottom")?.addEventListener("click", () => modalViewCohort?.classList.remove("active"));
-  document.getElementById("btn-close-edit-modal")?.addEventListener("click", () => modalEditCohort?.classList.remove("active"));
-  document.getElementById("btn-cancel-edit-modal")?.addEventListener("click", () => modalEditCohort?.classList.remove("active"));
-  document.getElementById("btn-close-delete-modal")?.addEventListener("click", () => modalDeleteCohort?.classList.remove("active"));
-  document.getElementById("btn-cancel-delete-modal")?.addEventListener("click", () => modalDeleteCohort?.classList.remove("active"));
+  document.getElementById("btn-close-view-modal")?.addEventListener("click", closeViewModal);
+  document.getElementById("btn-close-view-modal-bottom")?.addEventListener("click", closeViewModal);
+  document.getElementById("btn-close-edit-modal")?.addEventListener("click", closeEditModal);
+  document.getElementById("btn-cancel-edit-modal")?.addEventListener("click", closeEditModal);
+  document.getElementById("btn-close-delete-modal")?.addEventListener("click", closeDeleteModal);
+  document.getElementById("btn-cancel-delete-modal")?.addEventListener("click", closeDeleteModal);
 
   // --------------------------------------------------------------------------
   // FULLSCREEN THEATER LOGIC
@@ -1284,6 +1306,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (fsTitle) fsTitle.innerText = title;
     if (fsSubtitle) fsSubtitle.innerText = subtitle;
 
+    fsModal.style.setProperty("display", "flex", "important");
     fsModal.classList.add("active");
 
     const ctx = fsCanvas.getContext("2d");
@@ -1359,9 +1382,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     openFullscreenChart("mastery", "Coursework Pillar Mastery: Theory vs Quizzes vs Assignments", "High-resolution coursework assessment audit");
   });
 
+  const closeFsModal = () => {
+    if (fsModal) {
+      fsModal.classList.remove("active");
+      fsModal.style.setProperty("display", "none", "important");
+    }
+  };
+
   // Fullscreen Close Triggers
-  if (btnCloseFs) btnCloseFs.addEventListener("click", () => fsModal?.classList.remove("active"));
-  if (btnCloseFsBtn) btnCloseFsBtn.addEventListener("click", () => fsModal?.classList.remove("active"));
+  if (btnCloseFs) btnCloseFs.addEventListener("click", closeFsModal);
+  if (btnCloseFsBtn) btnCloseFsBtn.addEventListener("click", closeFsModal);
 
   // Download High-Res PNG from Theater
   if (btnFsDownloadPng) {
@@ -1418,147 +1448,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (filterStage) filterStage.addEventListener("change", updateAnalyticsView);
   if (filterRisk) filterRisk.addEventListener("change", updateAnalyticsView);
 
-  // Settings Modal & Profile Tabs
-  const profileModal = document.getElementById("profile-settings-modal");
-  const btnCloseProfile = document.getElementById("btn-close-profile-modal");
-  const railProfileBtn = document.getElementById("rail-profile-btn");
-  const modalTabBtns = document.querySelectorAll(".modal-tab-btn");
-  const modalTabContents = document.querySelectorAll(".profile-tab-content");
+  // Logout listener
   const logoutBtn = document.getElementById("logout-btn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
-      if (window.authClient) await window.authClient.signOut();
-      window.location.href = "login.html";
-    });
-  }
-
-  function openTeacherSettings() {
-    const user = window.authClient ? window.authClient.getUser() : null;
-    const meta = user?.user_metadata || {};
-
-    const nameInput = document.getElementById("setting-fullname");
-    const emailInput = document.getElementById("setting-email");
-    const idInput = document.getElementById("setting-studentid");
-    const deptInput = document.getElementById("setting-department") || document.getElementById("setting-program");
-    const instInput = document.getElementById("setting-institution");
-
-    if (nameInput) nameInput.value = meta.full_name || (user?.email ? user.email.split("@")[0] : "");
-    if (emailInput) emailInput.value = user?.email || "";
-    if (idInput) idInput.value = meta.student_id || meta.id_code || "";
-    if (deptInput) deptInput.value = meta.department || meta.program || "";
-    if (instInput) instInput.value = meta.institution_name || meta.institution || "";
-
-    // Reset security password fields
-    const secForm = document.getElementById("profile-security-form");
-    if (secForm) secForm.reset();
-    const newPassInput = document.getElementById("setting-new-password");
-    const confPassInput = document.getElementById("setting-confirm-password");
-    if (newPassInput) newPassInput.value = "";
-    if (confPassInput) confPassInput.value = "";
-
-    profileModal?.classList.add("active");
-  }
-
-  const userProfileBtn = document.getElementById("user-profile-btn");
-  if (userProfileBtn) userProfileBtn.addEventListener("click", openTeacherSettings);
-  if (railProfileBtn && profileModal) {
-    railProfileBtn.addEventListener("click", openTeacherSettings);
-  }
-  if (btnCloseProfile && profileModal) {
-    btnCloseProfile.addEventListener("click", () => profileModal.classList.remove("active"));
-  }
-  if (profileModal) {
-    profileModal.addEventListener("click", (e) => {
-      if (e.target === profileModal) profileModal.classList.remove("active");
-    });
-  }
-
-  const profileForm = document.getElementById("profile-details-form");
-  if (profileForm) {
-    profileForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const nameVal = document.getElementById("setting-fullname")?.value.trim() || "Instructor";
-      const idCodeVal = document.getElementById("setting-studentid")?.value.trim() || "TCH-01";
-      const deptVal = document.getElementById("setting-department")?.value.trim() || "Computer Science";
-      const instVal = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
-
-      if (window.authClient) {
-        await window.authClient.updateUser({
-          full_name: nameVal,
-          student_id: idCodeVal,
-          id_code: idCodeVal,
-          department: deptVal,
-          program: deptVal,
-          institution_name: instVal,
-          institution: instVal
-        });
-      }
-
-      const tNameEl = document.getElementById("teacher-name");
-      const tCodeEl = document.getElementById("teacher-id-code");
-      if (tNameEl) tNameEl.innerText = nameVal;
-      if (tCodeEl) tCodeEl.innerText = idCodeVal;
-
-      profileModal?.classList.remove("active");
-      showToast("Instructor profile updated successfully!", "success");
-    });
-  }
-
-  const securityForm = document.getElementById("profile-security-form");
-  if (securityForm) {
-    securityForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const newPass = document.getElementById("setting-new-password")?.value || "";
-      const confPass = document.getElementById("setting-confirm-password")?.value || "";
-
-      if (newPass.length < 6) {
-        showToast("Password must be at least 6 characters long.", "error");
-        return;
-      }
-      if (newPass !== confPass) {
-        showToast("Passwords do not match.", "error");
-        return;
-      }
-
-      try {
-        if (window.authClient) {
-          await window.authClient.updatePassword(newPass);
-        }
-        profileModal?.classList.remove("active");
-        showToast("Password changed successfully!", "success");
-      } catch (err) {
-        showToast(err.message || "Failed to update password.", "error");
-      }
-    });
-  }
-
-  const btnDeleteAccount = document.getElementById("btn-delete-account-confirm");
-  if (btnDeleteAccount) {
-    btnDeleteAccount.addEventListener("click", async () => {
-      const confirmText = prompt("Type 'DELETE' to confirm permanent instructor account deletion:");
-      if (confirmText === "DELETE") {
-        if (window.authClient) {
-          await window.authClient.deleteAccount();
-        }
-        window.location.href = "login.html";
-      }
-    });
-  }
-
-  modalTabBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const target = btn.getAttribute("data-tab");
-      modalTabBtns.forEach((b) => b.classList.remove("active"));
-      modalTabContents.forEach((c) => { c.classList.remove("active"); c.style.display = "none"; });
-      btn.classList.add("active");
-      const targetEl = document.getElementById(target);
-      if (targetEl) {
-        targetEl.classList.add("active");
-        targetEl.style.display = "block";
-      }
-    });
-  });
-
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       if (window.authClient) await window.authClient.signOut();
@@ -1569,3 +1460,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initial Boot
   await loadCohortData();
 });
+
