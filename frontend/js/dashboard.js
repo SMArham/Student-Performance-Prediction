@@ -42,7 +42,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // DOM Elements - Views
   const studentPortalView = document.getElementById("student-portal-view");
-  const teacherPortalView = document.getElementById("teacher-portal-view");
   const heroGreetingEl = document.getElementById("hero-greeting");
   const heroSubtitleEl = document.getElementById("hero-subtitle");
   const heroActionPrimary = document.getElementById("hero-action-primary");
@@ -71,37 +70,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const advisoryDescEl = document.getElementById("advisory-desc");
   const recentHistoryBody = document.getElementById("dashboard-recent-history-body");
 
-  // Teacher KPI DOMs
-  const teacherKpiTotalStudents = document.getElementById("teacher-kpi-total-students");
-  const teacherKpiClassAvg = document.getElementById("teacher-kpi-class-avg");
-  const teacherKpiAttendanceAvg = document.getElementById("teacher-kpi-attendance-avg");
-  const teacherKpiAtRiskCount = document.getElementById("teacher-kpi-at-risk-count");
-  const teacherKpiHighAchievers = document.getElementById("teacher-kpi-high-achievers");
-  const teacherKpiEvalRate = document.getElementById("teacher-kpi-eval-rate");
-
-  // Teacher Gradebook Table & Controls
-  const teacherStudentsTableBody = document.getElementById("teacher-students-table-body");
-  const teacherSearchInput = document.getElementById("teacher-search-input");
-  const teacherFilterStage = document.getElementById("teacher-filter-stage");
-  const btnRefreshStudents = document.getElementById("btn-refresh-students");
-  const btnAddStudentModal = document.getElementById("btn-add-student-modal");
-
-  // CRUD Modals DOMs
-  const modalStudentCrud = document.getElementById("modal-student-crud");
-  const btnCloseCrudModal = document.getElementById("btn-close-crud-modal");
-  const btnCancelCrudModal = document.getElementById("btn-cancel-crud-modal");
-  const studentCrudForm = document.getElementById("student-crud-form");
-  const crudModalTitle = document.getElementById("crud-modal-title");
-  const crudStudentId = document.getElementById("crud-student-id");
-
-  const modalConfirmDelete = document.getElementById("modal-confirm-delete-student");
-  const btnCloseDeleteModal = document.getElementById("btn-close-delete-modal");
-  const btnCancelDeleteModal = document.getElementById("btn-cancel-delete-modal");
-  const btnConfirmDeleteAction = document.getElementById("btn-confirm-delete-action");
-  const deleteStudentName = document.getElementById("delete-student-name");
-  const deleteStudentRoll = document.getElementById("delete-student-roll");
-  const deleteStudentIdInput = document.getElementById("delete-student-id");
-
   // Profile Settings Modal DOMs
   const userProfileBtn = document.getElementById("user-profile-btn");
   const btnOpenSettings = document.getElementById("btn-open-settings");
@@ -112,7 +80,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnDeleteAccount = document.getElementById("btn-delete-account-confirm");
 
   let predictionHistory = [];
-  let teacherStudentsList = [];
 
   // Toast Helper
   function showToast(message, type = "info") {
@@ -189,44 +156,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // Portal Initialization (Strict Single-Role Selection)
+  // Portal Initialization (Student Portal)
   // --------------------------------------------------------------------------
   function initPortal() {
     const firstName = (userMeta.full_name || "User").split(" ")[0];
 
-    if (userRole === "teacher") {
-      if (studentPortalView) studentPortalView.style.display = "none";
-      if (teacherPortalView) teacherPortalView.style.display = "block";
-      if (heroGreetingEl) heroGreetingEl.innerText = `Welcome, ${firstName} 👋`;
-      if (heroSubtitleEl) {
-        heroSubtitleEl.innerText = "Instructor Command Center. Manage class rosters, record coursework grades, and run AI performance forecasts.";
-      }
-      if (heroActionPrimary) {
-        heroActionPrimary.innerHTML = "<span>⚡ Run AI</span>";
-        heroActionPrimary.href = "prediction.html";
-      }
-      if (heroActionSecondary) {
-        heroActionSecondary.innerHTML = "<span>📈 Analytics</span>";
-        heroActionSecondary.href = "analytics.html";
-      }
-      loadTeacherGradebook();
-    } else {
-      if (studentPortalView) studentPortalView.style.display = "block";
-      if (teacherPortalView) teacherPortalView.style.display = "none";
-      if (heroGreetingEl) heroGreetingEl.innerText = `Welcome back, ${firstName} 👋`;
-      if (heroSubtitleEl) {
-        heroSubtitleEl.innerText = "Academic Performance & AI Evaluation Center. Monitor semester metrics, run predictive models, and access longitudinal insights.";
-      }
-      if (heroActionPrimary) {
-        heroActionPrimary.innerHTML = "<span>⚡ Run AI</span>";
-        heroActionPrimary.href = "prediction.html";
-      }
-      if (heroActionSecondary) {
-        heroActionSecondary.innerHTML = "<span>📈 Analytics</span>";
-        heroActionSecondary.href = "analytics.html";
-      }
-      loadStudentPortalData(currentStage);
+    if (studentPortalView) studentPortalView.style.display = "block";
+    if (heroGreetingEl) heroGreetingEl.innerText = `Welcome back, ${firstName} 👋`;
+    if (heroSubtitleEl) {
+      heroSubtitleEl.innerText = "Academic Performance & AI Evaluation Center. Monitor semester metrics, run predictive models, and access longitudinal insights.";
     }
+    if (heroActionPrimary) {
+      heroActionPrimary.innerHTML = "<span>⚡ Run AI</span>";
+      heroActionPrimary.href = "prediction.html";
+    }
+    if (heroActionSecondary) {
+      heroActionSecondary.innerHTML = "<span>📈 Analytics</span>";
+      heroActionSecondary.href = "analytics.html";
+    }
+    loadStudentPortalData(currentStage);
   }
 
   // --------------------------------------------------------------------------
@@ -418,305 +366,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
   }
 
-  // --------------------------------------------------------------------------
-  // Teacher Portal & Student Gradebook CRUD (No fake data)
-  // --------------------------------------------------------------------------
-  async function loadTeacherGradebook() {
-    const stage = teacherFilterStage?.value || "all";
-    const search = teacherSearchInput?.value?.trim() || "";
-
-    try {
-      if (window.apiClient) {
-        const resp = await window.apiClient.getStudents(stage, search);
-        if (resp && resp.students) {
-          teacherStudentsList = resp.students;
-        }
-      }
-    } catch (e) {
-      console.warn("Could not fetch students from API.");
-    }
-
-    renderTeacherKPIs();
-    renderTeacherStudentsTable();
-  }
-
-  function renderTeacherKPIs() {
-    if (!teacherStudentsList) return;
-    const total = teacherStudentsList.length;
-    let sumScore = 0;
-    let sumAtt = 0;
-    let atRisk = 0;
-    let highAchievers = 0;
-
-    teacherStudentsList.forEach((s) => {
-      const score = parseFloat(s.predicted_score || 0);
-      const att = parseFloat(s.attendance_pct || 0);
-      sumScore += score;
-      sumAtt += att;
-
-      if (score < 2.5 || att < 75.0 || (s.status_badge && s.status_badge.includes("Risk"))) {
-        atRisk++;
-      } else if (score >= 3.65 || (s.status_badge && s.status_badge.includes("Exemplary"))) {
-        highAchievers++;
-      }
-    });
-
-    const avgScore = total > 0 ? (sumScore / total).toFixed(2) : "--";
-    const avgAtt = total > 0 ? `${(sumAtt / total).toFixed(1)}%` : "--";
-
-    if (teacherKpiTotalStudents) teacherKpiTotalStudents.innerText = total;
-    if (teacherKpiClassAvg) teacherKpiClassAvg.innerText = avgScore;
-    if (teacherKpiAttendanceAvg) teacherKpiAttendanceAvg.innerText = avgAtt;
-    if (teacherKpiAtRiskCount) teacherKpiAtRiskCount.innerText = atRisk;
-    if (teacherKpiHighAchievers) teacherKpiHighAchievers.innerText = highAchievers;
-  }
-
-  function renderTeacherStudentsTable() {
-    if (!teacherStudentsTableBody) return;
-
-    if (!teacherStudentsList || teacherStudentsList.length === 0) {
-      teacherStudentsTableBody.innerHTML = `
-        <tr>
-          <td colspan="10" style="text-align: center; color: var(--text-muted); padding: var(--space-6);">
-            No student records found. Click <strong>'+ Add Student'</strong> to add students to your class gradebook.
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    teacherStudentsTableBody.innerHTML = teacherStudentsList
-      .map((stu) => {
-        const badgeClass = (stu.status_badge || "").includes("Risk") 
-          ? "badge-warning" 
-          : ((stu.status_badge || "").includes("Exemplary") ? "badge-success" : "badge-primary");
-
-        return `
-        <tr data-student-id="${stu.id}">
-          <td style="font-family: var(--font-family-mono); font-weight: 700; color: var(--color-orange); font-size: 12px;">
-            ${stu.roll_no}
-          </td>
-          <td>
-            <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">${stu.student_name}</div>
-            <div style="font-size: 11px; color: var(--text-muted);">${stu.email || "student@university.edu"}</div>
-          </td>
-          <td>
-            <div style="font-weight: 600; color: #ffffff; font-size: 12px;">${stu.class_section || "Section A"}</div>
-            <div style="font-size: 11px; color: var(--text-muted);">${stu.subject || "Course"}</div>
-          </td>
-          <td style="font-weight: 700; color: ${stu.attendance_pct < 75 ? 'var(--color-orange)' : 'var(--color-lime)'};">
-            ${stu.attendance_pct}%
-          </td>
-          <td>${stu.quiz_test_pct}%</td>
-          <td>${stu.assignment_pct}%</td>
-          <td>${stu.midterm_score}%</td>
-          <td>
-            <span style="font-weight: 800; font-size: 13.5px; color: var(--color-lime);">${stu.predicted_score || "0.00"}</span>
-          </td>
-          <td>
-            <span class="badge ${badgeClass}">${stu.status_badge || "Evaluated"}</span>
-          </td>
-          <td style="text-align: right;">
-            <div class="action-btn-group">
-              <button type="button" class="table-icon-btn btn-eval btn-eval-student" data-id="${stu.id}" title="Run AI Diagnostic">
-                ⚡ Run AI
-              </button>
-              <button type="button" class="table-icon-btn btn-edit btn-edit-student" data-id="${stu.id}" title="Edit Marks">
-                ✏️ Edit
-              </button>
-              <button type="button" class="table-icon-btn btn-delete btn-delete-student" data-id="${stu.id}" data-name="${stu.student_name}" data-roll="${stu.roll_no}" title="Delete Record">
-                🗑️
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-      })
-      .join("");
-
-    // Bind Action Buttons
-    document.querySelectorAll(".btn-edit-student").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const id = e.currentTarget.getAttribute("data-id");
-        openEditStudentModal(id);
-      });
-    });
-
-    document.querySelectorAll(".btn-delete-student").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const id = e.currentTarget.getAttribute("data-id");
-        const name = e.currentTarget.getAttribute("data-name");
-        const roll = e.currentTarget.getAttribute("data-roll");
-        openDeleteStudentModal(id, name, roll);
-      });
-    });
-
-    document.querySelectorAll(".btn-eval-student").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const id = e.currentTarget.getAttribute("data-id");
-        await runStudentEvaluation(id);
-      });
-    });
-  }
-
-  // --------------------------------------------------------------------------
-  // Teacher CRUD Modal Operations
-  // --------------------------------------------------------------------------
-  function openAddStudentModal() {
-    if (!modalStudentCrud) return;
-    if (crudModalTitle) crudModalTitle.innerText = "Add Student to Gradebook";
-    if (crudStudentId) crudStudentId.value = "";
-    if (studentCrudForm) studentCrudForm.reset();
-    document.getElementById("crud-section").value = "Section A";
-    document.getElementById("crud-subject").value = "Computer Science";
-    document.getElementById("crud-attendance").value = "85.0";
-    document.getElementById("crud-quiz").value = "80.0";
-    document.getElementById("crud-assignment").value = "80.0";
-    document.getElementById("crud-midterm").value = "75.0";
-    modalStudentCrud.classList.add("active");
-  }
-
-  function openEditStudentModal(id) {
-    const stu = teacherStudentsList.find((s) => s.id === id);
-    if (!stu || !modalStudentCrud) return;
-
-    if (crudModalTitle) crudModalTitle.innerText = `Edit Student: ${stu.student_name} (${stu.roll_no})`;
-    if (crudStudentId) crudStudentId.value = stu.id;
-
-    document.getElementById("crud-roll-no").value = stu.roll_no || "";
-    document.getElementById("crud-student-name").value = stu.student_name || "";
-    document.getElementById("crud-stage").value = stu.stage || "university";
-    document.getElementById("crud-gender").value = stu.gender || "male";
-    document.getElementById("crud-section").value = stu.class_section || "Section A";
-    document.getElementById("crud-subject").value = stu.subject || "Computer Science";
-    document.getElementById("crud-attendance").value = stu.attendance_pct || 85;
-    document.getElementById("crud-quiz").value = stu.quiz_test_pct || 80;
-    document.getElementById("crud-assignment").value = stu.assignment_pct || 80;
-    document.getElementById("crud-midterm").value = stu.midterm_score || 75;
-    document.getElementById("crud-notes").value = stu.notes || "";
-
-    modalStudentCrud.classList.add("active");
-  }
-
-  function openDeleteStudentModal(id, name, roll) {
-    if (!modalConfirmDelete) return;
-    if (deleteStudentIdInput) deleteStudentIdInput.value = id;
-    if (deleteStudentName) deleteStudentName.innerText = name;
-    if (deleteStudentRoll) deleteStudentRoll.innerText = roll;
-    modalConfirmDelete.classList.add("active");
-  }
-
-  // Close modals
-  if (btnCloseCrudModal) btnCloseCrudModal.onclick = () => modalStudentCrud?.classList.remove("active");
-  if (btnCancelCrudModal) btnCancelCrudModal.onclick = () => modalStudentCrud?.classList.remove("active");
-  if (btnCloseDeleteModal) btnCloseDeleteModal.onclick = () => modalConfirmDelete?.classList.remove("active");
-  if (btnCancelDeleteModal) btnCancelDeleteModal.onclick = () => modalConfirmDelete?.classList.remove("active");
-
-  // Save / Update Student Form Submit
-  if (studentCrudForm) {
-    studentCrudForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const id = crudStudentId.value.trim();
-      const rollNo = document.getElementById("crud-roll-no").value.trim();
-      const name = document.getElementById("crud-student-name").value.trim();
-      const stage = document.getElementById("crud-stage").value;
-      const gender = document.getElementById("crud-gender").value;
-      const section = document.getElementById("crud-section").value.trim();
-      const subject = document.getElementById("crud-subject").value.trim();
-      const att = parseFloat(document.getElementById("crud-attendance").value);
-      const quiz = parseFloat(document.getElementById("crud-quiz").value);
-      const assign = parseFloat(document.getElementById("crud-assignment").value);
-      const mid = parseFloat(document.getElementById("crud-midterm").value);
-      const notes = document.getElementById("crud-notes").value.trim();
-
-      const payload = {
-        roll_no: rollNo,
-        student_name: name,
-        email: `${name.toLowerCase().replace(/[\s._-]+/g, "")}@university.edu`,
-        stage: stage,
-        gender: gender,
-        class_section: section,
-        subject: subject,
-        attendance_pct: att,
-        quiz_test_pct: quiz,
-        assignment_pct: assign,
-        midterm_score: mid,
-        notes: notes
-      };
-
-      try {
-        if (id) {
-          await window.apiClient.updateStudent(id, payload);
-          showToast(`Student '${name}' updated in database!`, "success");
-        } else {
-          await window.apiClient.createStudent(payload);
-          showToast(`Student '${name}' created and added to roster!`, "success");
-        }
-        modalStudentCrud?.classList.remove("active");
-        await loadTeacherGradebook();
-      } catch (err) {
-        showToast(err.message || "Failed to save student record.", "error");
-      }
-    });
-  }
-
-  // Confirm Delete Action
-  if (btnConfirmDeleteAction) {
-    btnConfirmDeleteAction.addEventListener("click", async () => {
-      const id = deleteStudentIdInput.value;
-      if (!id) return;
-
-      try {
-        await window.apiClient.deleteStudent(id);
-        modalConfirmDelete?.classList.remove("active");
-        showToast("Student deleted from database.", "success");
-        await loadTeacherGradebook();
-      } catch (err) {
-        showToast(err.message || "Failed to delete student.", "error");
-      }
-    });
-  }
-
-  // Run On-Demand AI Diagnostic
-  async function runStudentEvaluation(id) {
-    try {
-      showToast("Running machine learning diagnostic...", "info");
-      const res = await window.apiClient.evaluateStudent(id);
-      showToast(`AI Evaluation complete for ${res.student_name}! Score: ${res.prediction?.predicted_score || "0.00"}`, "success");
-      await loadTeacherGradebook();
-    } catch (err) {
-      showToast("Evaluation complete.", "info");
-      await loadTeacherGradebook();
-    }
-  }
-
-  // Teacher Filter & Search Listeners
-  if (teacherSearchInput) {
-    teacherSearchInput.addEventListener("input", () => loadTeacherGradebook());
-  }
-  if (teacherFilterStage) {
-    teacherFilterStage.addEventListener("change", () => loadTeacherGradebook());
-  }
-  if (btnRefreshStudents) {
-    btnRefreshStudents.addEventListener("click", async () => {
-      showToast("Refreshing student roster...", "info");
-      await loadTeacherGradebook();
-    });
-  }
-  if (btnAddStudentModal) {
-    btnAddStudentModal.addEventListener("click", () => openAddStudentModal());
-  }
-
   // Stage Switcher
   if (stageSelector) {
     stageSelector.addEventListener("change", (e) => {
       currentStage = e.target.value;
-      if (userRole === "teacher") {
-        if (teacherFilterStage) teacherFilterStage.value = currentStage;
-        loadTeacherGradebook();
-      } else {
-        loadStudentPortalData(currentStage);
-      }
+      loadStudentPortalData(currentStage);
     });
   }
 

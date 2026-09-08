@@ -858,7 +858,8 @@ select.form-select option {
   justify-content: center !important;
   z-index: 100000 !important;
   opacity: 0;
-  pointer-events: none;
+  pointer-events: none !important;
+  visibility: hidden !important;
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 16px;
   box-sizing: border-box;
@@ -867,6 +868,7 @@ select.form-select option {
 .modal-backdrop.active {
   display: flex !important;
   opacity: 1 !important;
+  visibility: visible !important;
   pointer-events: auto !important;
 }
 
