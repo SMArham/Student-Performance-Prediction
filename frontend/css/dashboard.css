@@ -252,7 +252,39 @@
    Responsive
    ------------------------------------------------------------------------------ */
 @media (max-width: 1000px) {
-  .analytics-main-grid, .analytics-deep-grid, .comparison-grid {
-    grid-template-columns: 1fr;
+  .analytics-main-grid, .analytics-deep-grid, .comparison-grid, .tab-content-grid {
+    grid-template-columns: 1fr !important;
   }
+}
+
+.analytics-tab-bar {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-6);
+  overflow-x: auto;
+}
+
+.analytics-tab-btn {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.analytics-tab-pane {
+  display: none;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.analytics-tab-pane.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
