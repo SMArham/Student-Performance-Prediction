@@ -592,7 +592,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 11. CHART 1: PROGRESSION & TARGET TRAJECTORY (SINGLE CONTINUOUS CURVE WITH PREDICTION COLOR SHIFT)
+  // 11. CHART 1: PROGRESSION & TARGET TRAJECTORY (SEAMLESS SINGLE LINE WITH COLOR SHIFT AT PREDICTION)
   // --------------------------------------------------------------------------
   function renderProgressionChart() {
     const canvas = document.getElementById("analyticsProgressionChart");
@@ -626,8 +626,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     let labels = [];
-    let continuousData = [];
-    let predStartIndex = 0;
+    let pastScores = [];
+    let predScores = [];
     const insightEl = document.getElementById("score-insight-text");
 
     if (!stageRecords || stageRecords.length === 0) {
@@ -640,13 +640,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         trajBadgeEl.className = "badge badge-success";
       }
 
-      labels = ["Term 1 (Past)", "Term 2 (Past)", "Latest Exam", "⚡ AI Prediction", "🎯 Target Goal"];
+      labels = ["Diagnostic Baseline", "1st Term Exam", "Current Standing", "⚡ AI Prediction", "🎯 Target Goal"];
       if (stageMeta.isUni && !isAll) {
-        continuousData = [2.80, 3.05, 3.25, 3.52, 3.75];
+        pastScores = [2.85, 3.05, 3.25, null, null];
+        predScores = [null, null, 3.25, 3.52, 3.75];
       } else {
-        continuousData = [70, 76, 82, 86, 90];
+        pastScores = [70, 76, 82, null, null];
+        predScores = [null, null, 82, 86, 90];
       }
-      predStartIndex = 3;
 
       if (insightEl) {
         insightEl.innerHTML = `Continuous trajectory active! Solid lime curve shows verified tests, switching to sky-blue at <strong>⚡ AI Prediction</strong> toward your <strong>Target Goal (${defaultGoal})</strong>.`;
@@ -674,8 +675,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         labels = ["Diagnostic Baseline", "Current Score", "⚡ AI Prediction", "🎯 Target Goal"];
-        continuousData = [baseline, val, aiForecast, target];
-        predStartIndex = 2;
+        pastScores = [baseline, val, null, null];
+        predScores = [null, val, aiForecast, target];
 
         if (insightEl) {
           insightEl.innerHTML = `Starting score recorded at <strong>${item.score}</strong>. The blue line projects your <strong>AI Forecast (${aiForecast}${stageMeta.isUni && !isAll ? ' CGPA' : '%'})</strong> and <strong>Target Goal (${target}${stageMeta.isUni && !isAll ? ' CGPA' : '%'})</strong>!`;
@@ -695,8 +696,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels.push("⚡ AI Prediction");
         labels.push("🎯 Target Goal");
 
-        continuousData = [...values, aiForecast, target];
-        predStartIndex = values.length;
+        pastScores = [...values, null, null];
+        predScores = values.map((v, idx) => (idx === values.length - 1 ? v : null));
+        predScores.push(aiForecast, target);
 
         if (insightEl) {
           const delta = +(lastVal - firstVal).toFixed(1);
@@ -711,10 +713,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    const greenGradient = ctx.createLinearGradient(0, 0, 0, 260);
-    greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.22)");
-    greenGradient.addColorStop(0.6, "rgba(56, 189, 248, 0.15)");
-    greenGradient.addColorStop(1, "rgba(0, 0, 0, 0.0)");
+    const greenGradient = ctx.createLinearGradient(0, 0, 0, 300);
+    greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.30)");
+    greenGradient.addColorStop(1, "rgba(163, 230, 53, 0.0)");
+
+    const blueGradient = ctx.createLinearGradient(0, 0, 0, 300);
+    blueGradient.addColorStop(0, "rgba(56, 189, 248, 0.30)");
+    blueGradient.addColorStop(1, "rgba(56, 189, 248, 0.0)");
 
     const yMin = isAll ? 0 : stageMeta.min;
     const yMax = isAll ? 100 : stageMeta.max;
@@ -726,32 +731,32 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels: labels,
         datasets: [
           {
-            label: "Score Trajectory",
-            data: continuousData,
+            label: "Verified Past Tests",
+            data: pastScores,
             borderColor: "#A3E635",
             borderWidth: 3.5,
             fill: true,
             backgroundColor: greenGradient,
             tension: 0.38,
-            segment: {
-              borderColor: (segmentCtx) => {
-                const isPred = (segmentCtx.p0DataIndex !== undefined && segmentCtx.p0DataIndex >= predStartIndex - 1) || (segmentCtx.p1DataIndex !== undefined && segmentCtx.p1DataIndex >= predStartIndex);
-                return isPred ? "#38BDF8" : "#A3E635";
-              },
-              borderDash: (segmentCtx) => {
-                const isPred = (segmentCtx.p0DataIndex !== undefined && segmentCtx.p0DataIndex >= predStartIndex - 1) || (segmentCtx.p1DataIndex !== undefined && segmentCtx.p1DataIndex >= predStartIndex);
-                return isPred ? [6, 4] : undefined;
-              }
-            },
-            pointBackgroundColor: (pCtx) => {
-              if (pCtx.dataIndex >= predStartIndex) {
-                return "#38BDF8";
-              }
-              return "#A3E635";
-            },
+            pointBackgroundColor: "#A3E635",
             pointBorderColor: "#101217",
             pointBorderWidth: 2,
-            pointRadius: (pCtx) => (pCtx.dataIndex >= predStartIndex ? (isMobile ? 6.5 : 8) : (isMobile ? 5 : 6)),
+            pointRadius: isMobile ? 5.5 : 7,
+            pointHoverRadius: 9
+          },
+          {
+            label: "AI Prediction & Target Goal",
+            data: predScores,
+            borderColor: "#38BDF8",
+            borderDash: [6, 4],
+            borderWidth: 3.5,
+            fill: true,
+            backgroundColor: blueGradient,
+            tension: 0.38,
+            pointBackgroundColor: "#38BDF8",
+            pointBorderColor: "#101217",
+            pointBorderWidth: 2,
+            pointRadius: isMobile ? 6 : 7.5,
             pointHoverRadius: 9
           }
         ]
@@ -764,27 +769,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             display: true,
             position: "top",
             labels: {
-              generateLabels: () => [
-                {
-                  text: "🟢 Past Verified Tests",
-                  fillStyle: "#A3E635",
-                  strokeStyle: "#A3E635",
-                  lineWidth: 3,
-                  hidden: false,
-                  fontColor: "#94A3B8"
-                },
-                {
-                  text: "🔵 AI Prediction & Target Goal",
-                  fillStyle: "#38BDF8",
-                  strokeStyle: "#38BDF8",
-                  lineDash: [6, 4],
-                  lineWidth: 3,
-                  hidden: false,
-                  fontColor: "#94A3B8"
-                }
-              ],
-              font: { family: "Inter", size: isMobile ? 11 : 12 },
-              boxWidth: 14,
+              color: "#94A3B8",
+              font: { family: "Inter", size: isMobile ? 11 : 12, weight: "600" },
+              boxWidth: 12,
               padding: 14
             }
           },
@@ -797,7 +784,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             padding: 10,
             callbacks: {
               label: (context) => {
-                const isPred = context.dataIndex >= predStartIndex;
+                if (context.parsed.y === null || context.parsed.y === undefined) return "";
+                const isPred = context.datasetIndex === 1;
                 const prefix = isPred ? "⚡ AI Prediction / Target: " : "🟢 Verified Score: ";
                 return ` ${prefix}${context.parsed.y}${unitLabel}`;
               }
@@ -1813,8 +1801,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const stageRecords = currentStageFilter === "all" ? predictionHistory : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
       let labels = [];
-      let continuousData = [];
-      let predStartIndex = 0;
+      let pastScores = [];
+      let predScores = [];
 
       if (stageRecords.length > 0) {
         const activeList = stageRecords.slice().reverse();
@@ -1834,8 +1822,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           const target = stageMeta.isUni && currentStageFilter !== "all" ? Math.min(4.0, +(val + 0.35).toFixed(2)) : Math.min(100, Math.round(val + 8));
 
           labels = ["Diagnostic Baseline", "Current Score", "⚡ AI Prediction", "🎯 Target Goal"];
-          continuousData = [baseline, val, aiForecast, target];
-          predStartIndex = 2;
+          pastScores = [baseline, val, null, null];
+          predScores = [null, val, aiForecast, target];
         } else {
           const values = activeList.map((r) => parseVal(r));
           const lastVal = values[values.length - 1];
@@ -1846,19 +1834,28 @@ document.addEventListener("DOMContentLoaded", async () => {
           labels.push("⚡ AI Prediction");
           labels.push("🎯 Target Goal");
 
-          continuousData = [...values, aiForecast, target];
-          predStartIndex = values.length;
+          pastScores = [...values, null, null];
+          predScores = values.map((v, idx) => (idx === values.length - 1 ? v : null));
+          predScores.push(aiForecast, target);
         }
       } else {
-        labels = ["Term 1 (Past)", "Term 2 (Past)", "Latest Exam", "⚡ AI Prediction", "🎯 Target Goal"];
-        continuousData = stageMeta.isUni && currentStageFilter !== "all" ? [2.80, 3.05, 3.25, 3.52, 3.75] : [70, 76, 82, 86, 90];
-        predStartIndex = 3;
+        labels = ["Diagnostic Baseline", "1st Term Exam", "Current Standing", "⚡ AI Prediction", "🎯 Target Goal"];
+        if (stageMeta.isUni && currentStageFilter !== "all") {
+          pastScores = [2.85, 3.05, 3.25, null, null];
+          predScores = [null, null, 3.25, 3.52, 3.75];
+        } else {
+          pastScores = [70, 76, 82, null, null];
+          predScores = [null, null, 82, 86, 90];
+        }
       }
 
       const greenGradient = ctx.createLinearGradient(0, 0, 0, 450);
-      greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.25)");
-      greenGradient.addColorStop(0.6, "rgba(56, 189, 248, 0.18)");
-      greenGradient.addColorStop(1, "rgba(0, 0, 0, 0.0)");
+      greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.35)");
+      greenGradient.addColorStop(1, "rgba(163, 230, 53, 0.0)");
+
+      const blueGradient = ctx.createLinearGradient(0, 0, 0, 450);
+      blueGradient.addColorStop(0, "rgba(56, 189, 248, 0.35)");
+      blueGradient.addColorStop(1, "rgba(56, 189, 248, 0.0)");
 
       fsChartInstance = new Chart(ctx, {
         type: "line",
@@ -1866,27 +1863,32 @@ document.addEventListener("DOMContentLoaded", async () => {
           labels: labels,
           datasets: [
             {
-              label: "Score Trajectory",
-              data: continuousData,
+              label: "Verified Past Tests",
+              data: pastScores,
               borderColor: "#A3E635",
               borderWidth: 4,
               fill: true,
               backgroundColor: greenGradient,
               tension: 0.38,
-              segment: {
-                borderColor: (sCtx) => {
-                  const isPred = (sCtx.p0DataIndex !== undefined && sCtx.p0DataIndex >= predStartIndex - 1) || (sCtx.p1DataIndex !== undefined && sCtx.p1DataIndex >= predStartIndex);
-                  return isPred ? "#38BDF8" : "#A3E635";
-                },
-                borderDash: (sCtx) => {
-                  const isPred = (sCtx.p0DataIndex !== undefined && sCtx.p0DataIndex >= predStartIndex - 1) || (sCtx.p1DataIndex !== undefined && sCtx.p1DataIndex >= predStartIndex);
-                  return isPred ? [8, 6] : undefined;
-                }
-              },
-              pointBackgroundColor: (pCtx) => (pCtx.dataIndex >= predStartIndex ? "#38BDF8" : "#A3E635"),
+              pointBackgroundColor: "#A3E635",
               pointBorderColor: "#101217",
               pointBorderWidth: 3,
-              pointRadius: (pCtx) => (pCtx.dataIndex >= predStartIndex ? 8 : 6.5),
+              pointRadius: 7,
+              pointHoverRadius: 10
+            },
+            {
+              label: "AI Prediction & Target Goal",
+              data: predScores,
+              borderColor: "#38BDF8",
+              borderDash: [8, 6],
+              borderWidth: 4,
+              fill: true,
+              backgroundColor: blueGradient,
+              tension: 0.38,
+              pointBackgroundColor: "#38BDF8",
+              pointBorderColor: "#101217",
+              pointBorderWidth: 3,
+              pointRadius: 7.5,
               pointHoverRadius: 10
             }
           ]
@@ -1898,10 +1900,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             legend: {
               position: "top",
               labels: {
-                generateLabels: () => [
-                  { text: "🟢 Past Verified Tests", fillStyle: "#A3E635", strokeStyle: "#A3E635", lineWidth: 3, hidden: false, fontColor: "#F8FAFC" },
-                  { text: "🔵 AI Prediction & Target Goal", fillStyle: "#38BDF8", strokeStyle: "#38BDF8", lineDash: [8, 6], lineWidth: 3, hidden: false, fontColor: "#F8FAFC" }
-                ],
+                color: "#F8FAFC",
                 font: { family: "Inter", size: 13, weight: "bold" },
                 padding: 20
               }
@@ -1913,7 +1912,8 @@ document.addEventListener("DOMContentLoaded", async () => {
               padding: 16,
               callbacks: {
                 label: (context) => {
-                  const isPred = context.dataIndex >= predStartIndex;
+                  if (context.parsed.y === null || context.parsed.y === undefined) return "";
+                  const isPred = context.datasetIndex === 1;
                   const prefix = isPred ? "⚡ AI Prediction / Target: " : "🟢 Verified Score: ";
                   return ` ${prefix}${context.parsed.y}${currentStageFilter === "all" ? "%" : stageMeta.unit}`;
                 }
