@@ -14,11 +14,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Unified Dark Futuristic Stylesheets -->
-  <link rel="stylesheet" href="css/variables.css">
-  <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <link rel="stylesheet" href="css/tour.css">
+  <link rel="stylesheet" href="css/variables.css?v=2.7.0">
+  <link rel="stylesheet" href="css/layout.css?v=2.7.0">
+  <link rel="stylesheet" href="css/components.css?v=2.7.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=2.7.0">
 </head>
 <body>
   <!-- Toast Notification System -->
@@ -77,11 +76,6 @@
             <button type="button" class="rail-icon-btn" id="rail-profile-btn" title="Profile & Account Settings">
               <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               <span class="rail-label">Profile</span>
-            </button>
-            <button type="button" class="rail-icon-btn tour-btn" id="rail-tour-btn" title="Quick Platform Tour">
-              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-              <span class="rail-label">Tour</span>
-              <span class="tour-badge-dot"></span>
             </button>
             <button type="button" class="rail-icon-btn" id="logout-btn" title="Sign Out">
               <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -213,7 +207,7 @@
       </div>
     </div>
   <!-- Settings Modal -->
-  <div class="modal-backdrop" id="profile-settings-modal">
+  <div class="modal-backdrop" id="profile-settings-modal" style="display: none;">
     <div class="modal-dialog profile-settings-dialog">
       
       <!-- Modal Header with Avatar & Meta -->
@@ -354,7 +348,7 @@
   </div>
 
   <!-- MODAL: DELETE STUDENT RECORD CONFIRMATION -->
-  <div class="modal-backdrop" id="modal-delete-t-student">
+  <div class="modal-backdrop" id="modal-delete-t-student" style="display: none;">
     <div class="modal-dialog" style="max-width: 460px;">
       <div class="modal-header" style="border-bottom: 1px solid rgba(248, 113, 113, 0.2);">
         <div style="display: flex; align-items: center; gap: 10px;">
@@ -390,6 +384,5 @@
   <script src="js/supabase-client.js"></script>
   <script src="js/api.js"></script>
   <script src="js/teacher-dashboard.js"></script>
-  <script src="js/tour.js"></script>
 </body>
 </html>
