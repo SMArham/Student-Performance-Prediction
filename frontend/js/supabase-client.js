@@ -737,25 +737,3 @@ class SupabaseAuthClient {
 }
 
 window.authClient = new SupabaseAuthClient();
-
-// Universal Infallible Logout Delegator across all portal pages
-if (typeof document !== "undefined") {
-  document.addEventListener("click", async (e) => {
-    const logoutTarget = e.target.closest("#logout-btn, .logout-btn, [data-action='logout']");
-    if (logoutTarget) {
-      e.preventDefault();
-      e.stopPropagation();
-      try {
-        if (window.authClient) {
-          await window.authClient.signOut();
-        }
-      } catch (err) {
-        console.warn("SignOut warning:", err);
-      } finally {
-        localStorage.removeItem("spp_current_session");
-        localStorage.removeItem("spp_cached_user");
-        window.location.href = "login.html";
-      }
-    }
-  });
-}

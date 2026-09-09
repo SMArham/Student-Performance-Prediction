@@ -3,19 +3,18 @@
    Dark glassmorphism aesthetic with Lime Green focus highlight & backdrop blur
    ============================================================================== */
 
-/* 1. Backdrop Glass Blur */
+/* 1. Backdrop SVG Overlay with Cutout Mask (Zero blur, crisp transparent window) */
 #spp-tour-backdrop {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 99990;
-  background: rgba(6, 8, 12, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   display: none;
   pointer-events: none;
   visibility: hidden;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.25s ease;
 }
 
 #spp-tour-backdrop.active {
@@ -25,7 +24,14 @@
   visibility: visible;
 }
 
-/* 2. Spotlight Cutout & Glowing Focus Ring */
+#spp-tour-mask-cutout {
+  transition: x 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              y 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 2. Spotlight Glowing Focus Ring (Clear Center - No Inner Dimming / No Blur) */
 #spp-tour-highlight-box {
   position: fixed;
   z-index: 99995;
@@ -33,16 +39,16 @@
   display: none;
   visibility: hidden;
   border-radius: 12px;
-  border: 2px solid var(--color-lime, #a8f04b);
+  border: 2.5px solid var(--color-lime, #a8f04b);
+  background: transparent !important;
   box-shadow: 
-    0 0 0 9999px rgba(6, 8, 12, 0.82),
-    0 0 24px rgba(168, 240, 75, 0.45),
-    inset 0 0 12px rgba(168, 240, 75, 0.2);
+    0 0 22px rgba(168, 240, 75, 0.5),
+    0 0 4px rgba(168, 240, 75, 0.8);
   transition: 
-    top 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    left 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    top 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    left 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
     opacity 0.25s ease;
   opacity: 0;
 }
@@ -51,6 +57,15 @@
   display: block;
   opacity: 1;
   visibility: visible;
+}
+
+/* 3. Active Target Element: Razor Sharp, Fully Bright, Unblurred */
+.spp-tour-target-active {
+  position: relative !important;
+  z-index: 99993 !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
 }
 
 /* 3. Floating Explanatory Popover Card */

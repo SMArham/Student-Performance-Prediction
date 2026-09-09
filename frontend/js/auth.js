@@ -349,9 +349,6 @@ document.addEventListener("DOMContentLoaded", () => {
           id_code: autoId
         });
 
-        localStorage.setItem("spp_new_registration", "true");
-        localStorage.removeItem("spp_tour_completed");
-
         showToast("Account created successfully! Please sign in with your password.", "success");
 
         setTimeout(() => {
