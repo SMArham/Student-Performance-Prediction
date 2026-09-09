@@ -93,14 +93,14 @@
             <!-- Hero Analytics Banner -->
             <div class="dashboard-hero" style="margin-bottom: var(--space-6);">
               <div class="hero-text-content">
-                <h1 class="hero-greeting">Performance Analytics & Growth 📈</h1>
+                <h1 class="hero-greeting">Deep-Dive Analytics & Longitudinal Growth 📈</h1>
                 <p class="hero-subtitle">
-                  Track how your test scores improve over time, understand how daily study hours impact your marks, and discover your strongest subjects.
+                  Inspect dynamic machine learning trajectory graphs, compare past prediction milestones, and audit full historical diagnostics.
                 </p>
               </div>
               <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
                 <a href="prediction.html" class="btn btn-primary btn-sm">
-                  <span>⚡ Run AI Prediction</span>
+                  <span>⚡ Run AI</span>
                 </a>
               </div>
             </div>
@@ -147,87 +147,130 @@
           </div>
 
           <!-- ================================================================
-               SECTION 1: UNIFIED ALL-IN-ONE INTERACTIVE PERFORMANCE CHART
+               SECTION 1: 4-CHART DEEP-DIVE VISUAL ANALYTICS SUITE
                ================================================================ -->
-          <div class="card chart-card" id="analytics-unified-chart-card" style="margin-bottom: var(--space-6); padding: var(--space-5);">
-            
-            <!-- Card Header & Controls -->
-            <div class="card-header" style="flex-wrap: wrap; gap: var(--space-3); border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--space-4); margin-bottom: var(--space-4);">
-              <div>
-                <h2 class="card-title" id="unified-chart-title" style="font-size: 20px; display: flex; align-items: center; gap: 8px;">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                  <span>📈 Score Progress & Target Goal</span>
-                </h2>
-                <div class="card-subtitle" id="unified-chart-subtitle" style="margin-top: 4px; color: var(--text-secondary);">
-                  Track your test marks over time and compare against your target goal
+          <div class="analytics-main-grid" style="margin-bottom: var(--space-6);">
+            <!-- Chart 1: Progression Trend (Latest Primary Trajectory) -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                    <span>Academic Progression & Target Trajectory</span>
+                  </h2>
+                  <div class="card-subtitle">Primary focus on latest prediction checkpoint vs projected next term milestone</div>
                 </div>
-              </div>
-
-              <!-- Top-Right Actions (Fullscreen & PNG) -->
-              <div style="display: flex; gap: var(--space-2); align-items: center;">
-                <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-unified" title="Expand Full Screen View">
-                  <span>⛶ Fullscreen</span>
-                </button>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-save-unified-png" title="Download chart as PNG">
-                  <span>🖼️ Save PNG</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Score Standing Header Bar -->
-            <div style="display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 12px; margin-bottom: 16px; padding: 12px 18px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid rgba(163,230,53,0.25); align-items: center;">
-              <div>
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Latest Exam Score</div>
-                <div style="font-size: 18px; font-weight: 800; color: #ffffff;" id="trajectory-actual-val">--</div>
-              </div>
-              <div style="font-size: 18px; color: var(--color-lime); font-weight: 800;">➔</div>
-              <div>
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Target Goal 🎯</div>
-                <div style="font-size: 18px; font-weight: 800; color: var(--color-lime);" id="trajectory-projected-val">--</div>
-              </div>
-              <div style="text-align: right;">
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Standing</div>
-                <span class="badge badge-neutral" id="trajectory-status-badge">--</span>
-              </div>
-            </div>
-
-            <!-- Single Chart Viewport -->
-            <div class="chart-canvas-wrapper" style="min-height: 280px; height: 320px; position: relative;">
-              <canvas id="analyticsUnifiedChart"></canvas>
-            </div>
-
-            <!-- Graph Option Switcher (Bar Chart / Line Chart Options) -->
-            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
-              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-                <span style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-                  Select Graph View:
-                </span>
-                <!-- Switcher Buttons -->
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="chart-view-switcher">
-                  <button type="button" class="btn btn-sm btn-primary" data-chart-view="progress" id="tab-chart-progress" style="font-size: 12px;">
-                    📈 Score Progress (Line)
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-progression" title="Expand Full Screen View">
+                    <span>⛶ Fullscreen</span>
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline" data-chart-view="habits" id="tab-chart-habits" style="font-size: 12px;">
-                    ⏱️ Study Hours vs Marks (Bar)
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline" data-chart-view="subjects" id="tab-chart-subjects" style="font-size: 12px;">
-                    📚 Subject Strengths (Bar)
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline" data-chart-view="grades" id="tab-chart-grades" style="font-size: 12px;">
-                    🎯 Grade Tiers (Donut)
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-save-progression-png" title="Download chart as PNG">
+                    <span>🖼️ Save PNG</span>
                   </button>
                 </div>
               </div>
 
-              <!-- Friendly Dynamic Explanation Box -->
-              <div id="unified-chart-insight-box" style="padding: 12px 16px; background: rgba(163,230,53,0.06); border: 1px solid rgba(163,230,53,0.25); border-radius: 8px; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 10px; line-height: 1.5;">
-                <span style="font-size: 18px;" id="unified-chart-insight-icon">💡</span>
-                <span id="unified-chart-insight-text">
-                  This line graph shows your score improvement across tests. Aim for your Target Goal line!
-                </span>
+              <!-- High-Contrast Visual Trajectory Summary -->
+              <div style="display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 12px; margin-bottom: 12px; padding: 10px 14px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid rgba(168,240,75,0.25); align-items: center;">
+                <div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Current / Actual Standing</div>
+                  <div style="font-size: 17px; font-weight: 800; color: #ffffff;" id="trajectory-actual-val">--</div>
+                </div>
+                <div style="font-size: 18px; color: var(--color-lime); font-weight: 800;">➔</div>
+                <div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Projected Next Milestone</div>
+                  <div style="font-size: 17px; font-weight: 800; color: var(--color-lime);" id="trajectory-projected-val">--</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Status Tier</div>
+                  <span class="badge badge-neutral" id="trajectory-status-badge">--</span>
+                </div>
+              </div>
+
+              <div class="chart-canvas-wrapper">
+                <canvas id="analyticsProgressionChart"></canvas>
               </div>
             </div>
 
+            <!-- Chart 2: Risk & Grade Distribution -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                    <span>Performance Standing & Risk Assessment</span>
+                  </h2>
+                  <div class="card-subtitle">Personal evaluations categorized across calibrated performance tiers</div>
+                </div>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-distribution" title="Expand Full Screen View">
+                    <span>⛶ Fullscreen</span>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-save-distribution-png" title="Download chart as PNG">
+                    <span>🖼️ Save PNG</span>
+                  </button>
+                </div>
+              </div>
+              <div class="chart-canvas-wrapper">
+                <canvas id="analyticsGradeDistributionChart"></canvas>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-secondary);">
+                <div>🟢 <strong style="color:#a8f04b;">Honors:</strong> ≥80% (≥3.6 GPA)</div>
+                <div>🟢 <strong style="color:#c5f871;">Proficient:</strong> 70-79% (3.0-3.59)</div>
+                <div>⚪ <strong style="color:#ffffff;">Standard:</strong> 50-69% (2.0-2.99)</div>
+                <div>🟠 <strong style="color:#ff9c27;">At Risk:</strong> &lt;50% (&lt;2.0 GPA)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="analytics-deep-grid">
+            <!-- Chart 3: Subject Domain Mastery -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                    <span>Course Domain Mastery & Competency</span>
+                  </h2>
+                  <div class="card-subtitle">Dynamic competency evaluation derived from your logged coursework assessments</div>
+                </div>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-mastery" title="Expand Full Screen View">
+                    <span>⛶ Fullscreen</span>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-save-mastery-png" title="Download chart as PNG">
+                    <span>🖼️ Save PNG</span>
+                  </button>
+                </div>
+              </div>
+              <div class="chart-canvas-wrapper">
+                <canvas id="analyticsSubjectMasteryChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 4: Habits vs Exam Score Correlation -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+                    <span>Study Effort vs Outcome Correlation</span>
+                  </h2>
+                  <div class="card-subtitle">Correlation between logged daily self-study discipline and evaluation scores</div>
+                </div>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-habits" title="Expand Full Screen View">
+                    <span>⛶ Fullscreen</span>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-save-habits-png" title="Download chart as PNG">
+                    <span>🖼️ Save PNG</span>
+                  </button>
+                </div>
+              </div>
+              <div class="chart-canvas-wrapper">
+                <canvas id="analyticsHabitsCorrelationChart"></canvas>
+              </div>
+            </div>
           </div>
 
           <!-- ================================================================

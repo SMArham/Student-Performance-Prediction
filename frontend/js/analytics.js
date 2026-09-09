@@ -459,7 +459,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --------------------------------------------------------------------------
   function refreshAllViews() {
     updateSummaryKPIs();
-    renderUnifiedChart();
+    renderProgressionChart();
+    renderGradeDistributionChart();
+    renderSubjectMasteryChart();
+    renderHabitsCorrelationChart();
     renderStudentInstructorMatrix();
     populateComparisonDropdowns();
     renderLedgerTable();
@@ -583,550 +586,482 @@ document.addEventListener("DOMContentLoaded", async () => {
         ${emptyConfig.buttonText ? `<a href="${emptyConfig.buttonHref || 'prediction.html'}" class="btn btn-outline btn-sm" style="font-size:0.75rem; text-decoration:none; border-color:var(--color-lime); color:var(--color-lime); font-weight:700;">${emptyConfig.buttonText}</a>` : ''}
       `;
     } else {
-  // --------------------------------------------------------------------------
-  // 11. UNIFIED ALL-IN-ONE INTERACTIVE PERFORMANCE CHART CONTROLLER
-  // --------------------------------------------------------------------------
-  let currentUnifiedView = "progress";
-  let unifiedChart = null;
+      canvas.style.display = "block";
+              if (emptyEl) emptyEl.remove();
+    }
+  }
 
-  function renderUnifiedChart(view) {
-    if (view) currentUnifiedView = view;
-    const activeView = currentUnifiedView;
-    const canvas = document.getElementById("analyticsUnifiedChart");
+  // --------------------------------------------------------------------------
+  // 11. CHART 1: PROGRESSION & TARGET TRAJECTORY (CLEAN & SIMPLE LINE CHART)
+  // --------------------------------------------------------------------------
+  function renderProgressionChart() {
+    const canvas = document.getElementById("analyticsProgressionChart");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
-    if (unifiedChart) {
-      unifiedChart.destroy();
-      unifiedChart = null;
-    }
-
-    const titleEl = document.getElementById("unified-chart-title");
-    const subtitleEl = document.getElementById("unified-chart-subtitle");
-    const insightIconEl = document.getElementById("unified-chart-insight-icon");
-    const insightTextEl = document.getElementById("unified-chart-insight-text");
-    const trajActualEl = document.getElementById("trajectory-actual-val");
-    const trajProjEl = document.getElementById("trajectory-projected-val");
-    const trajBadgeEl = document.getElementById("trajectory-status-badge");
-
-    // Update switcher buttons UI
-    document.querySelectorAll("#chart-view-switcher button").forEach((btn) => {
-      const btnView = btn.getAttribute("data-chart-view");
-      if (btnView === activeView) {
-        btn.className = "btn btn-sm btn-primary";
-      } else {
-        btn.className = "btn btn-sm btn-outline";
-      }
-    });
+    if (progressionChart) progressionChart.destroy();
 
     const isAll = currentStageFilter === "all";
     const activeStage = isAll ? (predictionHistory[0]?.stage || "university") : currentStageFilter;
     const stageMeta = getStageMetadata(activeStage);
-    const isMobile = window.innerWidth <= 768;
 
-    // Latest Run updates for top bar
-    if (predictionHistory.length > 0) {
-      const latest = predictionHistory[0];
-      if (trajActualEl) trajActualEl.innerText = latest.score || "--";
-      if (trajBadgeEl) {
-        trajBadgeEl.innerText = latest.status_badge || "On Track";
-        trajBadgeEl.className = `badge ${latest.status_color || "badge-success"}`;
-      }
-    } else {
+    const stageRecords = isAll
+      ? predictionHistory
+      : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
+
+    const trajActualEl = document.getElementById("trajectory-actual-val");
+    const trajProjEl = document.getElementById("trajectory-projected-val");
+    const trajBadgeEl = document.getElementById("trajectory-status-badge");
+
+    if (!stageRecords || stageRecords.length === 0) {
       if (trajActualEl) trajActualEl.innerText = "--";
       if (trajProjEl) trajProjEl.innerText = "--";
       if (trajBadgeEl) {
         trajBadgeEl.innerText = "No Data";
         trajBadgeEl.className = "badge badge-neutral";
       }
-    }
-
-    // ------------------------------------------------------------------------
-    // VIEW 1: SCORE PROGRESS (LINE CHART)
-    // ------------------------------------------------------------------------
-    if (activeView === "progress") {
-      if (titleEl) {
-        titleEl.innerHTML = `
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-          <span>📈 Score Progress & Target Goal</span>
-        `;
-      }
-      if (subtitleEl) subtitleEl.innerText = "Track your marks improvement across tests and compare against your target goal";
-      if (insightIconEl) insightIconEl.innerText = "📈";
-
-      const stageRecords = isAll
-        ? predictionHistory
-        : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
-
-      if (!stageRecords || stageRecords.length === 0) {
-        updateChartEmptyState("analyticsUnifiedChart", true, {
-          icon: "📈",
-          title: "No Score History Yet",
-          description: "Run an AI evaluation to start tracking your score progress over time.",
-          buttonText: "⚡ Run Prediction",
-          buttonHref: "prediction.html"
-        });
-        if (insightTextEl) insightTextEl.innerText = "Run an AI evaluation to see your exam progress curve.";
-        return;
-      }
-
-      updateChartEmptyState("analyticsUnifiedChart", false);
-      const activeList = stageRecords.slice().reverse();
-
-      const parseVal = (r) => {
-        const parsed = parseNormalizedScore(r);
-        if (!isAll && stageMeta.isUni) {
-          return parsed.raw <= 4.0 ? parsed.raw : +(parsed.pct / 25.0).toFixed(2);
-        }
-        return parsed.pct;
-      };
-
-      let labels = [];
-      let scorePoints = [];
-      let targetPoints = [];
-
-      if (activeList.length === 1) {
-        const item = activeList[0];
-        const val = parseVal(item);
-        const baseline = stageMeta.isUni && !isAll ? Math.max(0, +(val - 0.2).toFixed(2)) : Math.max(0, Math.round(val - 5));
-        const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(val + 0.2).toFixed(2)) : Math.min(100, Math.round(val + 5));
-
-        if (trajProjEl) trajProjEl.innerText = stageMeta.isUni && !isAll ? `${target.toFixed(2)} CGPA` : `${target}%`;
-
-        labels = ["Baseline Test", "Current Marks", "Target Goal 🎯"];
-        scorePoints = [baseline, val, null];
-        targetPoints = [null, val, target];
-
-        if (insightTextEl) {
-          insightTextEl.innerHTML = `Starting score recorded at <strong>${item.score}</strong>. Aim for your <strong>Target Goal (${target}${stageMeta.isUni && !isAll ? ' CGPA' : '%'})</strong> on your upcoming test!`;
-        }
-      } else {
-        labels = activeList.map((r, i) => `Test #${i + 1}`);
-        labels.push("Target 🎯");
-
-        const values = activeList.map((r) => parseVal(r));
-        const firstVal = values[0];
-        const lastVal = values[values.length - 1];
-        const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(lastVal + 0.2).toFixed(2)) : Math.min(100, Math.round(lastVal + 5));
-
-        if (trajProjEl) trajProjEl.innerText = stageMeta.isUni && !isAll ? `${target.toFixed(2)} CGPA` : `${target}%`;
-
-        scorePoints = [...values, null];
-        targetPoints = values.map((v, idx) => (idx === values.length - 1 ? v : null));
-        targetPoints.push(target);
-
-        if (insightTextEl) {
-          const delta = +(lastVal - firstVal).toFixed(1);
-          if (delta > 0) {
-            insightTextEl.innerHTML = `🎉 Great progress! Your performance improved by <strong>+${delta}${stageMeta.isUni && !isAll ? ' CGPA' : '%'}</strong> compared to your first test. Keep studying consistently!`;
-          } else if (delta === 0) {
-            insightTextEl.innerHTML = `Steady performance! Increasing study hours by +1 hr daily can help push your score toward your <strong>Target Goal</strong>.`;
-          } else {
-            insightTextEl.innerHTML = `💡 Focus on subjects with lower scores and maintain 4–6 daily study hours to bounce back above <strong>${target}%</strong>.`;
-          }
-        }
-      }
-
-      const greenGradient = ctx.createLinearGradient(0, 0, 0, 260);
-      greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.35)");
-      greenGradient.addColorStop(1, "rgba(163, 230, 53, 0.0)");
-
-      const yMin = isAll ? 0 : stageMeta.min;
-      const yMax = isAll ? 100 : stageMeta.max;
-      const unitLabel = isAll ? "%" : stageMeta.unit;
-
-      unifiedChart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: "Your Exam Score",
-              data: scorePoints,
-              borderColor: "#A3E635",
-              backgroundColor: greenGradient,
-              borderWidth: 3,
-              fill: true,
-              tension: 0.3,
-              pointBackgroundColor: "#A3E635",
-              pointBorderColor: "#101217",
-              pointBorderWidth: 2,
-              pointRadius: isMobile ? 5 : 7,
-              pointHoverRadius: 8
-            },
-            {
-              label: "Target Goal 🎯",
-              data: targetPoints,
-              borderColor: "#38BDF8",
-              borderDash: [5, 5],
-              backgroundColor: "transparent",
-              borderWidth: 2.5,
-              fill: false,
-              tension: 0.3,
-              pointBackgroundColor: "#38BDF8",
-              pointBorderColor: "#101217",
-              pointBorderWidth: 2,
-              pointRadius: isMobile ? 5 : 7
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: true,
-              position: "top",
-              labels: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 11 : 12 }, boxWidth: 10, padding: 12 }
-            },
-            tooltip: {
-              backgroundColor: "#181B22",
-              borderColor: "rgba(255,255,255,0.15)",
-              borderWidth: 1,
-              titleColor: "#F8FAFC",
-              bodyColor: "#A3E635",
-              padding: 10,
-              callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y}${unitLabel}` }
-            }
-          },
-          scales: {
-            x: {
-              grid: { color: "rgba(255, 255, 255, 0.05)" },
-              ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11 } }
-            },
-            y: {
-              min: yMin,
-              max: yMax,
-              grid: { color: "rgba(255, 255, 255, 0.06)" },
-              ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11 }, callback: (val) => `${val}${unitLabel}` }
-            }
-          }
-        }
+      updateChartEmptyState("analyticsProgressionChart", true, {
+        icon: "📈",
+        title: "No Score History Yet",
+        description: "Run an AI evaluation to start tracking your score progress over time.",
+        buttonText: "⚡ Run Prediction",
+        buttonHref: "prediction.html"
       });
       return;
     }
 
-    // ------------------------------------------------------------------------
-    // VIEW 2: STUDY HOURS VS MARKS (BAR CHART)
-    // ------------------------------------------------------------------------
-    if (activeView === "habits") {
-      if (titleEl) {
-        titleEl.innerHTML = `
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
-          <span>⏱️ Study Hours vs Predicted Marks</span>
-        `;
+    updateChartEmptyState("analyticsProgressionChart", false);
+
+    const activeList = stageRecords.slice().reverse();
+    const isMobile = window.innerWidth <= 768;
+
+    const parseVal = (r) => {
+      const parsed = parseNormalizedScore(r);
+      if (!isAll && stageMeta.isUni) {
+        return parsed.raw <= 4.0 ? parsed.raw : +(parsed.pct / 25.0).toFixed(2);
       }
-      if (subtitleEl) subtitleEl.innerText = "How daily study duration directly increases your exam percentage";
-      if (insightIconEl) insightIconEl.innerText = "🎯";
-      if (insightTextEl) {
-        insightTextEl.innerHTML = "<strong>Recommendation:</strong> Studying <strong>4 to 6 hours daily</strong> yields the best boost for Grade A performance.";
+      return parsed.pct;
+    };
+
+    const latestRun = stageRecords[0];
+    if (trajActualEl && latestRun) {
+      trajActualEl.innerText = latestRun.score || "--";
+    }
+    if (trajBadgeEl && latestRun) {
+      trajBadgeEl.innerText = latestRun.status_badge || "On Track";
+      trajBadgeEl.className = `badge ${latestRun.status_color || "badge-success"}`;
+    }
+
+    let labels = [];
+    let scorePoints = [];
+    let targetPoints = [];
+
+    if (activeList.length === 1) {
+      const item = activeList[0];
+      const val = parseVal(item);
+      const baseline = stageMeta.isUni && !isAll ? Math.max(0, +(val - 0.2).toFixed(2)) : Math.max(0, Math.round(val - 5));
+      const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(val + 0.2).toFixed(2)) : Math.min(100, Math.round(val + 5));
+
+      if (trajProjEl) {
+        trajProjEl.innerText = stageMeta.isUni && !isAll ? `${target.toFixed(2)} CGPA` : `${target}%`;
       }
 
-      updateChartEmptyState("analyticsUnifiedChart", false);
+      labels = ["Baseline", "Current Score", "Target Goal 🎯"];
+      scorePoints = [baseline, val, null];
+      targetPoints = [null, val, target];
+    } else {
+      labels = activeList.map((r, i) => `Test #${i + 1}`);
+      labels.push("Target 🎯");
 
-      const habitBuckets = { "< 2 hrs/day": [], "2-4 hrs/day": [], "4-6 hrs/day": [], "6+ hrs/day": [] };
+      const values = activeList.map((r) => parseVal(r));
+      const lastVal = values[values.length - 1];
+      const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(lastVal + 0.2).toFixed(2)) : Math.min(100, Math.round(lastVal + 5));
 
-      if (predictionHistory.length > 0) {
-        predictionHistory.forEach((h) => {
-          const payload = h.payload || {};
-          let dailyHours = parseFloat(payload.study_hours ?? payload.Study_Hours ?? payload.Study_Hours_Per_Day ?? 0);
-          if (dailyHours <= 0 && payload.Study_Hours_Per_Week) dailyHours = parseFloat(payload.Study_Hours_Per_Week) / 7.0;
-          if (dailyHours <= 0) dailyHours = 4.0;
-          const parsed = parseNormalizedScore(h);
-          const normScore = parsed.pct || 80.0;
-          if (dailyHours < 2) habitBuckets["< 2 hrs/day"].push(normScore);
-          else if (dailyHours <= 4) habitBuckets["2-4 hrs/day"].push(normScore);
-          else if (dailyHours <= 6) habitBuckets["4-6 hrs/day"].push(normScore);
-          else habitBuckets["6+ hrs/day"].push(normScore);
-        });
+      if (trajProjEl) {
+        trajProjEl.innerText = stageMeta.isUni && !isAll ? `${target.toFixed(2)} CGPA` : `${target}%`;
       }
 
-      const labels = ["< 2 hrs/day (Low)", "2–4 hrs/day (Moderate)", "4–6 hrs/day (Recommended)", "6+ hrs/day (High Impact)"];
-      const bucketKeys = ["< 2 hrs/day", "2-4 hrs/day", "4-6 hrs/day", "6+ hrs/day"];
-      const baselineBenchmarks = [60, 74, 86, 94];
+      scorePoints = [...values, null];
+      targetPoints = values.map((v, idx) => (idx === values.length - 1 ? v : null));
+      targetPoints.push(target);
+    }
 
-      const dataSeries = bucketKeys.map((k, idx) => {
-        const arr = habitBuckets[k];
-        return arr && arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : baselineBenchmarks[idx];
-      });
+    const greenGradient = ctx.createLinearGradient(0, 0, 0, 260);
+    greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.35)");
+    greenGradient.addColorStop(1, "rgba(163, 230, 53, 0.0)");
 
-      const colors = ["#F59E0B", "#38BDF8", "#A3E635", "#10B981"];
+    const yMin = isAll ? 0 : stageMeta.min;
+    const yMax = isAll ? 100 : stageMeta.max;
+    const unitLabel = isAll ? "%" : stageMeta.unit;
 
-      unifiedChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: labels,
-          datasets: [{
-            label: "Expected Marks",
-            data: dataSeries,
-            backgroundColor: colors,
-            borderWidth: 0,
-            borderRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: "#181B22",
-              borderColor: "rgba(255,255,255,0.15)",
-              borderWidth: 1,
-              titleColor: "#F8FAFC",
-              bodyColor: "#A3E635",
-              padding: 10,
-              callbacks: { label: (c) => ` Expected Exam Score: ${c.parsed.y}%` }
-            }
+    progressionChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "Your Score",
+            data: scorePoints,
+            borderColor: "#A3E635",
+            backgroundColor: greenGradient,
+            borderWidth: 3,
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: "#A3E635",
+            pointBorderColor: "#101217",
+            pointBorderWidth: 2,
+            pointRadius: isMobile ? 5 : 7,
+            pointHoverRadius: 8
           },
-          scales: {
-            x: {
-              grid: { color: "rgba(255, 255, 255, 0.05)" },
-              ticks: { color: "#94A3B8", font: { size: isMobile ? 9.5 : 11, weight: "600" } }
-            },
-            y: {
-              min: 0,
-              max: 100,
-              grid: { color: "rgba(255, 255, 255, 0.05)" },
-              ticks: { color: "#94A3B8", font: { size: 10 }, callback: (v) => `${v}%` }
+          {
+            label: "Target Goal 🎯",
+            data: targetPoints,
+            borderColor: "#38BDF8",
+            borderDash: [5, 5],
+            backgroundColor: "transparent",
+            borderWidth: 2.5,
+            fill: false,
+            tension: 0.3,
+            pointBackgroundColor: "#38BDF8",
+            pointBorderColor: "#101217",
+            pointBorderWidth: 2,
+            pointRadius: isMobile ? 5 : 7
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: "top",
+            labels: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 11 : 12 }, boxWidth: 10, padding: 12 }
+          },
+          tooltip: {
+            backgroundColor: "#181B22",
+            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
+            titleColor: "#F8FAFC",
+            bodyColor: "#A3E635",
+            padding: 10,
+            callbacks: {
+              label: (context) => ` ${context.dataset.label}: ${context.parsed.y}${unitLabel}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11 } }
+          },
+          y: {
+            min: yMin,
+            max: yMax,
+            grid: { color: "rgba(255, 255, 255, 0.06)" },
+            ticks: {
+              color: "#94A3B8",
+              font: { family: "Inter", size: isMobile ? 10 : 11 },
+              callback: (val) => `${val}${unitLabel}`
             }
           }
         }
-      });
-      return;
-    }
-
-    // ------------------------------------------------------------------------
-    // VIEW 3: SUBJECT STRENGTHS (BAR CHART)
-    // ------------------------------------------------------------------------
-    if (activeView === "subjects") {
-      if (titleEl) {
-        titleEl.innerHTML = `
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-          <span>📚 Subject Strengths & Focus Areas</span>
-        `;
       }
-      if (subtitleEl) subtitleEl.innerText = "Quick overview of subjects where you excel vs subjects needing extra practice";
-      if (insightIconEl) insightIconEl.innerText = "💡";
-      if (insightTextEl) {
-        insightTextEl.innerHTML = "🟢 <strong>Green bars</strong> show your strong subjects (≥75%). 🟡 <strong>Yellow bars</strong> indicate topics needing review before exams.";
-      }
+    });
+  }
 
-      updateChartEmptyState("analyticsUnifiedChart", false);
+  // --------------------------------------------------------------------------
+  // 12. CHART 2: PERFORMANCE BREAKDOWN (CLEAN DONUT CHART)
+  // --------------------------------------------------------------------------
+  function renderGradeDistributionChart() {
+    const canvas = document.getElementById("analyticsGradeDistributionChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
 
-      const domainScores = {};
-      const registerScore = (name, pct) => {
-        if (!name) return;
-        const cleanName = name.trim();
-        if (!domainScores[cleanName]) domainScores[cleanName] = [];
-        domainScores[cleanName].push(Math.min(100, Math.max(0, Math.round(pct))));
-      };
+    if (gradeDistributionChart) gradeDistributionChart.destroy();
 
-      if (predictionHistory && predictionHistory.length > 0) {
-        predictionHistory.forEach((h) => {
-          const payload = h.payload || {};
-          if (Array.isArray(payload.logged_terms)) {
-            payload.logged_terms.forEach((t) => {
-              if (Array.isArray(t.subjects)) {
-                t.subjects.forEach((s) => {
-                  const name = s.subject_name || s.name || s.subject;
-                  const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
-                  const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
-                  const pct = max > 0 ? (obt / max) * 100 : obt;
-                  registerScore(name, pct);
-                });
-              }
-            });
-          }
-          const subList = payload.subjects || payload.course_breakdown;
-          if (Array.isArray(subList)) {
-            subList.forEach((s) => {
-              const name = s.subject_name || s.name || s.subject;
-              const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
-              const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
-              const pct = max > 0 ? (obt / max) * 100 : obt;
-              registerScore(name, pct);
-            });
-          }
-        });
-      }
+    let highScores = 0, averageScores = 0, lowScores = 0;
 
-      const domainKeys = Object.keys(domainScores);
-      if (domainKeys.length === 0) {
-        registerScore("Mathematics", 85);
-        registerScore("Programming / CS", 80);
-        registerScore("English / Comm", 74);
-        registerScore("Science / Physics", 68);
-      }
-
-      const activeKeys = Object.keys(domainScores).slice(0, 6);
-      const labels = activeKeys;
-      const dataSeries = activeKeys.map((k) => {
-        const arr = domainScores[k];
-        return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
-      });
-
-      const colors = dataSeries.map((val) => {
-        if (val >= 75) return "#A3E635";
-        if (val >= 60) return "#38BDF8";
-        return "#F59E0B";
-      });
-
-      unifiedChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: labels,
-          datasets: [{
-            label: "Mastery Score",
-            data: dataSeries,
-            backgroundColor: colors,
-            borderWidth: 0,
-            borderRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          indexAxis: "y",
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: "#181B22",
-              borderColor: "rgba(255,255,255,0.15)",
-              borderWidth: 1,
-              titleColor: "#F8FAFC",
-              bodyColor: "#A3E635",
-              padding: 10,
-              callbacks: {
-                label: (c) => {
-                  const score = c.parsed.x;
-                  const status = score >= 75 ? "Strong Mastery 🟢" : score >= 60 ? "Good Performance 🔵" : "Needs Revision 🟡";
-                  return ` Score: ${score}% (${status})`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              min: 0,
-              max: 100,
-              grid: { color: "rgba(255, 255, 255, 0.05)" },
-              ticks: { color: "#94A3B8", font: { size: 10 }, callback: (v) => `${v}%` }
-            },
-            y: {
-              grid: { display: false },
-              ticks: { color: "#F8FAFC", font: { size: isMobile ? 10 : 11.5, weight: "600" } }
-            }
-          }
+    if (predictionHistory.length > 0) {
+      predictionHistory.forEach((item) => {
+        const score = parseFloat(item.score) || 0;
+        const isUni = score <= 4.0;
+        if ((isUni && score >= 3.4) || (!isUni && score >= 75)) {
+          highScores++;
+        } else if ((isUni && score >= 2.5) || (!isUni && score >= 60)) {
+          averageScores++;
+        } else {
+          lowScores++;
         }
       });
-      return;
     }
 
-    // ------------------------------------------------------------------------
-    // VIEW 4: GRADE TIERS (DONUT CHART)
-    // ------------------------------------------------------------------------
-    if (activeView === "grades") {
-      if (titleEl) {
-        titleEl.innerHTML = `
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-          <span>🎯 Performance Grade Tiers</span>
-        `;
-      }
-      if (subtitleEl) subtitleEl.innerText = "Overall distribution of your past evaluations across grade categories";
-      if (insightIconEl) insightIconEl.innerText = "📊";
-      if (insightTextEl) {
-        insightTextEl.innerHTML = "Shows the percentage of your evaluated milestones in <strong>Honors (≥75%)</strong>, <strong>Average (60–74%)</strong>, and <strong>Needs Focus (<60%)</strong>.";
-      }
+    const total = highScores + averageScores + lowScores;
+    const hasData = total > 0;
 
-      updateChartEmptyState("analyticsUnifiedChart", false);
-
-      let highScores = 0, averageScores = 0, lowScores = 0;
-      if (predictionHistory.length > 0) {
-        predictionHistory.forEach((item) => {
-          const score = parseFloat(item.score) || 0;
-          const isUni = score <= 4.0;
-          if ((isUni && score >= 3.4) || (!isUni && score >= 75)) highScores++;
-          else if ((isUni && score >= 2.5) || (!isUni && score >= 60)) averageScores++;
-          else lowScores++;
-        });
-      }
-
-      const total = highScores + averageScores + lowScores;
-      const hasData = total > 0;
-
-      unifiedChart = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-          labels: hasData
-            ? [`Honors (≥75%): ${highScores}`, `Average (60–74%): ${averageScores}`, `Needs Focus (<60%): ${lowScores}`]
-            : ["Honors: 1", "Average: 1", "Needs Focus: 0"],
-          datasets: [{
-            data: hasData ? [highScores, averageScores, lowScores] : [60, 30, 10],
-            backgroundColor: ["#A3E635", "#38BDF8", "#F59E0B"],
+    gradeDistributionChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: hasData
+          ? [
+              `High (≥75%): ${highScores}`,
+              `Average (60–74%): ${averageScores}`,
+              `Needs Focus (<60%): ${lowScores}`
+            ]
+          : ["No Data"],
+        datasets: [
+          {
+            data: hasData ? [highScores, averageScores, lowScores] : [1],
+            backgroundColor: hasData ? ["#A3E635", "#38BDF8", "#F59E0B"] : ["#1e2129"],
             borderColor: "#101217",
             borderWidth: 3
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: "bottom",
-              labels: { color: "#94A3B8", font: { size: isMobile ? 10 : 12, weight: "600" }, boxWidth: 12, padding: 14 }
-            },
-            tooltip: {
-              backgroundColor: "#181B22",
-              borderColor: "rgba(255,255,255,0.15)",
-              borderWidth: 1,
-              callbacks: {
-                label: (c) => ` ${c.label} (${hasData ? Math.round((c.parsed / total) * 100) : 50}%)`
-              }
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              color: "#94A3B8",
+              font: { size: window.innerWidth <= 768 ? 10 : 11.5, weight: "600" },
+              boxWidth: 12,
+              padding: 12
             }
           },
-          cutout: "65%"
+          tooltip: {
+            backgroundColor: "#181B22",
+            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
+            callbacks: {
+              label: (ctx) => (hasData ? ` ${ctx.label} (${Math.round((ctx.parsed / total) * 100)}%)` : "No predictions recorded yet.")
+            }
+          }
+        },
+        cutout: "68%"
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // 13. CHART 3: SUBJECT MASTERY & STRENGTHS (HORIZONTAL BAR CHART)
+  // --------------------------------------------------------------------------
+  function renderSubjectMasteryChart() {
+    const canvas = document.getElementById("analyticsSubjectMasteryChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    if (subjectMasteryChart) subjectMasteryChart.destroy();
+
+    const domainScores = {};
+
+    const registerScore = (name, pct) => {
+      if (!name) return;
+      const cleanName = name.trim();
+      if (!domainScores[cleanName]) domainScores[cleanName] = [];
+      domainScores[cleanName].push(Math.min(100, Math.max(0, Math.round(pct))));
+    };
+
+    if (predictionHistory && predictionHistory.length > 0) {
+      predictionHistory.forEach((h) => {
+        const payload = h.payload || {};
+
+        if (Array.isArray(payload.logged_terms)) {
+          payload.logged_terms.forEach((t) => {
+            if (Array.isArray(t.subjects)) {
+              t.subjects.forEach((s) => {
+                const name = s.subject_name || s.name || s.subject;
+                const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
+                const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
+                const pct = max > 0 ? (obt / max) * 100 : obt;
+                registerScore(name, pct);
+              });
+            }
+          });
         }
+
+        const subList = payload.subjects || payload.course_breakdown;
+        if (Array.isArray(subList)) {
+          subList.forEach((s) => {
+            const name = s.subject_name || s.name || s.subject;
+            const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
+            const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
+            const pct = max > 0 ? (obt / max) * 100 : obt;
+            registerScore(name, pct);
+          });
+        }
+
+        const att = parseFloat(payload.Attendance_Rate || payload.Attendance_Pct || payload.attendance_pct || payload.attendance);
+        if (!isNaN(att) && att > 0) registerScore("Class Attendance", att);
+
+        const midterm = parseFloat(payload.midterm_score || payload.Midterm_Exam_Avg || payload.test_avg);
+        if (!isNaN(midterm) && midterm > 0) registerScore("Midterm Exams", midterm);
+      });
+    }
+
+    const domainKeys = Object.keys(domainScores);
+    if (domainKeys.length === 0) {
+      updateChartEmptyState("analyticsSubjectMasteryChart", true, {
+        icon: "📚",
+        title: "No Coursework Logged",
+        description: "Enter your semester courses in predictions to see your subject strengths and weaknesses here.",
+        buttonText: "⚡ Add Courses & Predict",
+        buttonHref: "prediction.html"
       });
       return;
     }
-  }
 
-  // Bind Chart Switcher Buttons
-  const switcherContainer = document.getElementById("chart-view-switcher");
-  if (switcherContainer) {
-    switcherContainer.addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-chart-view]");
-      if (!btn) return;
-      const view = btn.getAttribute("data-chart-view");
-      if (view) renderUnifiedChart(view);
+    updateChartEmptyState("analyticsSubjectMasteryChart", false);
+
+    const labels = domainKeys.slice(0, 6);
+    const dataSeries = labels.map((k) => {
+      const arr = domainScores[k];
+      return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+    });
+
+    const colors = dataSeries.map((val) => {
+      if (val >= 75) return "#A3E635";
+      if (val >= 60) return "#38BDF8";
+      return "#F59E0B";
+    });
+
+    subjectMasteryChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Mastery Score",
+          data: dataSeries,
+          backgroundColor: colors,
+          borderWidth: 0,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: "y",
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#181B22",
+            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
+            callbacks: { label: (ctx) => ` Score: ${ctx.parsed.x}%` }
+          }
+        },
+        scales: {
+          x: {
+            min: 0,
+            max: 100,
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { size: 10 }, callback: (v) => `${v}%` }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: "#F8FAFC", font: { size: window.innerWidth <= 768 ? 10 : 11, weight: "600" } }
+          }
+        }
+      }
     });
   }
 
-  // Bind Unified Chart Export & Fullscreen
-  const btnFullscreenUnified = document.getElementById("btn-fullscreen-unified");
-  const btnSaveUnifiedPng = document.getElementById("btn-save-unified-png");
+  // --------------------------------------------------------------------------
+  // 14. CHART 4: STUDY TIME VS PREDICTED SCORE (EFFORT IMPACT)
+  // --------------------------------------------------------------------------
+  function renderHabitsCorrelationChart() {
+    const canvas = document.getElementById("analyticsHabitsCorrelationChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
 
-  if (btnSaveUnifiedPng) {
-    btnSaveUnifiedPng.addEventListener("click", () => {
-      const canvas = document.getElementById("analyticsUnifiedChart");
-      if (!canvas) return;
-      const url = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `student-analytics-${currentUnifiedView}.png`;
-      a.click();
+    if (habitsCorrelationChart) habitsCorrelationChart.destroy();
+
+    const habitBuckets = {
+      "< 2 hrs/day": [],
+      "2-4 hrs/day": [],
+      "4-6 hrs/day": [],
+      "6+ hrs/day": []
+    };
+
+    let baseScore = 80.0;
+
+    if (predictionHistory.length > 0) {
+      predictionHistory.forEach((h) => {
+        const payload = h.payload || {};
+        let dailyHours = parseFloat(payload.study_hours ?? payload.Study_Hours ?? payload.Study_Hours_Per_Day ?? 0);
+        if (dailyHours <= 0 && payload.Study_Hours_Per_Week) {
+          dailyHours = parseFloat(payload.Study_Hours_Per_Week) / 7.0;
+        }
+        if (dailyHours <= 0) dailyHours = 4.0;
+
+        const parsed = parseNormalizedScore(h);
+        const normScore = parsed.pct || 80.0;
+        baseScore = normScore;
+
+        if (dailyHours < 2) habitBuckets["< 2 hrs/day"].push(normScore);
+        else if (dailyHours <= 4) habitBuckets["2-4 hrs/day"].push(normScore);
+        else if (dailyHours <= 6) habitBuckets["4-6 hrs/day"].push(normScore);
+        else habitBuckets["6+ hrs/day"].push(normScore);
+      });
+    }
+
+    const labels = ["< 2 hrs/day (Low)", "2-4 hrs/day (Moderate)", "4-6 hrs/day (Consistent)", "6+ hrs/day (Intensive)"];
+    const bucketKeys = ["< 2 hrs/day", "2-4 hrs/day", "4-6 hrs/day", "6+ hrs/day"];
+    const baselineBenchmarks = [60, 74, 86, 94];
+
+    // Compute calibrated values: actual logged data or benchmark
+    const dataSeries = bucketKeys.map((k, idx) => {
+      const arr = habitBuckets[k];
+      return arr && arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : baselineBenchmarks[idx];
     });
-  }
 
-  if (btnFullscreenUnified) {
-    btnFullscreenUnified.addEventListener("click", () => {
-      const card = document.getElementById("analytics-unified-chart-card");
-      if (!card) return;
-      if (!document.fullscreenElement) {
-        if (card.requestFullscreen) card.requestFullscreen();
-      } else {
-        if (document.exitFullscreen) document.exitFullscreen();
+    const colors = dataSeries.map((v) => {
+      if (v >= 85) return "#a8f04b";
+      if (v >= 70) return "#c5f871";
+      if (v >= 55) return "#f7f7f7";
+      return "#ff9c27";
+    });
+
+    habitsCorrelationChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Evaluated Outcome %",
+          data: dataSeries,
+          backgroundColor: colors,
+          borderWidth: 0,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#181B22",
+            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
+            callbacks: {
+              label: (ctx) => ` Evaluated Outcome: ${ctx.parsed.y}%`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { size: window.innerWidth <= 768 ? 9.5 : 10 } }
+          },
+          y: {
+            min: 0,
+            max: 100,
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { size: 10 }, callback: (v) => `${v}%` }
+          }
+        }
       }
     });
   }
