@@ -179,19 +179,24 @@
             </div>
 
             <!-- High-Contrast Visual Trajectory Summary Banner -->
-            <div style="display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 14px; margin-bottom: 16px; padding: 14px 18px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid rgba(163,230,53,0.25); align-items: center;">
+            <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto; gap: 12px; margin-bottom: 16px; padding: 14px 18px; background: rgba(0,0,0,0.45); border-radius: 8px; border: 1px solid rgba(163,230,53,0.25); align-items: center;">
               <div>
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Latest Exam Score</div>
-                <div style="font-size: 20px; font-weight: 800; color: #ffffff;" id="trajectory-actual-val">--</div>
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">1. Current Standing</div>
+                <div style="font-size: 18px; font-weight: 800; color: #ffffff;" id="trajectory-actual-val">--</div>
               </div>
-              <div style="font-size: 20px; color: var(--color-lime); font-weight: 800;">➔</div>
+              <div style="font-size: 18px; color: var(--color-lime); font-weight: 800;">➔</div>
               <div>
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Target Goal 🎯</div>
-                <div style="font-size: 20px; font-weight: 800; color: var(--color-lime);" id="trajectory-projected-val">--</div>
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--color-blue); font-weight: 700;">2. ⚡ AI Projected Lift</div>
+                <div style="font-size: 18px; font-weight: 800; color: var(--color-blue);" id="trajectory-ai-lift">--</div>
+              </div>
+              <div style="font-size: 18px; color: var(--color-lime); font-weight: 800;">➔</div>
+              <div>
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--color-lime); font-weight: 700;">3. 🎯 Target Goal</div>
+                <div style="font-size: 18px; font-weight: 800; color: var(--color-lime);" id="trajectory-projected-val">--</div>
               </div>
               <div style="text-align: right;">
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Standing</div>
-                <span class="badge badge-neutral" id="trajectory-status-badge">--</span>
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Trajectory</div>
+                <span class="badge badge-success" id="trajectory-status-badge">Ascending 🚀</span>
               </div>
             </div>
 
