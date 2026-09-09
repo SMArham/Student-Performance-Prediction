@@ -728,22 +728,19 @@ document.addEventListener("DOMContentLoaded", async () => {
           {
             label: "Score Trajectory",
             data: continuousData,
+            borderColor: "#A3E635",
             borderWidth: 3.5,
             fill: true,
             backgroundColor: greenGradient,
-            tension: 0.35,
+            tension: 0.38,
             segment: {
               borderColor: (segmentCtx) => {
-                if (segmentCtx.p0DataIndex >= predStartIndex - 1) {
-                  return "#38BDF8"; // Vibrant Sky Blue for AI Prediction & Target Goal
-                }
-                return "#A3E635"; // Signature Lime Green for Past Verified Tests
+                const isPred = (segmentCtx.p0DataIndex !== undefined && segmentCtx.p0DataIndex >= predStartIndex - 1) || (segmentCtx.p1DataIndex !== undefined && segmentCtx.p1DataIndex >= predStartIndex);
+                return isPred ? "#38BDF8" : "#A3E635";
               },
               borderDash: (segmentCtx) => {
-                if (segmentCtx.p0DataIndex >= predStartIndex - 1) {
-                  return [6, 4]; // Sleek dashed line for prediction section
-                }
-                return undefined; // Solid line for verified tests
+                const isPred = (segmentCtx.p0DataIndex !== undefined && segmentCtx.p0DataIndex >= predStartIndex - 1) || (segmentCtx.p1DataIndex !== undefined && segmentCtx.p1DataIndex >= predStartIndex);
+                return isPred ? [6, 4] : undefined;
               }
             },
             pointBackgroundColor: (pCtx) => {
@@ -754,7 +751,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             },
             pointBorderColor: "#101217",
             pointBorderWidth: 2,
-            pointRadius: (pCtx) => (pCtx.dataIndex >= predStartIndex ? (isMobile ? 6 : 7.5) : (isMobile ? 5 : 6)),
+            pointRadius: (pCtx) => (pCtx.dataIndex >= predStartIndex ? (isMobile ? 6.5 : 8) : (isMobile ? 5 : 6)),
             pointHoverRadius: 9
           }
         ]
@@ -1871,13 +1868,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             {
               label: "Score Trajectory",
               data: continuousData,
+              borderColor: "#A3E635",
               borderWidth: 4,
               fill: true,
               backgroundColor: greenGradient,
-              tension: 0.35,
+              tension: 0.38,
               segment: {
-                borderColor: (sCtx) => (sCtx.p0DataIndex >= predStartIndex - 1 ? "#38BDF8" : "#A3E635"),
-                borderDash: (sCtx) => (sCtx.p0DataIndex >= predStartIndex - 1 ? [8, 6] : undefined)
+                borderColor: (sCtx) => {
+                  const isPred = (sCtx.p0DataIndex !== undefined && sCtx.p0DataIndex >= predStartIndex - 1) || (sCtx.p1DataIndex !== undefined && sCtx.p1DataIndex >= predStartIndex);
+                  return isPred ? "#38BDF8" : "#A3E635";
+                },
+                borderDash: (sCtx) => {
+                  const isPred = (sCtx.p0DataIndex !== undefined && sCtx.p0DataIndex >= predStartIndex - 1) || (sCtx.p1DataIndex !== undefined && sCtx.p1DataIndex >= predStartIndex);
+                  return isPred ? [8, 6] : undefined;
+                }
               },
               pointBackgroundColor: (pCtx) => (pCtx.dataIndex >= predStartIndex ? "#38BDF8" : "#A3E635"),
               pointBorderColor: "#101217",
