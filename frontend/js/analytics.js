@@ -109,6 +109,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   let modalTrajChartInstance = null;
   let fsChartInstance = null;
 
+  let currentChartMode = "line"; // "line" | "bar"
+  const btnChartModeLine = document.getElementById("btn-chart-mode-line");
+  const btnChartModeBar = document.getElementById("btn-chart-mode-bar");
+
   let predictionHistory = [];
   let currentStageFilter = "all";
   let currentRoleFilter = "all";
@@ -201,11 +205,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       defaultContent.style.display = "block";
     }
 
+    profileModal.style.display = "flex";
     profileModal.classList.add("active");
   }
 
   function closeSettingsModal() {
-    if (profileModal) profileModal.classList.remove("active");
+    if (profileModal) {
+      profileModal.style.display = "none";
+      profileModal.classList.remove("active");
+    }
   }
 
   if (userProfileBtn) userProfileBtn.addEventListener("click", openSettingsModal);
@@ -459,10 +467,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --------------------------------------------------------------------------
   function refreshAllViews() {
     updateSummaryKPIs();
-    renderProgressionChart();
-    renderGradeDistributionChart();
-    renderSubjectMasteryChart();
-    renderHabitsCorrelationChart();
+    renderMainAnalyticsChart();
     renderStudentInstructorMatrix();
     populateComparisonDropdowns();
     renderLedgerTable();
@@ -813,50 +818,117 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 12. CHART 2: PERFORMANCE BREAKDOWN (CLEAN DONUT CHART)
+  // 12. MERGED BAR CHART (COMPREHENSIVE CHECKPOINT & FORECAST OVERVIEW)
   // --------------------------------------------------------------------------
-  function renderGradeDistributionChart() {
-    const canvas = document.getElementById("analyticsGradeDistributionChart");
+  function renderMergedBarChart() {
+    const canvas = document.getElementById("analyticsProgressionChart");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
-    if (gradeDistributionChart) gradeDistributionChart.destroy();
+    if (progressionChart) progressionChart.destroy();
 
-    let highScores = 0, averageScores = 0, lowScores = 0;
+    const isAll = currentStageFilter === "all";
+    const activeStage = isAll ? (predictionHistory[0]?.stage || "university") : currentStageFilter;
+    const stageMeta = getStageMetadata(activeStage);
+    const unitLabel = isAll ? "%" : stageMeta.unit;
+    const isMobile = window.innerWidth <= 768;
 
-    if (predictionHistory.length > 0) {
-      predictionHistory.forEach((item) => {
-        const score = parseFloat(item.score) || 0;
-        const isUni = score <= 4.0;
-        if ((isUni && score >= 3.4) || (!isUni && score >= 75)) {
-          highScores++;
-        } else if ((isUni && score >= 2.5) || (!isUni && score >= 60)) {
-          averageScores++;
-        } else {
-          lowScores++;
-        }
-      });
+    const parseVal = (r) => {
+      const parsed = parseNormalizedScore(r);
+      if (!isAll && stageMeta.isUni) {
+        return parsed.raw <= 4.0 ? parsed.raw : +(parsed.pct / 25.0).toFixed(2);
+      }
+      return parsed.pct;
+    };
+
+    let labels = [];
+    let barValues = [];
+    let bgColors = [];
+    let borderColors = [];
+
+    const insightEl = document.getElementById("score-insight-text");
+
+    const stageRecords = isAll
+      ? predictionHistory
+      : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
+
+    if (!stageRecords || stageRecords.length === 0) {
+      labels = ["Baseline Test", "1st Term Exam", "Current Standing", "⚡ AI Prediction", "🎯 Target Goal"];
+      if (stageMeta.isUni && !isAll) {
+        barValues = [2.85, 3.05, 3.25, 3.52, 3.75];
+      } else {
+        barValues = [70, 76, 82, 86, 90];
+      }
+      bgColors = [
+        "rgba(163, 230, 53, 0.75)",
+        "rgba(163, 230, 53, 0.75)",
+        "rgba(163, 230, 53, 0.95)",
+        "rgba(56, 189, 248, 0.85)",
+        "rgba(245, 158, 11, 0.85)"
+      ];
+      borderColors = ["#A3E635", "#A3E635", "#A3E635", "#38BDF8", "#F59E0B"];
+      if (insightEl) {
+        insightEl.innerHTML = `📊 <strong>Bar Chart Mode:</strong> Visual comparison of verified exam checkpoints with forecasted <strong>AI Prediction</strong> and <strong>Target Goal</strong>.`;
+      }
+    } else {
+      const activeList = stageRecords.slice().reverse();
+      if (activeList.length === 1) {
+        const item = activeList[0];
+        const val = parseVal(item);
+        const baseline = stageMeta.isUni && !isAll ? Math.max(0, +(val - 0.25).toFixed(2)) : Math.max(0, Math.round(val - 6));
+        const aiForecast = stageMeta.isUni && !isAll ? Math.min(4.0, +(val + 0.18).toFixed(2)) : Math.min(100, Math.round(val + 4));
+        const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(val + 0.35).toFixed(2)) : Math.min(100, Math.round(val + 8));
+
+        labels = ["Diagnostic Baseline", "Current Score", "⚡ AI Prediction", "🎯 Target Goal"];
+        barValues = [baseline, val, aiForecast, target];
+        bgColors = [
+          "rgba(163, 230, 53, 0.65)",
+          "rgba(163, 230, 53, 0.95)",
+          "rgba(56, 189, 248, 0.85)",
+          "rgba(245, 158, 11, 0.85)"
+        ];
+        borderColors = ["#A3E635", "#A3E635", "#38BDF8", "#F59E0B"];
+      } else {
+        const values = activeList.map((r) => parseVal(r));
+        const lastVal = values[values.length - 1];
+        const aiForecast = stageMeta.isUni && !isAll ? Math.min(4.0, +(lastVal + 0.15).toFixed(2)) : Math.min(100, Math.round(lastVal + 4));
+        const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(lastVal + 0.30).toFixed(2)) : Math.min(100, Math.round(lastVal + 8));
+
+        labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (Latest)` : `Test #${i + 1}`));
+        labels.push("⚡ AI Prediction");
+        labels.push("🎯 Target Goal");
+
+        barValues = [...values, aiForecast, target];
+        bgColors = values.map(() => "rgba(163, 230, 53, 0.80)");
+        bgColors.push("rgba(56, 189, 248, 0.85)");
+        bgColors.push("rgba(245, 158, 11, 0.85)");
+
+        borderColors = values.map(() => "#A3E635");
+        borderColors.push("#38BDF8");
+        borderColors.push("#F59E0B");
+      }
+
+      if (insightEl) {
+        insightEl.innerHTML = `📊 <strong>Bar Chart Overview:</strong> Clear comparative breakdown across each milestone. Green indicates verified exams, blue is the AI Forecast, and orange is your Target Goal.`;
+      }
     }
 
-    const total = highScores + averageScores + lowScores;
-    const hasData = total > 0;
+    const yMin = isAll ? 0 : stageMeta.min;
+    const yMax = isAll ? 100 : stageMeta.max;
 
-    gradeDistributionChart = new Chart(ctx, {
-      type: "doughnut",
+    progressionChart = new Chart(ctx, {
+      type: "bar",
       data: {
-        labels: hasData
-          ? [
-              `High (≥75%): ${highScores}`,
-              `Average (60–74%): ${averageScores}`,
-              `Needs Focus (<60%): ${lowScores}`
-            ]
-          : ["No Data"],
+        labels: labels,
         datasets: [
           {
-            data: hasData ? [highScores, averageScores, lowScores] : [1],
-            backgroundColor: hasData ? ["#A3E635", "#38BDF8", "#F59E0B"] : ["#1e2129"],
-            borderColor: "#101217",
-            borderWidth: 3
+            label: "Evaluated & Forecasted Score",
+            data: barValues,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 2,
+            borderRadius: 8,
+            maxBarThickness: isMobile ? 36 : 56
           }
         ]
       },
@@ -864,143 +936,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: {
-            position: "bottom",
-            labels: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#181B22",
+            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
+            titleColor: "#F8FAFC",
+            bodyColor: "#F8FAFC",
+            padding: 10,
+            callbacks: {
+              label: (context) => ` Score: ${context.parsed.y}${unitLabel}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11, weight: "600" } }
+          },
+          y: {
+            min: yMin,
+            max: yMax,
+            grid: { color: "rgba(255, 255, 255, 0.06)" },
+            ticks: {
               color: "#94A3B8",
-              font: { size: window.innerWidth <= 768 ? 10 : 11.5, weight: "600" },
-              boxWidth: 12,
-              padding: 12
+              font: { family: "Inter", size: isMobile ? 10 : 11 },
+              callback: (val) => `${val}${unitLabel}`
             }
-          },
-          tooltip: {
-            backgroundColor: "#181B22",
-            borderColor: "rgba(255,255,255,0.15)",
-            borderWidth: 1,
-            callbacks: {
-              label: (ctx) => (hasData ? ` ${ctx.label} (${Math.round((ctx.parsed / total) * 100)}%)` : "No predictions recorded yet.")
-            }
-          }
-        },
-        cutout: "68%"
-      }
-    });
-  }
-
-  // --------------------------------------------------------------------------
-  // 13. CHART 3: SUBJECT MASTERY & STRENGTHS (HORIZONTAL BAR CHART)
-  // --------------------------------------------------------------------------
-  function renderSubjectMasteryChart() {
-    const canvas = document.getElementById("analyticsSubjectMasteryChart");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-
-    if (subjectMasteryChart) subjectMasteryChart.destroy();
-
-    const domainScores = {};
-
-    const registerScore = (name, pct) => {
-      if (!name) return;
-      const cleanName = name.trim();
-      if (!domainScores[cleanName]) domainScores[cleanName] = [];
-      domainScores[cleanName].push(Math.min(100, Math.max(0, Math.round(pct))));
-    };
-
-    if (predictionHistory && predictionHistory.length > 0) {
-      predictionHistory.forEach((h) => {
-        const payload = h.payload || {};
-
-        if (Array.isArray(payload.logged_terms)) {
-          payload.logged_terms.forEach((t) => {
-            if (Array.isArray(t.subjects)) {
-              t.subjects.forEach((s) => {
-                const name = s.subject_name || s.name || s.subject;
-                const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
-                const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
-                const pct = max > 0 ? (obt / max) * 100 : obt;
-                registerScore(name, pct);
-              });
-            }
-          });
-        }
-
-        const subList = payload.subjects || payload.course_breakdown;
-        if (Array.isArray(subList)) {
-          subList.forEach((s) => {
-            const name = s.subject_name || s.name || s.subject;
-            const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
-            const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
-            const pct = max > 0 ? (obt / max) * 100 : obt;
-            registerScore(name, pct);
-          });
-        }
-
-        const att = parseFloat(payload.Attendance_Rate || payload.Attendance_Pct || payload.attendance_pct || payload.attendance);
-        if (!isNaN(att) && att > 0) registerScore("Class Attendance", att);
-
-        const midterm = parseFloat(payload.midterm_score || payload.Midterm_Exam_Avg || payload.test_avg);
-        if (!isNaN(midterm) && midterm > 0) registerScore("Midterm Exams", midterm);
-      });
-    }
-
-    const domainKeys = Object.keys(domainScores);
-    if (domainKeys.length === 0) {
-      registerScore("Mathematics", 86);
-      registerScore("Programming / CS", 82);
-      registerScore("English / Comm", 76);
-      registerScore("Science / Physics", 65);
-    }
-
-    updateChartEmptyState("analyticsSubjectMasteryChart", false);
-
-    const activeKeys = Object.keys(domainScores).slice(0, 6);
-    const labels = activeKeys;
-    const dataSeries = activeKeys.map((k) => {
-      const arr = domainScores[k];
-      return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
-    });
-
-    const colors = dataSeries.map((val) => {
-      if (val >= 75) return "#A3E635";
-      if (val >= 60) return "#38BDF8";
-      return "#F59E0B";
-    });
-
-    subjectMasteryChart = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [{
-          label: "Mastery Score",
-          data: dataSeries,
-          backgroundColor: colors,
-          borderWidth: 0,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: "y",
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: "#181B22",
-            borderColor: "rgba(255,255,255,0.15)",
-            borderWidth: 1,
-            callbacks: { label: (ctx) => ` Score: ${ctx.parsed.x}%` }
-          }
-        },
-        scales: {
-          x: {
-            min: 0,
-            max: 100,
-            grid: { color: "rgba(255, 255, 255, 0.05)" },
-            ticks: { color: "#94A3B8", font: { size: 10 }, callback: (v) => `${v}%` }
-          },
-          y: {
-            grid: { display: false },
-            ticks: { color: "#F8FAFC", font: { size: window.innerWidth <= 768 ? 10 : 11, weight: "600" } }
           }
         }
       }
@@ -1008,147 +970,39 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 14. CHART 4: STUDY TIME VS PREDICTED SCORE (EFFORT IMPACT)
+  // 13. MASTER MAIN CHART RENDERER & MODE TOGGLE CONTROLLER
   // --------------------------------------------------------------------------
-  function renderHabitsCorrelationChart() {
-    const canvas = document.getElementById("analyticsHabitsCorrelationChart");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-
-    if (habitsCorrelationChart) habitsCorrelationChart.destroy();
-
-    const habitBuckets = {
-      "< 2 hrs/day": [],
-      "2-4 hrs/day": [],
-      "4-6 hrs/day": [],
-      "6+ hrs/day": []
-    };
-
-    let baseScore = 80.0;
-
-    if (predictionHistory.length > 0) {
-      predictionHistory.forEach((h) => {
-        const payload = h.payload || {};
-        let dailyHours = parseFloat(payload.study_hours ?? payload.Study_Hours ?? payload.Study_Hours_Per_Day ?? 0);
-        if (dailyHours <= 0 && payload.Study_Hours_Per_Week) {
-          dailyHours = parseFloat(payload.Study_Hours_Per_Week) / 7.0;
-        }
-        if (dailyHours <= 0) dailyHours = 4.0;
-
-        const parsed = parseNormalizedScore(h);
-        const normScore = parsed.pct || 80.0;
-        baseScore = normScore;
-
-        if (dailyHours < 2) habitBuckets["< 2 hrs/day"].push(normScore);
-        else if (dailyHours <= 4) habitBuckets["2-4 hrs/day"].push(normScore);
-        else if (dailyHours <= 6) habitBuckets["4-6 hrs/day"].push(normScore);
-        else habitBuckets["6+ hrs/day"].push(normScore);
-      });
+  function renderMainAnalyticsChart() {
+    if (currentChartMode === "bar") {
+      renderMergedBarChart();
+    } else {
+      renderProgressionChart();
     }
-
-    const labels = ["< 2 hrs/day (Low)", "2-4 hrs/day (Moderate)", "4-6 hrs/day (Consistent)", "6+ hrs/day (Intensive)"];
-    const bucketKeys = ["< 2 hrs/day", "2-4 hrs/day", "4-6 hrs/day", "6+ hrs/day"];
-    const baselineBenchmarks = [60, 74, 86, 94];
-
-    // Compute calibrated values: actual logged data or benchmark
-    const dataSeries = bucketKeys.map((k, idx) => {
-      const arr = habitBuckets[k];
-      return arr && arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : baselineBenchmarks[idx];
-    });
-
-    const colors = dataSeries.map((v) => {
-      if (v >= 85) return "#a8f04b";
-      if (v >= 70) return "#c5f871";
-      if (v >= 55) return "#f7f7f7";
-      return "#ff9c27";
-    });
-
-    habitsCorrelationChart = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [{
-          label: "Evaluated Outcome %",
-          data: dataSeries,
-          backgroundColor: colors,
-          borderWidth: 0,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: "#181B22",
-            borderColor: "rgba(255,255,255,0.15)",
-            borderWidth: 1,
-            callbacks: {
-              label: (ctx) => ` Evaluated Outcome: ${ctx.parsed.y}%`
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: { color: "rgba(255, 255, 255, 0.05)" },
-            ticks: { color: "#94A3B8", font: { size: window.innerWidth <= 768 ? 9.5 : 10 } }
-          },
-          y: {
-            min: 0,
-            max: 100,
-            grid: { color: "rgba(255, 255, 255, 0.05)" },
-            ticks: { color: "#94A3B8", font: { size: 10 }, callback: (v) => `${v}%` }
-          }
-        }
-      }
-    });
   }
 
-  // --------------------------------------------------------------------------
-  // 14.4 ANALYTICS TAB SWITCHER CONTROLLER
-  // --------------------------------------------------------------------------
-  const tabNavContainer = document.getElementById("analytics-tabs-nav");
-  if (tabNavContainer) {
-    tabNavContainer.addEventListener("click", (e) => {
-      const btn = e.target.closest("button.analytics-tab-btn");
-      if (!btn) return;
-      const targetId = btn.getAttribute("data-tab-target");
-      if (!targetId) return;
-
-      // Update button active state
-      document.querySelectorAll(".analytics-tab-btn").forEach((b) => {
-        b.classList.remove("btn-primary", "active");
-        b.classList.add("btn-outline");
-      });
-      btn.classList.remove("btn-outline");
-      btn.classList.add("btn-primary", "active");
-
-      // Switch tab panes
-      document.querySelectorAll(".analytics-tab-pane").forEach((pane) => {
-        pane.style.display = "none";
-        pane.classList.remove("active");
-      });
-      const targetPane = document.getElementById(targetId);
-      if (targetPane) {
-        targetPane.style.display = "block";
-        targetPane.classList.add("active");
+  function setChartMode(mode) {
+    currentChartMode = mode;
+    if (btnChartModeLine && btnChartModeBar) {
+      if (mode === "line") {
+        btnChartModeLine.classList.add("btn-primary", "active");
+        btnChartModeLine.classList.remove("btn-outline");
+        btnChartModeBar.classList.remove("btn-primary", "active");
+        btnChartModeBar.classList.add("btn-outline");
+      } else {
+        btnChartModeBar.classList.add("btn-primary", "active");
+        btnChartModeBar.classList.remove("btn-outline");
+        btnChartModeLine.classList.remove("btn-primary", "active");
+        btnChartModeLine.classList.add("btn-outline");
       }
+    }
+    renderMainAnalyticsChart();
+  }
 
-      // Re-render chart on tab switch with small delay so Chart.js computes full viewport size
-      setTimeout(() => {
-        if (targetId === "tab-pane-progress") {
-          renderProgressionChart();
-        } else if (targetId === "tab-pane-habits") {
-          renderHabitsCorrelationChart();
-        } else if (targetId === "tab-pane-subjects") {
-          renderSubjectMasteryChart();
-        } else if (targetId === "tab-pane-history") {
-          populateComparisonDropdowns();
-          renderLedgerTable();
-        }
-      }, 50);
-    });
+  if (btnChartModeLine) {
+    btnChartModeLine.addEventListener("click", () => setChartMode("line"));
+  }
+  if (btnChartModeBar) {
+    btnChartModeBar.addEventListener("click", () => setChartMode("bar"));
   }
   let studentBehaviorRadarInstance = null;
 
@@ -1454,7 +1308,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (filterLedgerStage) {
     filterLedgerStage.addEventListener("change", (e) => {
       currentStageFilter = e.target.value;
-      renderProgressionChart();
+      renderMainAnalyticsChart();
       renderLedgerTable();
     });
   }
