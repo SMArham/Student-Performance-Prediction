@@ -587,12 +587,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       `;
     } else {
       canvas.style.display = "block";
-      if (emptyEl) emptyEl.remove();
+              if (emptyEl) emptyEl.remove();
     }
   }
 
   // --------------------------------------------------------------------------
-  // 11. CHART 1: PROGRESSION & TARGET TRAJECTORY (REDESIGNED)
+  // 11. CHART 1: PROGRESSION & TARGET TRAJECTORY (CLEAN & SIMPLE LINE CHART)
   // --------------------------------------------------------------------------
   function renderProgressionChart() {
     const canvas = document.getElementById("analyticsProgressionChart");
@@ -609,21 +609,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? predictionHistory
       : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
 
+    const trajActualEl = document.getElementById("trajectory-actual-val");
+    const trajProjEl = document.getElementById("trajectory-projected-val");
+    const trajBadgeEl = document.getElementById("trajectory-status-badge");
+
     if (!stageRecords || stageRecords.length === 0) {
-      const trajActualEl = document.getElementById("trajectory-actual-val");
-      const trajProjEl = document.getElementById("trajectory-projected-val");
-      const trajBadgeEl = document.getElementById("trajectory-status-badge");
       if (trajActualEl) trajActualEl.innerText = "--";
       if (trajProjEl) trajProjEl.innerText = "--";
       if (trajBadgeEl) {
-        trajBadgeEl.innerText = "Awaiting Evaluation";
+        trajBadgeEl.innerText = "No Data";
         trajBadgeEl.className = "badge badge-neutral";
       }
       updateChartEmptyState("analyticsProgressionChart", true, {
         icon: "📈",
-        title: "No Progression Evaluations Logged",
-        description: "Run your first AI academic prediction to establish your baseline standing and projected target trajectory.",
-        buttonText: "⚡ Run AI Prediction",
+        title: "No Score History Yet",
+        description: "Run an AI evaluation to start tracking your score progress over time.",
+        buttonText: "⚡ Run Prediction",
         buttonHref: "prediction.html"
       });
       return;
@@ -634,11 +635,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const activeList = stageRecords.slice().reverse();
     const isMobile = window.innerWidth <= 768;
 
-    let labels = [];
-    let progressionData = []; // Solid line connecting all runs
-    let evaluatedData = [];   // Highlighted white node at latest run
-    let targetData = [];      // Dashed lime line leading to target milestone
-
     const parseVal = (r) => {
       const parsed = parseNormalizedScore(r);
       if (!isAll && stageMeta.isUni) {
@@ -647,62 +643,54 @@ document.addEventListener("DOMContentLoaded", async () => {
       return parsed.pct;
     };
 
-    const trajActualEl = document.getElementById("trajectory-actual-val");
-    const trajProjEl = document.getElementById("trajectory-projected-val");
-    const trajBadgeEl = document.getElementById("trajectory-status-badge");
-
     const latestRun = stageRecords[0];
     if (trajActualEl && latestRun) {
       trajActualEl.innerText = latestRun.score || "--";
     }
     if (trajBadgeEl && latestRun) {
-      trajBadgeEl.innerText = latestRun.status_badge || "Exemplary";
+      trajBadgeEl.innerText = latestRun.status_badge || "On Track";
       trajBadgeEl.className = `badge ${latestRun.status_color || "badge-success"}`;
     }
+
+    let labels = [];
+    let scorePoints = [];
+    let targetPoints = [];
 
     if (activeList.length === 1) {
       const item = activeList[0];
       const val = parseVal(item);
-      const baseline = stageMeta.isUni && !isAll ? Math.max(0, +(val - 0.15).toFixed(2)) : Math.max(0, Math.round(val - 5));
-      const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(val + 0.18).toFixed(2)) : Math.min(100, Math.round(val + 4));
+      const baseline = stageMeta.isUni && !isAll ? Math.max(0, +(val - 0.2).toFixed(2)) : Math.max(0, Math.round(val - 5));
+      const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(val + 0.2).toFixed(2)) : Math.min(100, Math.round(val + 5));
 
       if (trajProjEl) {
         trajProjEl.innerText = stageMeta.isUni && !isAll ? `${target.toFixed(2)} CGPA` : `${target}%`;
       }
 
-      labels = isMobile ? ["Baseline", "Evaluated", "Target 🎯"] : ["1. Prior Standing", "2. Evaluated Checkpoint", "3. Projected Target Milestone 🎯"];
-      progressionData = [baseline, val, null];
-      evaluatedData = [null, val, null];
-      targetData = [null, val, target];
+      labels = ["Baseline", "Current Score", "Target Goal 🎯"];
+      scorePoints = [baseline, val, null];
+      targetPoints = [null, val, target];
     } else {
-      labels = activeList.map((r, i) => `Run #${i + 1} (${(r.stage || "Uni").slice(0, 4).toUpperCase()})`);
-      labels.push("Projected Target 🎯");
+      labels = activeList.map((r, i) => `Test #${i + 1}`);
+      labels.push("Target 🎯");
 
       const values = activeList.map((r) => parseVal(r));
       const lastVal = values[values.length - 1];
-      const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(lastVal + 0.16).toFixed(2)) : Math.min(100, Math.round(lastVal + 4));
+      const target = stageMeta.isUni && !isAll ? Math.min(4.0, +(lastVal + 0.2).toFixed(2)) : Math.min(100, Math.round(lastVal + 5));
 
       if (trajProjEl) {
         trajProjEl.innerText = stageMeta.isUni && !isAll ? `${target.toFixed(2)} CGPA` : `${target}%`;
       }
 
-      progressionData = [...values, null];
-      evaluatedData = values.map((v, idx) => (idx === values.length - 1 ? v : null));
-      evaluatedData.push(null);
-
-      targetData = values.map((v, idx) => (idx === values.length - 1 ? v : null));
-      targetData.push(target);
+      scorePoints = [...values, null];
+      targetPoints = values.map((v, idx) => (idx === values.length - 1 ? v : null));
+      targetPoints.push(target);
     }
 
-    const orangeGradient = ctx.createLinearGradient(0, 0, 0, 300);
-    orangeGradient.addColorStop(0, "rgba(255, 156, 39, 0.35)");
-    orangeGradient.addColorStop(1, "rgba(255, 156, 39, 0.0)");
+    const greenGradient = ctx.createLinearGradient(0, 0, 0, 260);
+    greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.35)");
+    greenGradient.addColorStop(1, "rgba(163, 230, 53, 0.0)");
 
-    const limeGradient = ctx.createLinearGradient(0, 0, 0, 300);
-    limeGradient.addColorStop(0, "rgba(168, 240, 75, 0.4)");
-    limeGradient.addColorStop(1, "rgba(168, 240, 75, 0.0)");
-
-    const yMin = isAll ? 40 : stageMeta.min;
+    const yMin = isAll ? 0 : stageMeta.min;
     const yMax = isAll ? 100 : stageMeta.max;
     const unitLabel = isAll ? "%" : stageMeta.unit;
 
@@ -712,40 +700,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels: labels,
         datasets: [
           {
-            label: "Historical Academic Progression",
-            data: progressionData,
-            borderColor: "#ff9c27",
-            backgroundColor: orangeGradient,
-            borderWidth: 2.5,
+            label: "Your Score",
+            data: scorePoints,
+            borderColor: "#A3E635",
+            backgroundColor: greenGradient,
+            borderWidth: 3,
             fill: true,
-            tension: 0.25,
-            pointBackgroundColor: "#ff9c27",
-            pointBorderColor: "#FFFFFF",
+            tension: 0.3,
+            pointBackgroundColor: "#A3E635",
+            pointBorderColor: "#101217",
             pointBorderWidth: 2,
-            pointRadius: isMobile ? 4 : 6
+            pointRadius: isMobile ? 5 : 7,
+            pointHoverRadius: 8
           },
           {
-            label: "Evaluated Current Score",
-            data: evaluatedData,
-            borderColor: "#ffffff",
-            backgroundColor: "rgba(255, 255, 255, 0.2)",
-            pointBackgroundColor: "#ffffff",
-            pointBorderColor: "#0c0d12",
-            pointBorderWidth: 2,
-            pointRadius: isMobile ? 6 : 9,
-            showLine: false
-          },
-          {
-            label: "Projected Target Milestone 🎯",
-            data: targetData,
-            borderColor: "#a8f04b",
-            borderDash: [6, 6],
-            backgroundColor: limeGradient,
+            label: "Target Goal 🎯",
+            data: targetPoints,
+            borderColor: "#38BDF8",
+            borderDash: [5, 5],
+            backgroundColor: "transparent",
             borderWidth: 2.5,
-            fill: true,
-            tension: 0.25,
-            pointBackgroundColor: "#a8f04b",
-            pointBorderColor: "#0c0d12",
+            fill: false,
+            tension: 0.3,
+            pointBackgroundColor: "#38BDF8",
+            pointBorderColor: "#101217",
             pointBorderWidth: 2,
             pointRadius: isMobile ? 5 : 7
           }
@@ -758,27 +736,25 @@ document.addEventListener("DOMContentLoaded", async () => {
           legend: {
             display: true,
             position: "top",
-            labels: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11 }, boxWidth: 8, padding: 10 }
+            labels: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 11 : 12 }, boxWidth: 10, padding: 12 }
           },
           tooltip: {
+            backgroundColor: "#181B22",
+            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
             titleColor: "#F8FAFC",
-            bodyColor: "#94A3B8",
+            bodyColor: "#A3E635",
             padding: 10,
             callbacks: {
-              label: (context) => {
-                const idx = context.dataIndex;
-                if (idx === labels.length - 1) {
-                  return ` Target Milestone: ${context.parsed.y}${unitLabel}`;
-                }
-                const item = activeList[idx];
-                const stageStr = (item?.stage || "Record").toUpperCase();
-                return ` ${stageStr}: ${item?.score || context.parsed.y + unitLabel}`;
-              }
+              label: (context) => ` ${context.dataset.label}: ${context.parsed.y}${unitLabel}`
             }
           }
         },
         scales: {
-          x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11 } } },
+          x: {
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+            ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11 } }
+          },
           y: {
             min: yMin,
             max: yMax,
@@ -795,7 +771,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 12. CHART 2: RISK & GRADE DISTRIBUTION DONUT
+  // 12. CHART 2: PERFORMANCE BREAKDOWN (CLEAN DONUT CHART)
   // --------------------------------------------------------------------------
   function renderGradeDistributionChart() {
     const canvas = document.getElementById("analyticsGradeDistributionChart");
@@ -804,44 +780,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (gradeDistributionChart) gradeDistributionChart.destroy();
 
-    let honors = 0, proficient = 0, standard = 0, atRisk = 0;
+    let highScores = 0, averageScores = 0, lowScores = 0;
 
     if (predictionHistory.length > 0) {
       predictionHistory.forEach((item) => {
-        const badge = (item.status_badge || "").toLowerCase();
         const score = parseFloat(item.score) || 0;
         const isUni = score <= 4.0;
-        if (badge.includes("exemplary") || badge.includes("honor") || (isUni ? score >= 3.6 : score >= 80)) {
-          honors++;
-        } else if (badge.includes("proficient") || badge.includes("track") || (isUni ? score >= 3.0 : score >= 70)) {
-          proficient++;
-        } else if (badge.includes("standard") || badge.includes("capable") || (isUni ? score >= 2.0 : score >= 50)) {
-          standard++;
+        if ((isUni && score >= 3.4) || (!isUni && score >= 75)) {
+          highScores++;
+        } else if ((isUni && score >= 2.5) || (!isUni && score >= 60)) {
+          averageScores++;
         } else {
-          atRisk++;
+          lowScores++;
         }
       });
     }
 
-    const totalEvals = honors + proficient + standard + atRisk;
-    const hasData = totalEvals > 0;
+    const total = highScores + averageScores + lowScores;
+    const hasData = total > 0;
 
     gradeDistributionChart = new Chart(ctx, {
       type: "doughnut",
       data: {
         labels: hasData
           ? [
-              `Honors (≥3.6 / ≥80%): ${honors}`,
-              `Proficient (3.0-3.59 / 70-79%): ${proficient}`,
-              `Standard (2.0-2.99 / 50-69%): ${standard}`,
-              `At Risk (<2.0 / <50%): ${atRisk}`
+              `High (≥75%): ${highScores}`,
+              `Average (60–74%): ${averageScores}`,
+              `Needs Focus (<60%): ${lowScores}`
             ]
-          : ["No Evaluation History Logged"],
+          : ["No Data"],
         datasets: [
           {
-            data: hasData ? [honors, proficient, standard, atRisk] : [1],
-            backgroundColor: hasData ? ["#a8f04b", "#c5f871", "#f7f7f7", "#ff9c27"] : ["#1e2129"],
-            borderColor: "#18191d",
+            data: hasData ? [highScores, averageScores, lowScores] : [1],
+            backgroundColor: hasData ? ["#A3E635", "#38BDF8", "#F59E0B"] : ["#1e2129"],
+            borderColor: "#101217",
             borderWidth: 3
           }
         ]
@@ -854,24 +826,27 @@ document.addEventListener("DOMContentLoaded", async () => {
             position: "bottom",
             labels: {
               color: "#94A3B8",
-              font: { size: window.innerWidth <= 768 ? 9.5 : 11 },
-              boxWidth: 10,
-              padding: 8
+              font: { size: window.innerWidth <= 768 ? 10 : 11.5, weight: "600" },
+              boxWidth: 12,
+              padding: 12
             }
           },
           tooltip: {
+            backgroundColor: "#181B22",
+            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
             callbacks: {
-              label: (ctx) => (hasData ? ` ${ctx.label} (${Math.round((ctx.parsed / totalEvals) * 100)}%)` : "No history logged.")
+              label: (ctx) => (hasData ? ` ${ctx.label} (${Math.round((ctx.parsed / total) * 100)}%)` : "No predictions recorded yet.")
             }
           }
         },
-        cutout: "66%"
+        cutout: "68%"
       }
     });
   }
 
   // --------------------------------------------------------------------------
-  // 13. CHART 3: SUBJECT DOMAIN MASTERY BAR CHART
+  // 13. CHART 3: SUBJECT MASTERY & STRENGTHS (HORIZONTAL BAR CHART)
   // --------------------------------------------------------------------------
   function renderSubjectMasteryChart() {
     const canvas = document.getElementById("analyticsSubjectMasteryChart");
@@ -882,7 +857,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const domainScores = {};
 
-    // Helper to safely register score
     const registerScore = (name, pct) => {
       if (!name) return;
       const cleanName = name.trim();
@@ -890,15 +864,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       domainScores[cleanName].push(Math.min(100, Math.max(0, Math.round(pct))));
     };
 
-    // 1. Process prediction history
     if (predictionHistory && predictionHistory.length > 0) {
       predictionHistory.forEach((h) => {
         const payload = h.payload || {};
 
-        // A. Multi-class / Multi-semester logged terms
-        if (Array.isArray(payload.logged_terms) && payload.logged_terms.length > 0) {
+        if (Array.isArray(payload.logged_terms)) {
           payload.logged_terms.forEach((t) => {
-            if (Array.isArray(t.subjects) && t.subjects.length > 0) {
+            if (Array.isArray(t.subjects)) {
               t.subjects.forEach((s) => {
                 const name = s.subject_name || s.name || s.subject;
                 const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
@@ -910,11 +882,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
         }
 
-        // B. Direct subjects or course breakdown
         const subList = payload.subjects || payload.course_breakdown;
-        if (Array.isArray(subList) && subList.length > 0) {
+        if (Array.isArray(subList)) {
           subList.forEach((s) => {
-            const name = s.subject_name || s.name || s.subject || "Coursework";
+            const name = s.subject_name || s.name || s.subject;
             const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || s.marks || 0);
             const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || s.max || 100);
             const pct = max > 0 ? (obt / max) * 100 : obt;
@@ -922,58 +893,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
         }
 
-        // C. Core continuous metrics
-        const att = parseFloat(payload.Attendance_Rate || payload.Attendance_Pct || payload.Attendance_Percentage || payload.attendance_pct || payload.attendance);
-        if (!isNaN(att) && att > 0) registerScore("Classroom Attendance & Presence", att);
+        const att = parseFloat(payload.Attendance_Rate || payload.Attendance_Pct || payload.attendance_pct || payload.attendance);
+        if (!isNaN(att) && att > 0) registerScore("Class Attendance", att);
 
-        const midterm = parseFloat(payload.midterm_score || payload.Midterm_Exam_Avg || payload.test_avg || payload.Quiz_Score || payload.quiz_avg);
-        if (!isNaN(midterm) && midterm > 0) registerScore("Midterms & Continuous Assessments", midterm);
-
-        const studyH = parseFloat(payload.study_hours || payload.Study_Hours || payload.Study_Hours_Per_Day);
-        if (!isNaN(studyH) && studyH > 0) registerScore("Self-Study Routine Discipline", Math.min(100, Math.round(studyH * 16.5)));
-
-        if (payload.SSC_I_Marks) {
-          const sscPct = (parseFloat(payload.SSC_I_Marks) / 550) * 100;
-          registerScore("Board Academic Baseline", sscPct);
-        } else if (payload.Previous_CGPA) {
-          const cgpaPct = (parseFloat(payload.Previous_CGPA) / 4.0) * 100;
-          registerScore("Degree Cumulative Standing", cgpaPct);
-        } else if (payload.past_annual_pct) {
-          registerScore("Academic Prerequisite Aggregate", parseFloat(payload.past_annual_pct));
-        }
-      });
-    }
-
-    // 2. Check local stored academic records if domainScores is still sparse
-    if (Object.keys(domainScores).length < 2) {
-      const user = window.authClient ? window.authClient.getUser() : null;
-      const stages = ["university", "secondary", "primary", "matric", "intermediate"];
-      stages.forEach((st) => {
-        let stored = null;
-        if (user?.id) {
-          stored = localStorage.getItem(`edumetrics_academic_records_${st}_${user.id}`);
-        }
-        if (!stored) stored = localStorage.getItem(`edumetrics_academic_records_${st}`);
-        if (stored) {
-          try {
-            const terms = JSON.parse(stored);
-            if (Array.isArray(terms)) {
-              terms.forEach((t) => {
-                if (Array.isArray(t.subjects)) {
-                  t.subjects.forEach((s) => {
-                    const name = s.subject_name || s.name || s.subject;
-                    const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : s.obtained || 0);
-                    const max = parseFloat(s.total_marks !== undefined ? s.total_marks : s.total || 100);
-                    const pct = max > 0 ? (obt / max) * 100 : obt;
-                    registerScore(name, pct);
-                  });
-                }
-              });
-            }
-          } catch (e) {
-            // ignore JSON parse err
-          }
-        }
+        const midterm = parseFloat(payload.midterm_score || payload.Midterm_Exam_Avg || payload.test_avg);
+        if (!isNaN(midterm) && midterm > 0) registerScore("Midterm Exams", midterm);
       });
     }
 
@@ -981,9 +905,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (domainKeys.length === 0) {
       updateChartEmptyState("analyticsSubjectMasteryChart", true, {
         icon: "📚",
-        title: "No Coursework Evaluated Yet",
-        description: "Add your semester subjects or coursework evaluations to calculate your domain competencies.",
-        buttonText: "+ Log Coursework & Predict",
+        title: "No Coursework Logged",
+        description: "Enter your semester courses in predictions to see your subject strengths and weaknesses here.",
+        buttonText: "⚡ Add Courses & Predict",
         buttonHref: "prediction.html"
       });
       return;
@@ -991,24 +915,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     updateChartEmptyState("analyticsSubjectMasteryChart", false);
 
-    const labels = domainKeys;
-    const dataSeries = domainKeys.map((k) => {
+    const labels = domainKeys.slice(0, 6);
+    const dataSeries = labels.map((k) => {
       const arr = domainScores[k];
       return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
     });
 
     const colors = dataSeries.map((val) => {
-      if (val >= 85) return "#a8f04b";
-      if (val >= 70) return "#c5f871";
-      if (val >= 55) return "#f7f7f7";
-      return "#ff9c27";
+      if (val >= 75) return "#A3E635";
+      if (val >= 60) return "#38BDF8";
+      return "#F59E0B";
     });
 
     subjectMasteryChart = new Chart(ctx, {
       type: "bar",
       data: {
         labels: labels,
-        datasets: [{ label: "Competency %", data: dataSeries, backgroundColor: colors, borderWidth: 0, borderRadius: 6 }]
+        datasets: [{
+          label: "Mastery Score",
+          data: dataSeries,
+          backgroundColor: colors,
+          borderWidth: 0,
+          borderRadius: 6
+        }]
       },
       options: {
         responsive: true,
@@ -1017,7 +946,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: { label: (ctx) => ` Evaluated Competency: ${ctx.parsed.x}%` }
+            backgroundColor: "#181B22",
+            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1,
+            callbacks: { label: (ctx) => ` Score: ${ctx.parsed.x}%` }
           }
         },
         scales: {
@@ -1029,7 +961,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           },
           y: {
             grid: { display: false },
-            ticks: { color: "#F1F5F9", font: { size: window.innerWidth <= 768 ? 10 : 11, weight: "600" } }
+            ticks: { color: "#F8FAFC", font: { size: window.innerWidth <= 768 ? 10 : 11, weight: "600" } }
           }
         }
       }
@@ -1037,10 +969,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 14. CHART 4: STUDY EFFORT VS OUTCOME CORRELATION
-  // --------------------------------------------------------------------------
-  // --------------------------------------------------------------------------
-  // 14. CHART 4: STUDY EFFORT VS OUTCOME CORRELATION
+  // 14. CHART 4: STUDY TIME VS PREDICTED SCORE (EFFORT IMPACT)
   // --------------------------------------------------------------------------
   function renderHabitsCorrelationChart() {
     const canvas = document.getElementById("analyticsHabitsCorrelationChart");
@@ -1049,12 +978,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (habitsCorrelationChart) habitsCorrelationChart.destroy();
 
-    const habitBuckets = {
-      "< 2 hrs/day": [],
-      "2-4 hrs/day": [],
-      "4-6 hrs/day": [],
-      "6+ hrs/day": []
-    };
 
     let baseScore = 80.0;
 

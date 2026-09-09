@@ -9,11 +9,11 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- Design System CSS -->
-  <link rel="stylesheet" href="css/variables.css?v=2.5.1">
-  <link rel="stylesheet" href="css/layout.css?v=2.5.1">
-  <link rel="stylesheet" href="css/components.css?v=2.5.1">
-  <link rel="stylesheet" href="css/dashboard.css?v=2.5.1">
-  <link rel="stylesheet" href="css/prediction.css?v=2.5.1">
+  <link rel="stylesheet" href="css/variables.css?v=2.7.0">
+  <link rel="stylesheet" href="css/layout.css?v=2.7.0">
+  <link rel="stylesheet" href="css/components.css?v=2.7.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=2.7.0">
+  <link rel="stylesheet" href="css/prediction.css?v=2.7.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -440,7 +440,7 @@
   <!-- ======================================================================
        DIAGNOSTIC DETAIL SNAPSHOT MODAL
        ====================================================================== -->
-  <div class="modal-backdrop" id="analytics-detail-modal">
+  <div class="modal-backdrop" id="analytics-detail-modal" style="display: none;">
     <div class="modal-dialog" style="max-width: 600px;">
       <div class="modal-header">
         <div>
@@ -484,7 +484,7 @@
   <!-- ======================================================================
        DEDICATED RUN TRAJECTORY GRAPH MODAL
        ====================================================================== -->
-  <div class="modal-backdrop" id="analytics-trajectory-modal">
+  <div class="modal-backdrop" id="analytics-trajectory-modal" style="display: none;">
     <div class="modal-dialog" style="max-width: 680px;">
       <div class="modal-header">
         <div>
@@ -535,7 +535,7 @@
   <!-- ======================================================================
        DEDICATED FULLSCREEN HIGH-RESOLUTION THEATER CHART MODAL
        ====================================================================== -->
-  <div class="modal-backdrop" id="analytics-fullscreen-modal">
+  <div class="modal-backdrop" id="analytics-fullscreen-modal" style="display: none;">
     <div class="modal-dialog" style="max-width: 1200px; width: 95vw; height: 90vh; max-height: 90vh; display: flex; flex-direction: column; padding: 0;">
       <div class="modal-header" style="padding: var(--space-5) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--border-subtle); background: var(--bg-card);">
         <div>
@@ -572,7 +572,7 @@
   <!-- ======================================================================
        EDIT RECORD MODAL
        ====================================================================== -->
-  <div class="modal-backdrop" id="analytics-edit-modal">
+  <div class="modal-backdrop" id="analytics-edit-modal" style="display: none;">
     <div class="modal-dialog" style="max-width: 540px;">
       <div class="modal-header">
         <div>
@@ -620,7 +620,7 @@
   <!-- =========================================================================
        MODAL: STUDENT PROFILE & ACCOUNT SETTINGS (TOP-TIER OVERHAUL)
        ========================================================================= -->
-  <div class="modal-backdrop" id="profile-settings-modal">
+  <div class="modal-backdrop" id="profile-settings-modal" style="display: none;">
     <div class="modal-dialog profile-settings-dialog">
       
       <!-- Modal Header with Avatar & Meta -->
