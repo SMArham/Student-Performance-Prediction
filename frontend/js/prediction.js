@@ -812,6 +812,23 @@ document.addEventListener("DOMContentLoaded", () => {
       if (kpiSub4) kpiSub4.innerText = "School Presence";
     }
 
+    if (managerCurrentClassSelect) {
+      const kpiStanding = document.getElementById("kpi-current-standing");
+      if (kpiStanding && managerCurrentClassSelect.value) {
+        kpiStanding.innerText = managerCurrentClassSelect.value;
+      }
+      managerCurrentClassSelect.onchange = function() {
+        const standingEl = document.getElementById("kpi-current-standing");
+        if (standingEl) standingEl.innerText = this.value;
+        const inlineNameSelect = document.getElementById("inline-term-name-select");
+        if (inlineNameSelect && inlineNameSelect.querySelector(`option[value="${this.value}"]`)) {
+          inlineNameSelect.value = this.value;
+          const inlineNameInput = document.getElementById("inline-term-name-input");
+          if (inlineNameInput) inlineNameInput.value = this.value;
+        }
+      };
+    }
+
     dynamicAcademicFields.innerHTML = "";
   }
 
@@ -1101,19 +1118,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const tgtSem = document.getElementById("manager_target_class_select")?.value || `Semester ${semCount + 1}`;
       
       if (loggedTerms.length > 0) {
-        let totalObt = 0;
-        let totalMax = 0;
+        const lastT = loggedTerms[loggedTerms.length - 1];
+        if (lastT && lastT.cgpa !== undefined && lastT.cgpa !== null && !isNaN(parseFloat(lastT.cgpa)) && parseFloat(lastT.cgpa) > 0) {
+          cumCgpa = (parseFloat(lastT.cgpa)).toFixed(2);
+        } else {
+          let gpaSum = 0, crSum = 0;
+          loggedTerms.forEach(t => {
+            const g = parseFloat(t.gpa !== undefined ? t.gpa : (t.percentage ? t.percentage / 25 : 3.5));
+            const cr = parseFloat(t.credit_hours || 18);
+            gpaSum += (g * cr);
+            crSum += cr;
+          });
+          cumCgpa = crSum > 0 ? (gpaSum / crSum).toFixed(2) : (lastT?.gpa ? Number(lastT.gpa).toFixed(2) : "4.00");
+        }
         let attSum = 0;
         loggedTerms.forEach((t) => {
           attSum += parseFloat(t.attendance_pct || 85.0);
-          (t.subjects || []).forEach((s) => {
-            totalObt += parseFloat(s.obtained_marks || 0);
-            totalMax += parseFloat(s.total_marks || 100);
-          });
         });
         avgAtt = (attSum / loggedTerms.length).toFixed(1);
-        const overallPct = totalMax > 0 ? (totalObt / totalMax) * 100 : 0;
-        cumCgpa = (Math.min(4.0, (overallPct / 100.0) * 4.0)).toFixed(2);
       }
       academicSummary = `Current: ${curSem} ➔ Target: ${tgtSem} | Cumulative CGPA: ${cumCgpa} | Avg Attendance: ${avgAtt}%`;
     } else if (currentStage === "intermediate") {
@@ -1284,26 +1306,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (loggedTerms && loggedTerms.length > 0) {
         currentSemNum = loggedTerms.length;
-        let totalObt = 0;
-        let totalMax = 0;
+        const curSelectVal = document.getElementById("manager_current_class_select")?.value;
+        if (curSelectVal && curSelectVal.includes("Semester")) {
+          const match = curSelectVal.match(/Semester\s*(\d+)/i);
+          if (match) currentSemNum = parseInt(match[1]);
+        }
         let attSum = 0;
         let crSum = 0;
+        let gpaSum = 0;
+        let weightedGpaSum = 0;
 
         loggedTerms.forEach((t) => {
           attSum += parseFloat(t.attendance_pct || 85.0);
-          crSum += parseFloat(t.credit_hours || 18);
+          const cr = parseFloat(t.credit_hours || 18);
+          crSum += cr;
           totalBacklogs += parseInt(t.backlogs || 0);
           if (t.midterm_score) latestMidterm = parseFloat(t.midterm_score);
-          (t.subjects || []).forEach((s) => {
-            totalObt += parseFloat(s.obtained_marks || 0);
-            totalMax += parseFloat(s.total_marks || 100);
-          });
+          const tGpa = parseFloat(t.gpa !== undefined ? t.gpa : (t.cgpa || 3.5));
+          if (!isNaN(tGpa)) {
+            gpaSum += tGpa;
+            weightedGpaSum += (tGpa * cr);
+          }
         });
 
         avgAtt = +(attSum / loggedTerms.length).toFixed(1);
         totalCredits = crSum || 18;
-        const overallPct = totalMax > 0 ? (totalObt / totalMax) * 100 : 0;
-        cumCgpa = +(Math.min(4.0, (overallPct / 100.0) * 4.0)).toFixed(2);
+        
+        const lastT = loggedTerms[loggedTerms.length - 1];
+        if (lastT && lastT.cgpa !== undefined && lastT.cgpa !== null && !isNaN(parseFloat(lastT.cgpa)) && parseFloat(lastT.cgpa) > 0) {
+          cumCgpa = +(parseFloat(lastT.cgpa)).toFixed(2);
+        } else if (crSum > 0) {
+          cumCgpa = +(weightedGpaSum / crSum).toFixed(2);
+        } else {
+          cumCgpa = +(gpaSum / loggedTerms.length).toFixed(2);
+        }
       }
 
       payload.Previous_CGPA = cumCgpa;
@@ -2249,27 +2285,56 @@ document.addEventListener("DOMContentLoaded", () => {
     modalAddTerm.style.display = "none";
   }
 
+  function convertSubPctToGPA(pct) {
+    if (pct >= 85) return 4.00;
+    if (pct >= 80) return 3.70;
+    if (pct >= 75) return 3.30;
+    if (pct >= 70) return 3.00;
+    if (pct >= 65) return 2.70;
+    if (pct >= 60) return 2.30;
+    if (pct >= 55) return 2.00;
+    if (pct >= 50) return 1.70;
+    return 0.00;
+  }
+  window.convertSubPctToGPA = convertSubPctToGPA;
+
   function calculateModalGpaFromRows() {
     const termGpaInput = document.getElementById("term-gpa-input");
+    const termCgpaInput = document.getElementById("term-cgpa-input");
     if (!termGpaInput || !modalTermSubjectsContainer) return;
     const rows = Array.from(modalTermSubjectsContainer.querySelectorAll(".modal-subject-row"));
+    if (rows.length === 0) return;
+
     let totObt = 0;
     let totMax = 0;
+    let sumGpa = 0;
+    let countSubs = 0;
+
     rows.forEach(r => {
       const obt = parseFloat(r.querySelector(".m-sub-obt")?.value);
       const max = parseFloat(r.querySelector(".m-sub-max")?.value);
       if (!isNaN(obt) && !isNaN(max) && max > 0) {
         totObt += obt;
         totMax += max;
+        const pct = (obt / max) * 100;
+        sumGpa += convertSubPctToGPA(pct);
+        countSubs += 1;
       }
     });
+
     if (totMax > 0) {
       if (currentStage === "university") {
-        const gpa = Math.min(4.0, (totObt / totMax) * 4.0);
+        const gpa = countSubs > 0 ? (sumGpa / countSubs) : 4.00;
         termGpaInput.value = gpa.toFixed(2);
+        if (termCgpaInput && (!termCgpaInput.value || termCgpaInput.value === "0" || termCgpaInput.value === "0.00" || parseFloat(termCgpaInput.value) === 0)) {
+          termCgpaInput.value = gpa.toFixed(2);
+        }
       } else {
-        const pct = Math.min(100.0, (totObt / totMax) * 100.0);
+        const pct = (totObt / totMax) * 100.0;
         termGpaInput.value = pct.toFixed(1);
+        if (termCgpaInput && (!termCgpaInput.value || termCgpaInput.value === "0" || parseFloat(termCgpaInput.value) === 0)) {
+          termCgpaInput.value = pct.toFixed(1);
+        }
       }
     }
   }
@@ -2389,6 +2454,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const kpiStanding = document.getElementById("kpi-current-standing");
     const kpiStandingSub = document.getElementById("kpi-standing-sub");
     const kpiLatestGpa = document.getElementById("kpi-latest-gpa");
+    const curClassSelect = document.getElementById("manager_current_class_select");
 
     if (!terms || terms.length === 0) {
       const emptyIcon = currentStage === "university" ? "🏛️" : currentStage === "intermediate" ? "🎓" : currentStage === "matric" ? "📜" : currentStage === "secondary" ? "🏫" : "🌱";
@@ -2408,10 +2474,14 @@ document.addEventListener("DOMContentLoaded", () => {
         : "Click <strong>+ Add Primary Class</strong> to log completed primary classes and learning subjects.";
 
       if (kpiStanding) {
-        kpiStanding.innerText = currentStage === "university" ? "Semester 1 (Freshman)"
-          : currentStage === "intermediate" ? "1st Year (11th)"
-          : currentStage === "matric" ? "9th Class (SSC-I)"
-          : "No Classes Yet";
+        if (curClassSelect && curClassSelect.value) {
+          kpiStanding.innerText = curClassSelect.value;
+        } else {
+          kpiStanding.innerText = currentStage === "university" ? "Semester 1 (Freshman)"
+            : currentStage === "intermediate" ? "1st Year (11th)"
+            : currentStage === "matric" ? "9th Class (SSC-I)"
+            : "No Classes Yet";
+        }
       }
       if (kpiStandingSub) kpiStandingSub.innerText = "Awaiting 1st Entry";
       if (kpiLatestGpa) kpiLatestGpa.innerText = currentStage === "university" ? "0.00 GPA" : "0.0%";
@@ -2433,25 +2503,66 @@ document.addEventListener("DOMContentLoaded", () => {
     let totalObtainedAll = 0;
     let totalMaxAll = 0;
     let totalAttendance = 0;
+    let totalCreditHours = 0;
+    let weightedGpaSum = 0;
+    let gpaSum = 0;
 
     terms.forEach(t => {
-      totalAttendance += parseFloat(t.attendance_pct || 85);
+      const att = parseFloat(t.attendance_pct !== undefined ? t.attendance_pct : 85);
+      totalAttendance += isNaN(att) ? 85 : att;
+
+      const tGpa = parseFloat(t.gpa !== undefined && t.gpa !== null ? t.gpa : (t.percentage !== undefined ? (currentStage === "university" ? (t.percentage / 25.0) : t.percentage) : 3.5));
+      const cr = parseFloat(t.credit_hours || 18);
+      if (!isNaN(tGpa)) {
+        gpaSum += tGpa;
+        weightedGpaSum += (tGpa * cr);
+        totalCreditHours += cr;
+      }
+
       const subs = t.subjects || [];
       totalCoursesCount += subs.length;
       subs.forEach(s => {
-        totalObtainedAll += parseFloat(s.obtained_marks || 0);
-        totalMaxAll += parseFloat(s.total_marks || 100);
+        const obt = parseFloat(s.obtained_marks !== undefined ? s.obtained_marks : (s.marks !== undefined ? s.marks : 0));
+        const maxM = parseFloat(s.total_marks !== undefined ? s.total_marks : (s.total !== undefined ? s.total : 100));
+        if (!isNaN(obt) && !isNaN(maxM) && maxM > 0) {
+          totalObtainedAll += obt;
+          totalMaxAll += maxM;
+        }
       });
     });
 
-    const overallPct = totalMaxAll > 0 ? (totalObtainedAll / totalMaxAll) * 100 : 0;
-    const calcCgpa = currentStage === "university"
-      ? +(Math.min(4.0, (overallPct / 100.0) * 4.0)).toFixed(2)
-      : +overallPct.toFixed(1);
-    const avgAttendance = +(totalAttendance / terms.length).toFixed(1);
+    const lastTerm = terms[terms.length - 1];
+    let calcCgpa = 0;
+
+    if (currentStage === "university") {
+      // Prioritize explicit CGPA on the latest term if provided by user, otherwise credit-weighted GPA
+      if (lastTerm && lastTerm.cgpa !== undefined && lastTerm.cgpa !== null && !isNaN(parseFloat(lastTerm.cgpa)) && parseFloat(lastTerm.cgpa) > 0) {
+        calcCgpa = +(parseFloat(lastTerm.cgpa)).toFixed(2);
+      } else if (totalCreditHours > 0) {
+        calcCgpa = +(weightedGpaSum / totalCreditHours).toFixed(2);
+      } else if (terms.length > 0) {
+        calcCgpa = +(gpaSum / terms.length).toFixed(2);
+      } else {
+        calcCgpa = 0.00;
+      }
+    } else {
+      if (lastTerm && lastTerm.cgpa !== undefined && lastTerm.cgpa !== null && !isNaN(parseFloat(lastTerm.cgpa)) && parseFloat(lastTerm.cgpa) > 0) {
+        calcCgpa = +(parseFloat(lastTerm.cgpa)).toFixed(1);
+      } else if (totalMaxAll > 0) {
+        calcCgpa = +((totalObtainedAll / totalMaxAll) * 100).toFixed(1);
+      } else if (terms.length > 0) {
+        calcCgpa = +(gpaSum / terms.length).toFixed(1);
+      } else {
+        calcCgpa = 0.0;
+      }
+    }
+
+    const avgAttendance = terms.length > 0 ? +(totalAttendance / terms.length).toFixed(1) : 85;
 
     if (kpiStanding) {
-      if (currentStage === "university") {
+      if (curClassSelect && curClassSelect.value) {
+        kpiStanding.innerText = curClassSelect.value;
+      } else if (currentStage === "university") {
         const semNumber = terms.length;
         const tierName = semNumber === 1 ? "Freshman" : semNumber === 2 ? "Sophomore" : semNumber <= 4 ? "Junior" : "Senior";
         kpiStanding.innerText = `Semester ${semNumber} (${tierName})`;
@@ -2467,17 +2578,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (kpiStandingSub) kpiStandingSub.innerText = `${terms.length} Level${terms.length > 1 ? "s" : ""} Recorded`;
 
-    if (kpiLatestGpa) {
-      const lastTerm = terms[terms.length - 1];
-      const lastGpa = lastTerm.gpa !== undefined ? lastTerm.gpa : (lastTerm.percentage || calcCgpa);
-      kpiLatestGpa.innerText = currentStage === "university" ? `${Number(lastGpa).toFixed(2)} GPA` : `${lastGpa}%`;
+    if (kpiLatestGpa && lastTerm) {
+      const lastGpa = lastTerm.gpa !== undefined && lastTerm.gpa !== null && !isNaN(parseFloat(lastTerm.gpa))
+        ? parseFloat(lastTerm.gpa)
+        : (lastTerm.percentage !== undefined && !isNaN(parseFloat(lastTerm.percentage)) ? parseFloat(lastTerm.percentage) : calcCgpa);
+      kpiLatestGpa.innerText = currentStage === "university" ? `${Number(lastGpa).toFixed(2)} GPA` : `${Number(lastGpa).toFixed(1)}%`;
     }
 
     if (kpiCumulativeCgpa) {
       kpiCumulativeCgpa.innerText = currentStage === "university" ? `${calcCgpa.toFixed(2)} CGPA` : `${calcCgpa}%`;
     }
     const kpiAgg = document.getElementById("kpi-aggregate-pct");
-    if (kpiAgg) kpiAgg.innerText = `${avgAttendance}%`;
+    if (kpiAgg) kpiAgg.innerText = `${Math.round(avgAttendance)}%`;
 
     const cardIcon = currentStage === "university" ? "🏛️" : currentStage === "intermediate" ? "🎓" : currentStage === "matric" ? "📜" : currentStage === "secondary" ? "🏫" : "🌱";
     const subLabelUnit = currentStage === "university" ? "Courses" : "Subjects";
@@ -2834,25 +2946,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function calculateInlineGpaFromRows() {
     const gpaInput = document.getElementById("inline-term-gpa-input");
+    const cgpaInput = document.getElementById("inline-term-cgpa-input");
     if (!gpaInput || !inlineTermSubjectsContainer) return;
     const rows = Array.from(inlineTermSubjectsContainer.querySelectorAll(".inline-subject-row"));
+    if (rows.length === 0) return;
+
     let totObt = 0;
     let totMax = 0;
+    let sumGpa = 0;
+    let countSubs = 0;
+
     rows.forEach(r => {
       const obt = parseFloat(r.querySelector(".m-sub-obt")?.value);
       const max = parseFloat(r.querySelector(".m-sub-max")?.value);
       if (!isNaN(obt) && !isNaN(max) && max > 0) {
         totObt += obt;
         totMax += max;
+        const pct = (obt / max) * 100;
+        sumGpa += convertSubPctToGPA(pct);
+        countSubs += 1;
       }
     });
+
     if (totMax > 0) {
       if (currentStage === "university") {
-        const gpa = Math.min(4.0, (totObt / totMax) * 4.0);
+        const gpa = countSubs > 0 ? (sumGpa / countSubs) : 4.00;
         gpaInput.value = gpa.toFixed(2);
+        if (cgpaInput && (!cgpaInput.value || cgpaInput.value === "0" || cgpaInput.value === "0.00" || parseFloat(cgpaInput.value) === 0)) {
+          cgpaInput.value = gpa.toFixed(2);
+        }
       } else {
-        const pct = Math.min(100.0, (totObt / totMax) * 100.0);
+        const pct = (totObt / totMax) * 100.0;
         gpaInput.value = pct.toFixed(1);
+        if (cgpaInput && (!cgpaInput.value || cgpaInput.value === "0" || parseFloat(cgpaInput.value) === 0)) {
+          cgpaInput.value = pct.toFixed(1);
+        }
       }
     }
   }
@@ -3339,6 +3467,32 @@ document.addEventListener("DOMContentLoaded", () => {
       closeInlineSemesterEditor();
     }
   });
+
+  const inlineGpaInput = document.getElementById("inline-term-gpa-input");
+  const inlineCgpaInput = document.getElementById("inline-term-cgpa-input");
+  if (inlineGpaInput && inlineCgpaInput) {
+    inlineGpaInput.addEventListener("input", () => {
+      if (!inlineCgpaInput.dataset.manuallyEdited || !inlineCgpaInput.value) {
+        inlineCgpaInput.value = inlineGpaInput.value;
+      }
+    });
+    inlineCgpaInput.addEventListener("input", () => {
+      inlineCgpaInput.dataset.manuallyEdited = "true";
+    });
+  }
+
+  const modalGpaInput = document.getElementById("term-gpa-input");
+  const modalCgpaInput = document.getElementById("term-cgpa-input");
+  if (modalGpaInput && modalCgpaInput) {
+    modalGpaInput.addEventListener("input", () => {
+      if (!modalCgpaInput.dataset.manuallyEdited || !modalCgpaInput.value) {
+        modalCgpaInput.value = modalGpaInput.value;
+      }
+    });
+    modalCgpaInput.addEventListener("input", () => {
+      modalCgpaInput.dataset.manuallyEdited = "true";
+    });
+  }
 
   // Handle Inline Term Form Submission
   if (inlineTermForm) {

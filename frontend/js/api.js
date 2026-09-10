@@ -227,6 +227,11 @@ class APIClient {
             term_name: termPayload.term_name || "Current Term",
             gpa: parseFloat(termPayload.gpa) || 3.5,
             cgpa: parseFloat(termPayload.cgpa || termPayload.gpa) || 3.5,
+            attendance_pct: termPayload.attendance_pct !== undefined ? parseFloat(termPayload.attendance_pct) : 85,
+            credit_hours: termPayload.credit_hours !== undefined ? parseFloat(termPayload.credit_hours) : 18,
+            midterm_score: termPayload.midterm_score !== undefined ? parseFloat(termPayload.midterm_score) : 80,
+            backlogs: termPayload.backlogs !== undefined ? parseInt(termPayload.backlogs) : 0,
+            study_hours: termPayload.study_hours !== undefined ? parseFloat(termPayload.study_hours) : 4.5,
             subjects: termPayload.subjects || [],
             created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
           };
@@ -326,12 +331,16 @@ class APIClient {
               return { 
                 ...matchedLocal, 
                 ...dbTerm, 
+                gpa: dbTerm.gpa !== undefined ? dbTerm.gpa : matchedLocal?.gpa,
+                cgpa: dbTerm.cgpa !== undefined ? dbTerm.cgpa : (matchedLocal?.cgpa || dbTerm.gpa),
+                attendance_pct: dbTerm.attendance_pct !== undefined ? dbTerm.attendance_pct : (matchedLocal?.attendance_pct || 85),
+                credit_hours: dbTerm.credit_hours !== undefined ? dbTerm.credit_hours : (matchedLocal?.credit_hours || 18),
                 subjects: (dbTerm.subjects && dbTerm.subjects.length > 0) ? dbTerm.subjects : (matchedLocal?.subjects || []) 
               };
             });
             let totalGpa = 0;
-            for (const t of mergedTerms) totalGpa += parseFloat(t.gpa || t.percentage || 0);
-            const cgpa = +(totalGpa / mergedTerms.length).toFixed(2);
+            for (const t of mergedTerms) totalGpa += parseFloat(t.cgpa || t.gpa || t.percentage || 0);
+            const cgpa = mergedTerms.length > 0 ? +(totalGpa / mergedTerms.length).toFixed(2) : 0;
             return { success: true, count: mergedTerms.length, cumulative_cgpa: cgpa, terms: mergedTerms };
           }
         }
