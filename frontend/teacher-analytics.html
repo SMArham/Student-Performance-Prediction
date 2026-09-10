@@ -15,11 +15,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Unified Dark Futuristic Stylesheets -->
-  <link rel="stylesheet" href="css/variables.css">
-  <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <link rel="stylesheet" href="css/prediction.css">
+  <link rel="stylesheet" href="css/variables.css?v=3.0.0">
+  <link rel="stylesheet" href="css/layout.css?v=3.0.0">
+  <link rel="stylesheet" href="css/components.css?v=3.0.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
+  <link rel="stylesheet" href="css/prediction.css?v=3.0.0">
+  <link rel="stylesheet" href="css/tour.css?v=3.1.0">
 </head>
 <body>
   <!-- Toast Notification Container -->
@@ -46,13 +47,13 @@
         </div>
 
         <!-- Upper Right User Identity Block -->
-        <div class="navbar-user-block" id="user-profile-btn" title="Profile & Account Settings">
+        <a href="profile.html" class="navbar-user-block" id="user-profile-btn" title="Profile & Account Settings" style="text-decoration: none;">
           <div class="user-status-indicator"></div>
           <div class="user-text-meta">
             <div class="user-display-name" id="teacher-name">Instructor Portal</div>
             <div class="user-subrole" id="teacher-id-code">TCH-2026-001</div>
           </div>
-        </div>
+        </a>
       </header>
 
       <!-- 2. SHELL BODY: LEFT UTILITY RAIL + MAIN CONTENT CANVAS -->
@@ -72,9 +73,14 @@
               <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               <span class="rail-label">Analytics</span>
             </a>
-            <button type="button" class="rail-icon-btn" id="rail-profile-btn" title="Profile & Account Settings">
+            <a href="profile.html" class="rail-icon-btn" id="rail-profile-btn" title="Profile & Account Settings">
               <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               <span class="rail-label">Profile</span>
+            </a>
+            <button type="button" class="rail-icon-btn tour-btn" id="rail-tour-btn" title="Quick Platform Tour">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+              <span class="rail-label">Tour</span>
+              <span class="tour-badge-dot"></span>
             </button>
             <button type="button" class="rail-icon-btn" id="logout-btn" title="Sign Out">
               <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -367,7 +373,7 @@
   </div>
 
   <!-- FULLSCREEN THEATER MODAL -->
-  <div class="modal-backdrop" id="analytics-fullscreen-modal">
+  <div class="modal-backdrop" id="analytics-fullscreen-modal" style="display: none !important;">
     <div class="modal-dialog" style="max-width: 1040px; height: 86vh; display: flex; flex-direction: column;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding: var(--space-4) var(--space-6);">
         <div>
@@ -401,145 +407,10 @@
     </div>
   </div>
 
-  <!-- Profile Settings Modal -->
-  <div class="modal-backdrop" id="profile-settings-modal">
-    <div class="modal-dialog profile-settings-dialog">
-      <div class="profile-modal-header">
-        <div class="profile-header-meta">
-          <div class="profile-avatar-circle">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-lime)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </div>
-          <div>
-            <h2 class="profile-modal-title">Instructor Profile & Settings</h2>
-            <div class="profile-modal-subtitle">Manage instructor credentials, department, and account security</div>
-          </div>
-        </div>
-        <button type="button" class="profile-close-btn" id="btn-close-profile-modal" aria-label="Close modal">&times;</button>
-      </div>
-
-      <!-- Navigation Tabs -->
-      <div class="profile-tabs-bar">
-        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
-          <span>Instructor Profile</span>
-        </button>
-        <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
-          <span>Security</span>
-        </button>
-        <button type="button" class="modal-tab-btn danger-tab" data-tab="tab-profile-danger">
-          <span>Danger Zone</span>
-        </button>
-      </div>
-
-      <!-- TAB 1: General Details -->
-      <div class="profile-tab-content active" id="tab-profile-general">
-        <form id="profile-details-form">
-          <div class="profile-section-card">
-            <div class="profile-section-heading">Instructor Identification</div>
-            
-            <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-              <div class="form-group">
-                <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
-                <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Dr. Muhammad Farooq" required>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="setting-email">
-                  Email Address <span class="badge-fixed-tag">🔒 Readonly</span>
-                </label>
-                <div class="fixed-input-wrapper">
-                  <input type="email" id="setting-email" class="form-input readonly-fixed-input" placeholder="teacher@university.edu" readonly>
-                </div>
-                <div class="field-hint-text">Your registered faculty email.</div>
-              </div>
-            </div>
-
-            <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-              <div class="form-group">
-                <label class="form-label" for="setting-studentid">
-                  Teacher ID Code <span class="badge-fixed-tag">🔒 Fixed</span>
-                </label>
-                <div class="fixed-input-wrapper">
-                  <input type="text" id="setting-studentid" class="form-input readonly-fixed-input" placeholder="TCH-2026-001" readonly>
-                </div>
-                <div class="field-hint-text">Faculty registration ID. Immutable.</div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="setting-department">Department / Faculty</label>
-                <input type="text" id="setting-department" class="form-input" placeholder="e.g. Computer Science / AI">
-                <div class="field-hint-text">Your academic department.</div>
-              </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: var(--space-2);">
-              <label class="form-label" for="setting-institution">Institution Name</label>
-              <input type="text" id="setting-institution" class="form-input" placeholder="e.g. Faculty of Engineering">
-              <div class="field-hint-text">Your registered university or college.</div>
-            </div>
-          </div>
-
-          <div class="profile-action-row" style="margin-top: var(--space-4);">
-            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
-              💾 Save Instructor Profile
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- TAB 2: Security -->
-      <div class="profile-tab-content" id="tab-profile-security" style="display: none;">
-        <form id="profile-security-form">
-          <div class="profile-section-card">
-            <div class="profile-section-heading">Password & Authentication</div>
-            
-            <div class="form-group" style="margin-bottom: var(--space-4);">
-              <label class="form-label" for="setting-new-password">New Password</label>
-              <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password" value="">
-            </div>
-
-            <div class="form-group" style="margin-bottom: var(--space-2);">
-              <label class="form-label" for="setting-confirm-password">Confirm New Password</label>
-              <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter new password to confirm" required autocomplete="new-password" value="">
-            </div>
-          </div>
-
-          <div class="profile-action-row" style="margin-top: var(--space-4);">
-            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
-              🔒 Update Password Securely
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- TAB 3: Danger Zone -->
-      <div class="profile-tab-content" id="tab-profile-danger" style="display: none;">
-        <div class="danger-zone-card">
-          <div class="danger-zone-header">
-            <span class="danger-icon">⚠️</span>
-            <div>
-              <div class="danger-title">Permanent Instructor Account Deletion</div>
-              <div class="danger-desc">
-                Permanently deletes your instructor profile, credentials, and saved cohort analytics.
-              </div>
-            </div>
-          </div>
-
-          <div class="danger-warning-note">
-            This action cannot be undone. Your instructor account will be permanently removed from Supabase.
-          </div>
-
-          <button type="button" class="btn btn-danger" id="btn-delete-account-confirm" style="width: 100%; height: 42px; font-size: 13.5px; font-weight: 700;">
-            🗑️ Permanently Delete My Account
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ======================================================================
        MODAL 1: VIEW STUDENT DIAGNOSTIC DOSSIER (READ)
        ====================================================================== -->
-  <div class="modal-backdrop" id="modal-view-cohort-student">
+  <div class="modal-backdrop" id="modal-view-cohort-student" style="display: none !important;">
     <div class="modal-dialog" style="max-width: 680px; max-height: 90vh; display: flex; flex-direction: column;">
       <div class="modal-header">
         <div>
@@ -646,7 +517,7 @@
   <!-- ======================================================================
        MODAL 2: EDIT STUDENT EVALUATION (UPDATE)
        ====================================================================== -->
-  <div class="modal-backdrop" id="modal-edit-cohort-student">
+  <div class="modal-backdrop" id="modal-edit-cohort-student" style="display: none !important;">
     <div class="modal-dialog" style="max-width: 640px; max-height: 90vh; display: flex; flex-direction: column;">
       <div class="modal-header">
         <div>
@@ -763,7 +634,7 @@
   <!-- ======================================================================
        MODAL 3: DELETE STUDENT EVALUATION (DELETE)
        ====================================================================== -->
-  <div class="modal-backdrop" id="modal-delete-cohort-student">
+  <div class="modal-backdrop" id="modal-delete-cohort-student" style="display: none !important;">
     <div class="modal-dialog" style="max-width: 460px;">
       <div class="modal-header" style="border-bottom: 1px solid rgba(248, 113, 113, 0.2);">
         <div style="display: flex; align-items: center; gap: 10px;">
@@ -796,8 +667,10 @@
   </div>
 
   <!-- Application Scripts -->
-  <script src="js/supabase-client.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/teacher-analytics.js"></script>
+  <script src="js/supabase-client.js?v=3.0.0"></script>
+  <script src="js/auth.js?v=3.0.0"></script>
+  <script src="js/api.js?v=3.0.0"></script>
+  <script src="js/teacher-analytics.js?v=3.0.0"></script>
+  <script src="js/tour.js?v=3.1.0"></script>
 </body>
 </html>

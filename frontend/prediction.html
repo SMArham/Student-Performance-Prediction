@@ -9,11 +9,12 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- Design System CSS -->
-  <link rel="stylesheet" href="css/variables.css?v=2.7.0">
-  <link rel="stylesheet" href="css/layout.css?v=2.7.0">
-  <link rel="stylesheet" href="css/components.css?v=2.7.0">
-  <link rel="stylesheet" href="css/dashboard.css?v=2.7.0">
-  <link rel="stylesheet" href="css/prediction.css?v=2.7.0">
+  <link rel="stylesheet" href="css/variables.css?v=3.0.0">
+  <link rel="stylesheet" href="css/layout.css?v=3.0.0">
+  <link rel="stylesheet" href="css/components.css?v=3.0.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
+  <link rel="stylesheet" href="css/prediction.css?v=3.0.0">
+  <link rel="stylesheet" href="css/tour.css?v=3.1.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,7 +40,7 @@
         </div>
 
         <!-- Upper Right User Identity Block -->
-        <div class="navbar-user-block" id="user-profile-btn" title="Profile & Account Settings" role="button" tabindex="0">
+        <a href="profile.html" class="navbar-user-block" id="user-profile-btn" title="Profile & Account Settings" style="text-decoration: none;">
           <div class="user-avatar-badge">
             <div class="user-avatar-circle" id="navbar-user-avatar">MA</div>
             <div class="user-status-indicator"></div>
@@ -48,7 +49,7 @@
             <div class="user-display-name" id="student-name">Muhammad Ali</div>
             <div class="user-subrole" id="student-id-code">Student</div>
           </div>
-        </div>
+        </a>
       </header>
 
       <!-- 2. SHELL BODY: LEFT UTILITY RAIL + MAIN CONTENT CANVAS -->
@@ -68,9 +69,14 @@
               <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               <span class="rail-label">Analytics</span>
             </a>
-            <button type="button" class="rail-icon-btn" id="rail-profile-btn" title="Profile & Account Settings">
+            <a href="profile.html" class="rail-icon-btn" id="rail-profile-btn" title="Profile & Account Settings">
               <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               <span class="rail-label">Profile</span>
+            </a>
+            <button type="button" class="rail-icon-btn tour-btn" id="rail-tour-btn" title="Quick Platform Tour">
+              <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+              <span class="rail-label">Tour</span>
+              <span class="tour-badge-dot"></span>
             </button>
             <button type="button" class="rail-icon-btn" id="logout-btn" title="Sign Out">
               <svg class="rail-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -549,7 +555,7 @@
   <!-- ======================================================================
        MODAL: ADD SEMESTER & COMPLETED COURSES (SUPABASE BACKED)
        ====================================================================== -->
-  <div class="modal-backdrop" id="modal-add-term" style="display: none;">
+  <div class="modal-backdrop" id="modal-add-term" style="display: none !important;">
     <div class="modal-dialog" style="max-width: 680px;">
       <div class="modal-header">
         <h2 class="modal-title" id="term-modal-title">
@@ -636,158 +642,13 @@
     </div>
   </div>
 
-  <!-- ======================================================================
-       STUDENT PROFILE & ACCOUNT SETTINGS MODAL
-       ====================================================================== -->
-  <!-- =========================================================================
-       MODAL: STUDENT PROFILE & ACCOUNT SETTINGS (TOP-TIER OVERHAUL)
-       ========================================================================= -->
-  <div class="modal-backdrop" id="profile-settings-modal" style="display: none;">
-    <div class="modal-dialog profile-settings-dialog">
-      
-      <!-- Modal Header with Avatar & Meta -->
-      <div class="profile-modal-header">
-        <div class="profile-header-meta">
-          <div class="profile-avatar-circle">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-lime)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </div>
-          <div>
-            <h2 class="profile-modal-title">Student Profile & Settings</h2>
-            <div class="profile-modal-subtitle">Manage personal information, academic credentials, and security</div>
-          </div>
-        </div>
-        <button type="button" class="profile-close-btn" id="btn-close-profile-modal" aria-label="Close modal">&times;</button>
-      </div>
-
-      <!-- Navigation Tabs -->
-      <div class="profile-tabs-bar">
-        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span>Academic Profile</span>
-        </button>
-        <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <span>Security</span>
-        </button>
-        <button type="button" class="modal-tab-btn danger-tab" data-tab="tab-profile-danger">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          <span>Danger Zone</span>
-        </button>
-      </div>
-
-      <!-- TAB 1: Academic & Personal Profile -->
-      <div class="profile-tab-content active" id="tab-profile-general">
-        <form id="profile-details-form">
-          <div class="profile-section-card">
-            <div class="profile-section-heading">Personal & Academic Identification</div>
-            
-            <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-              <div class="form-group">
-                <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
-                <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Muhammad Ali" required>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="setting-email">
-                  Email Address <span class="badge-fixed-tag">🔒 Readonly</span>
-                </label>
-                <div class="fixed-input-wrapper">
-                  <input type="email" id="setting-email" class="form-input readonly-fixed-input" placeholder="student@university.edu" readonly>
-                </div>
-                <div class="field-hint-text">Your registered student email.</div>
-              </div>
-            </div>
-
-            <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-              <div class="form-group">
-                <label class="form-label" for="setting-studentid">
-                  Student ID Code <span class="badge-fixed-tag">🔒 Fixed</span>
-                </label>
-                <div class="fixed-input-wrapper">
-                  <input type="text" id="setting-studentid" class="form-input readonly-fixed-input" placeholder="STU-2026-001" readonly>
-                </div>
-                <div class="field-hint-text">Generated automatically upon registration. Immutable.</div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="setting-program">Enrolled Program / Major</label>
-                <input type="text" id="setting-program" class="form-input" placeholder="e.g. Software Engineering / Pre-Engineering">
-                <div class="field-hint-text">Your primary degree or academic stream.</div>
-              </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: var(--space-2);">
-              <label class="form-label" for="setting-institution">Institution Name</label>
-              <input type="text" id="setting-institution" class="form-input" placeholder="e.g. Faculty of Engineering / Govt College">
-              <div class="field-hint-text">Your registered school, college, or university.</div>
-            </div>
-          </div>
-
-          <div class="profile-action-row" style="margin-top: var(--space-5);">
-            <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; font-size: 14px; font-weight: 700; letter-spacing: 0.02em;">
-              💾 Save Profile Changes
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- TAB 2: Security & Password -->
-      <div class="profile-tab-content" id="tab-profile-security" style="display: none;">
-        <form id="profile-security-form">
-          <div class="profile-section-card">
-            <div class="profile-section-heading">Password & Authentication</div>
-            
-            <div class="form-group" style="margin-bottom: var(--space-4);">
-              <label class="form-label" for="setting-new-password">New Password</label>
-              <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password" value="">
-            </div>
-
-            <div class="form-group" style="margin-bottom: var(--space-2);">
-              <label class="form-label" for="setting-confirm-password">Confirm New Password</label>
-              <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter new password to confirm" required autocomplete="new-password" value="">
-            </div>
-          </div>
-
-          <div class="profile-action-row" style="margin-top: var(--space-5);">
-            <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; font-size: 14px; font-weight: 700;">
-              🔒 Update Password Securely
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- TAB 3: Danger Zone -->
-      <div class="profile-tab-content" id="tab-profile-danger" style="display: none;">
-        <div class="danger-zone-card">
-          <div class="danger-zone-header">
-            <span class="danger-icon">⚠️</span>
-            <div>
-              <div class="danger-title">Permanent Account & Data Deletion</div>
-              <div class="danger-desc">
-                Permanently deletes your account authentication profile, stored student grades, custom ML history forecasts, and saved preferences.
-              </div>
-            </div>
-          </div>
-
-          <div class="danger-warning-note">
-            This action cannot be undone. All your academic diagnostic records will be wiped from the Supabase database.
-          </div>
-
-          <button type="button" class="btn btn-danger" id="btn-delete-account-confirm" style="width: 100%; height: 48px; font-size: 14px; font-weight: 700;">
-            🗑️ Permanently Delete My Account
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
   <!-- Toast Notification Container -->
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Application Logic Scripts -->
-  <script src="js/supabase-client.js?v=2.5.1"></script>
-  <script src="js/api.js?v=2.5.1"></script>
-  <script src="js/prediction.js?v=2.5.1"></script>
+  <script src="js/supabase-client.js?v=3.0.0"></script>
+  <script src="js/api.js?v=3.0.0"></script>
+  <script src="js/prediction.js?v=3.0.0"></script>
+  <script src="js/tour.js?v=3.1.0"></script>
 </body>
 </html>

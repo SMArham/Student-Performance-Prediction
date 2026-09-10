@@ -30,14 +30,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 2. DOM ELEMENT REFERENCES
   // --------------------------------------------------------------------------
   const logoutBtn = document.getElementById("logout-btn");
-  const userProfileBtn = document.getElementById("user-profile-btn");
-  const railProfileBtn = document.getElementById("rail-profile-btn");
-  const btnOpenSettings = document.getElementById("btn-open-settings");
-  const profileModal = document.getElementById("profile-settings-modal");
-  const btnCloseProfile = document.getElementById("btn-close-profile-modal");
-  const profileForm = document.getElementById("profile-details-form");
-  const securityForm = document.getElementById("profile-security-form");
-  const btnDeleteAccount = document.getElementById("btn-delete-account-confirm");
 
   // Summary KPI DOMs
   const kpiTotalEvaluations = document.getElementById("kpi-total-evaluations");
@@ -159,149 +151,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const avatarEl = document.getElementById("navbar-user-avatar");
     if (avatarEl) avatarEl.innerText = initials || "SP";
 
-    // Prefill Settings Modal Inputs
-    const settingFullname = document.getElementById("setting-fullname");
-    const settingEmail = document.getElementById("setting-email");
-    const settingStudentId = document.getElementById("setting-studentid");
-    const settingProgram = document.getElementById("setting-program") || document.getElementById("setting-major");
-    const settingInstitution = document.getElementById("setting-institution");
-
-    if (settingFullname) settingFullname.value = displayName;
-    if (settingEmail) settingEmail.value = user?.email || "";
-    if (settingStudentId) settingStudentId.value = idCode;
-    if (settingProgram) settingProgram.value = program;
-    if (settingInstitution) settingInstitution.value = institution;
-  }
+    }
 
   syncUserProfile();
-
-  // --------------------------------------------------------------------------
-  // 5. PROFILE & SETTINGS MODAL INTERACTION
-  // --------------------------------------------------------------------------
-  function openSettingsModal() {
-    if (!profileModal) return;
-    syncUserProfile();
-
-    // Reset password fields
-    if (securityForm) securityForm.reset();
-    const newPassInput = document.getElementById("setting-new-password");
-    const confPassInput = document.getElementById("setting-confirm-password");
-    if (newPassInput) newPassInput.value = "";
-    if (confPassInput) confPassInput.value = "";
-
-    // Default to General tab
-    const tabs = document.querySelectorAll(".modal-tab-btn");
-    const contents = document.querySelectorAll(".profile-tab-content");
-    tabs.forEach((t) => t.classList.remove("active"));
-    contents.forEach((c) => {
-      c.classList.remove("active");
-      c.style.display = "none";
-    });
-    const defaultTabBtn = document.querySelector('.modal-tab-btn[data-tab="tab-profile-general"]');
-    const defaultContent = document.getElementById("tab-profile-general");
-    if (defaultTabBtn) defaultTabBtn.classList.add("active");
-    if (defaultContent) {
-      defaultContent.classList.add("active");
-      defaultContent.style.display = "block";
-    }
-
-    profileModal.style.display = "flex";
-    profileModal.classList.add("active");
-  }
-
-  function closeSettingsModal() {
-    if (profileModal) {
-      profileModal.style.display = "none";
-      profileModal.classList.remove("active");
-    }
-  }
-
-  if (userProfileBtn) userProfileBtn.addEventListener("click", openSettingsModal);
-  if (railProfileBtn) railProfileBtn.addEventListener("click", openSettingsModal);
-  if (btnOpenSettings) btnOpenSettings.addEventListener("click", openSettingsModal);
-  if (btnCloseProfile) btnCloseProfile.addEventListener("click", closeSettingsModal);
-  if (profileModal) {
-    profileModal.addEventListener("click", (e) => {
-      if (e.target === profileModal) closeSettingsModal();
-    });
-  }
-
-  // Profile Modal Tab Switching
-  const profileTabs = document.querySelectorAll(".modal-tab-btn");
-  const tabContents = document.querySelectorAll(".profile-tab-content");
-
-  profileTabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const targetId = tab.getAttribute("data-tab");
-      profileTabs.forEach((t) => t.classList.remove("active"));
-      tabContents.forEach((c) => {
-        c.classList.remove("active");
-        c.style.display = "none";
-      });
-      tab.classList.add("active");
-      const targetContent = document.getElementById(targetId);
-      if (targetContent) {
-        targetContent.classList.add("active");
-        targetContent.style.display = "block";
-      }
-    });
-  });
-
-  // Profile Details Form Submission
-  if (profileForm) {
-    profileForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const newName = document.getElementById("setting-fullname")?.value.trim() || "User";
-      const settingProgram = document.getElementById("setting-program") || document.getElementById("setting-major");
-      const newProgram = settingProgram?.value.trim() || "Software Engineering";
-      const newInst = document.getElementById("setting-institution")?.value.trim() || "Faculty of Engineering";
-
-      if (window.authClient) {
-        await window.authClient.updateUser({
-          full_name: newName,
-          program: newProgram,
-          major: newProgram,
-          institution_name: newInst,
-          institution: newInst
-        });
-      }
-      syncUserProfile();
-      closeSettingsModal();
-      showToast("Academic profile updated successfully!", "success");
-    });
-  }
-
-  // Security Form Submission
-  if (securityForm) {
-    securityForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const p1 = document.getElementById("setting-new-password")?.value;
-      const p2 = document.getElementById("setting-confirm-password")?.value;
-
-      if (!p1 || p1.length < 6) return showToast("Password must be at least 6 characters.", "error");
-      if (p1 !== p2) return showToast("Passwords do not match.", "error");
-
-      try {
-        if (window.authClient) {
-          await window.authClient.updatePassword(p1);
-        }
-        closeSettingsModal();
-        showToast("Password updated securely!", "success");
-      } catch (err) {
-        showToast(err.message || "Failed to update password.", "error");
-      }
-    });
-  }
-
-  // Delete Account Action
-  if (btnDeleteAccount) {
-    btnDeleteAccount.addEventListener("click", async () => {
-      if (confirm("⚠️ ARE YOU SURE? This will permanently delete your student profile and all historical prediction records.")) {
-        if (window.authClient) await window.authClient.deleteAccount();
-        window.location.href = "login.html";
-      }
-    });
-  }
 
   // Logout Handler
   if (logoutBtn) {
@@ -1392,14 +1244,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         .join("");
     }
 
+    detailModal.style.setProperty("display", "flex", "important");
     detailModal.classList.add("active");
   };
 
-  if (btnCloseDetailModal) btnCloseDetailModal.onclick = () => detailModal?.classList.remove("active");
-  if (btnCloseDetailModalBtn) btnCloseDetailModalBtn.onclick = () => detailModal?.classList.remove("active");
+  const closeDetailModal = () => {
+    if (detailModal) {
+      detailModal.classList.remove("active");
+      detailModal.style.setProperty("display", "none", "important");
+    }
+  };
+
+  if (btnCloseDetailModal) btnCloseDetailModal.onclick = closeDetailModal;
+  if (btnCloseDetailModalBtn) btnCloseDetailModalBtn.onclick = closeDetailModal;
   if (detailModal) {
     detailModal.onclick = (e) => {
-      if (e.target === detailModal) detailModal.classList.remove("active");
+      if (e.target === detailModal) closeDetailModal();
     };
   }
 
@@ -1502,20 +1362,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
+    trajModal.style.setProperty("display", "flex", "important");
     trajModal.classList.add("active");
   };
 
-  if (btnCloseTrajModal) btnCloseTrajModal.onclick = () => trajModal?.classList.remove("active");
-  if (btnCloseTrajModalBtn) btnCloseTrajModalBtn.onclick = () => trajModal?.classList.remove("active");
+  const closeTrajModal = () => {
+    if (trajModal) {
+      trajModal.classList.remove("active");
+      trajModal.style.setProperty("display", "none", "important");
+    }
+  };
+
+  if (btnCloseTrajModal) btnCloseTrajModal.onclick = closeTrajModal;
+  if (btnCloseTrajModalBtn) btnCloseTrajModalBtn.onclick = closeTrajModal;
   if (trajModal) {
     trajModal.onclick = (e) => {
-      if (e.target === trajModal) trajModal.classList.remove("active");
+      if (e.target === trajModal) closeTrajModal();
     };
   }
 
   // --------------------------------------------------------------------------
   // 18. CRUD OPERATION: UPDATE / EDIT RECORD MODAL
   // --------------------------------------------------------------------------
+  const closeEditModal = () => {
+    if (editModal) {
+      editModal.classList.remove("active");
+      editModal.style.setProperty("display", "none", "important");
+    }
+  };
+
   window.editDiagnostic = (id) => {
     const item = predictionHistory.find((h) => h.id === id);
     if (!item || !editModal) return;
@@ -1525,6 +1400,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (editRecordStatus) editRecordStatus.value = item.status_badge || "Exemplary";
     if (editRecordNotes) editRecordNotes.value = item.recommendations || "";
 
+    editModal.style.setProperty("display", "flex", "important");
     editModal.classList.add("active");
   };
 
@@ -1555,17 +1431,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.warn("[API] History update notice:", err.message);
       }
 
-      editModal?.classList.remove("active");
+      closeEditModal();
       refreshAllViews();
       showToast("Historical prediction record updated successfully!", "success");
     });
   }
 
-  if (btnCloseEditModal) btnCloseEditModal.onclick = () => editModal?.classList.remove("active");
-  if (btnCancelEditModal) btnCancelEditModal.onclick = () => editModal?.classList.remove("active");
+  if (btnCloseEditModal) btnCloseEditModal.onclick = closeEditModal;
+  if (btnCancelEditModal) btnCancelEditModal.onclick = closeEditModal;
   if (editModal) {
     editModal.onclick = (e) => {
-      if (e.target === editModal) editModal.classList.remove("active");
+      if (e.target === editModal) closeEditModal();
     };
   }
 
@@ -1923,6 +1799,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
+    fsModal.style.setProperty("display", "flex", "important");
     fsModal.classList.add("active");
   };
 
@@ -1948,21 +1825,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Fullscreen Modal Closers
-  if (btnCloseFsModal) btnCloseFsModal.onclick = () => fsModal?.classList.remove("active");
-  if (btnCloseFsModalBtn) btnCloseFsModalBtn.onclick = () => fsModal?.classList.remove("active");
+  const closeFsModal = () => {
+    if (fsModal) {
+      fsModal.classList.remove("active");
+      fsModal.style.setProperty("display", "none", "important");
+    }
+  };
+
+  if (btnCloseFsModal) btnCloseFsModal.onclick = closeFsModal;
+  if (btnCloseFsModalBtn) btnCloseFsModalBtn.onclick = closeFsModal;
   if (fsModal) {
     fsModal.onclick = (e) => {
-      if (e.target === fsModal) fsModal.classList.remove("active");
+      if (e.target === fsModal) closeFsModal();
     };
   }
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (fsModal?.classList.contains("active")) fsModal.classList.remove("active");
-      if (detailModal?.classList.contains("active")) detailModal.classList.remove("active");
-      if (trajModal?.classList.contains("active")) trajModal.classList.remove("active");
-      if (editModal?.classList.contains("active")) editModal.classList.remove("active");
-      if (profileModal?.classList.contains("active")) profileModal.classList.remove("active");
+      closeFsModal();
+      closeDetailModal();
+      closeTrajModal();
+      closeEditModal();
     }
   });
 
