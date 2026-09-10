@@ -5,6 +5,108 @@
  * ============================================================================
  */
 
+// Global state repository
+window.__edumetricsPredictionHistory = window.__edumetricsPredictionHistory || [];
+window.__modalTrajChartInstance = null;
+
+// Modal helper: open
+window.showAnalyticsModal = function(modalEl) {
+  if (!modalEl) return;
+  modalEl.classList.add("active");
+  modalEl.style.removeProperty("display");
+  modalEl.style.setProperty("display", "flex", "important");
+  modalEl.style.setProperty("opacity", "1", "important");
+  modalEl.style.setProperty("visibility", "visible", "important");
+  modalEl.style.setProperty("pointer-events", "auto", "important");
+  modalEl.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+};
+
+// Modal helper: close
+window.hideAnalyticsModal = function(modalEl) {
+  if (!modalEl) return;
+  modalEl.classList.remove("active");
+  modalEl.style.removeProperty("display");
+  modalEl.style.setProperty("display", "none", "important");
+  modalEl.style.setProperty("opacity", "0", "important");
+  modalEl.style.setProperty("visibility", "hidden", "important");
+  modalEl.style.setProperty("pointer-events", "none", "important");
+  modalEl.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+};
+
+// Close all open modals
+window.closeAllAnalyticsModals = function() {
+  document.querySelectorAll(".modal-backdrop").forEach(m => window.hideAnalyticsModal(m));
+};
+
+// Universal helper to find a history record by ID across memory & localStorage
+window.findAnalyticsHistoryItem = function(id) {
+  if (!id) return null;
+  const targetId = String(id).trim().toLowerCase();
+  
+  // 1. Check in-memory list
+  const inMemory = (window.__edumetricsPredictionHistory || []).find(
+    (h) => String(h.id || "").trim().toLowerCase() === targetId
+  );
+  if (inMemory) return inMemory;
+
+  // 2. Check all known localStorage candidate keys
+  const user = window.authClient ? window.authClient.getUser() : null;
+  const candidateKeys = [];
+  if (user?.id) {
+    candidateKeys.push(`edumetrics_prediction_history_v2_${user.id}`);
+    candidateKeys.push(`edumetrics_prediction_history_${user.id}`);
+    candidateKeys.push(`sp_prediction_history_${user.id}`);
+  }
+  candidateKeys.push("edumetrics_prediction_history_v2");
+  candidateKeys.push("edumetrics_prediction_history");
+
+  for (const k of candidateKeys) {
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const match = parsed.find(
+            (h) => String(h.id || "").trim().toLowerCase() === targetId
+          );
+          if (match) return match;
+        }
+      }
+    } catch(e) {}
+  }
+  return null;
+};
+
+// Formatter for diagnostic payload parameters
+function formatDiagnosticParam(k, v) {
+  if (v === null || v === undefined) return "N/A";
+  if (k === "subjects" || Array.isArray(v)) {
+    if (Array.isArray(v)) {
+      if (v.length === 0) return "No coursework listed";
+      return v
+        .map((item) => {
+          if (typeof item === "object" && item !== null) {
+            const name = item.name || item.subject || "Subject";
+            const obtained = item.obtained !== undefined ? item.obtained : item.marks !== undefined ? item.marks : "";
+            const total = item.total !== undefined ? item.total : 100;
+            return obtained !== "" ? `${name} (${obtained}/${total})` : name;
+          }
+          return String(item);
+        })
+        .join(", ");
+    }
+  }
+  if (typeof v === "object" && v !== null) {
+    return Object.entries(v)
+      .map(([subK, subV]) => `${subK.replace(/_/g, " ")}: ${subV}`)
+      .join(", ");
+  }
+  return String(v);
+}
+window.formatDiagnosticParam = formatDiagnosticParam;
+
 document.addEventListener("DOMContentLoaded", async () => {
   // --------------------------------------------------------------------------
   // 1. AUTHENTICATION & ROLE SAFEGUARD
@@ -124,6 +226,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     container.appendChild(toast);
     setTimeout(() => { if (toast.parentElement) toast.remove(); }, 3500);
   }
+  window.showToast = showToast;
 
   // --------------------------------------------------------------------------
   // 4. USER PROFILE & AVATAR SYNCHRONIZATION
@@ -150,8 +253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const avatarEl = document.getElementById("navbar-user-avatar");
     if (avatarEl) avatarEl.innerText = initials || "SP";
-
-    }
+  }
 
   syncUserProfile();
 
@@ -167,6 +269,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 6. PERSISTENCE & HISTORY STORAGE HELPER
   // --------------------------------------------------------------------------
   function persistHistory(historyList) {
+    predictionHistory = historyList;
+    window.__edumetricsPredictionHistory = historyList;
     const user = window.authClient ? window.authClient.getUser() : null;
     if (user?.id) {
       localStorage.setItem(`edumetrics_prediction_history_v2_${user.id}`, JSON.stringify(historyList));
@@ -175,6 +279,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(historyList));
     localStorage.setItem("edumetrics_prediction_history", JSON.stringify(historyList));
   }
+  window.persistHistory = persistHistory;
 
   // Formatter for diagnostic payload parameters
   function formatDiagnosticParam(k, v) {
@@ -1149,7 +1254,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
         }
 
-        const entries = Object.entries(item.payload || {}).filter(([k]) => k !== "subjects" || (Array.isArray(item.payload[k]) && item.payload[k].length > 0));
+        let p = item.payload || item.input_features || {};
+        if (typeof p === "string") {
+          try { p = JSON.parse(p); } catch(e) { p = {}; }
+        }
+
+        const entries = Object.entries(p).filter(([k]) => k !== "subjects" || (Array.isArray(p[k]) && p[k].length > 0));
 
         const snapshotStr = entries
           .slice(0, 3)
@@ -1183,16 +1293,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           </td>
           <td style="text-align: right; white-space: nowrap;">
             <div class="action-btn-group">
-              <button type="button" class="table-icon-btn" onclick="window.viewTrajectoryGraph('${cleanId}')" title="Inspect Trajectory">
+              <button type="button" class="table-icon-btn" data-action="trajectory" data-id="${cleanId}" onclick="window.viewTrajectoryGraph('${cleanId}')" title="Inspect Trajectory">
                 📈 Trajectory
               </button>
-              <button type="button" class="table-icon-btn btn-view" onclick="window.viewDiagnostic('${cleanId}')" title="View Details">
+              <button type="button" class="table-icon-btn btn-view" data-action="view" data-id="${cleanId}" onclick="window.viewDiagnostic('${cleanId}')" title="View Details">
                 👁️ View
               </button>
-              <button type="button" class="table-icon-btn btn-edit" onclick="window.editDiagnostic('${cleanId}')" title="Edit Remarks">
+              <button type="button" class="table-icon-btn btn-edit" data-action="edit" data-id="${cleanId}" onclick="window.editDiagnostic('${cleanId}')" title="Edit Remarks">
                 ✏️ Edit
               </button>
-              <button type="button" class="table-icon-btn btn-delete" onclick="window.deleteDiagnostic('${cleanId}')" title="Delete Record">
+              <button type="button" class="table-icon-btn btn-delete" data-action="delete" data-id="${cleanId}" onclick="window.deleteDiagnostic('${cleanId}')" title="Delete Record">
                 🗑️
               </button>
             </div>
@@ -1222,11 +1332,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 17. CRUD OPERATION: READ / VIEW DETAIL & TRAJECTORY MODALS
   // --------------------------------------------------------------------------
   window.viewDiagnostic = (id) => {
-    const cleanId = String(id);
-    const item = predictionHistory.find((h) => String(h.id) === cleanId);
+    const item = window.findAnalyticsHistoryItem(id);
     if (!item || !detailModal) return;
 
-    if (modalDetailScore) modalDetailScore.innerText = item.score || "--";
+    if (modalDetailScore) modalDetailScore.innerText = item.score || item.predicted_score || "--";
     if (modalDetailBadge) {
       modalDetailBadge.innerText = item.status_badge || "Evaluated";
       modalDetailBadge.className = `badge ${item.status_color || "badge-success"}`;
@@ -1235,7 +1344,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (modalDetailRecs) modalDetailRecs.innerText = item.recommendations || "High academic stability maintained.";
 
     if (modalDetailInputs) {
-      const payloadEntries = Object.entries(item.payload || {}).filter(([k]) => k !== "subjects" || (Array.isArray(item.payload[k]) && item.payload[k].length > 0));
+      let p = item.payload || item.input_features || {};
+      if (typeof p === "string") {
+        try { p = JSON.parse(p); } catch(e) { p = {}; }
+      }
+      const payloadEntries = Object.entries(p).filter(([k]) => k !== "subjects" || (Array.isArray(p[k]) && p[k].length > 0));
       if (payloadEntries.length === 0) {
         modalDetailInputs.innerHTML = `<div style="grid-column: 1/-1; color: var(--text-muted); font-size: 12px;">Standard Evaluation Record</div>`;
       } else {
@@ -1252,29 +1365,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    detailModal.classList.add("active");
-    detailModal.style.setProperty("display", "flex", "important");
+    window.showAnalyticsModal(detailModal);
   };
-
-  const closeDetailModal = () => {
-    if (detailModal) {
-      detailModal.classList.remove("active");
-      detailModal.style.setProperty("display", "none", "important");
-    }
-  };
-
-  if (btnCloseDetailModal) btnCloseDetailModal.onclick = closeDetailModal;
-  if (btnCloseDetailModalBtn) btnCloseDetailModalBtn.onclick = closeDetailModal;
-  if (detailModal) {
-    detailModal.onclick = (e) => {
-      if (e.target === detailModal) closeDetailModal();
-    };
-  }
 
   // Trajectory Modal (Smooth Multi-Segment Line)
   window.viewTrajectoryGraph = (id) => {
-    const cleanId = String(id);
-    const item = predictionHistory.find((h) => String(h.id) === cleanId);
+    const item = window.findAnalyticsHistoryItem(id);
     if (!item || !trajModal) return;
 
     const parsed = parseNormalizedScore(item);
@@ -1304,7 +1400,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const modalCanvas = document.getElementById("modalTrajectoryChart");
-    if (modalCanvas) {
+    if (modalCanvas && window.Chart) {
       const modalCtx = modalCanvas.getContext("2d");
       if (modalTrajChartInstance) modalTrajChartInstance.destroy();
 
@@ -1373,38 +1469,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
-    trajModal.classList.add("active");
-    trajModal.style.setProperty("display", "flex", "important");
+    window.showAnalyticsModal(trajModal);
   };
-
-  const closeTrajModal = () => {
-    if (trajModal) {
-      trajModal.classList.remove("active");
-      trajModal.style.setProperty("display", "none", "important");
-    }
-  };
-
-  if (btnCloseTrajModal) btnCloseTrajModal.onclick = closeTrajModal;
-  if (btnCloseTrajModalBtn) btnCloseTrajModalBtn.onclick = closeTrajModal;
-  if (trajModal) {
-    trajModal.onclick = (e) => {
-      if (e.target === trajModal) closeTrajModal();
-    };
-  }
 
   // --------------------------------------------------------------------------
   // 18. CRUD OPERATION: UPDATE / EDIT RECORD MODAL
   // --------------------------------------------------------------------------
-  const closeEditModal = () => {
-    if (editModal) {
-      editModal.classList.remove("active");
-      editModal.style.setProperty("display", "none", "important");
-    }
-  };
-
   window.editDiagnostic = (id) => {
-    const cleanId = String(id);
-    const item = predictionHistory.find((h) => String(h.id) === cleanId);
+    const item = window.findAnalyticsHistoryItem(id);
     if (!item || !editModal) return;
 
     if (editRecordId) editRecordId.value = item.id;
@@ -1422,8 +1494,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (editRecordNotes) editRecordNotes.value = item.recommendations || "";
 
-    editModal.classList.add("active");
-    editModal.style.setProperty("display", "flex", "important");
+    window.showAnalyticsModal(editModal);
   };
 
   if (editForm) {
@@ -1433,31 +1504,66 @@ document.addEventListener("DOMContentLoaded", async () => {
       const score = editRecordScore?.value.trim();
       const status = editRecordStatus?.value;
       const notes = editRecordNotes?.value.trim();
+      if (!id) return;
 
-      const itemIdx = predictionHistory.findIndex((h) => String(h.id) === String(id));
-      if (itemIdx === -1) return;
+      const targetId = String(id).trim().toLowerCase();
 
-      predictionHistory[itemIdx].score = score;
-      predictionHistory[itemIdx].status_badge = status;
-      predictionHistory[itemIdx].status_color =
-        status === "Exemplary" ? "badge-success" : status === "Proficient" ? "badge-info" : status === "Standard" ? "badge-neutral" : "badge-warning";
-      predictionHistory[itemIdx].recommendations = notes;
-
+      // 1. Update in-memory predictionHistory
+      const itemIdx = predictionHistory.findIndex((h) => String(h.id || "").trim().toLowerCase() === targetId);
+      if (itemIdx !== -1) {
+        predictionHistory[itemIdx].score = score;
+        predictionHistory[itemIdx].status_badge = status;
+        predictionHistory[itemIdx].status_color =
+          status === "Exemplary" ? "badge-success" : status === "Proficient" ? "badge-info" : status === "Standard" ? "badge-neutral" : "badge-warning";
+        predictionHistory[itemIdx].recommendations = notes;
+      }
       persistHistory(predictionHistory);
 
-      // Cloud Supabase Sync Update
+      // 2. Update candidate localStorage keys
+      const user = window.authClient ? window.authClient.getUser() : null;
+      const candidateKeys = [];
+      if (user?.id) {
+        candidateKeys.push(`edumetrics_prediction_history_v2_${user.id}`);
+        candidateKeys.push(`edumetrics_prediction_history_${user.id}`);
+        candidateKeys.push(`sp_prediction_history_${user.id}`);
+      }
+      candidateKeys.push("edumetrics_prediction_history_v2");
+      candidateKeys.push("edumetrics_prediction_history");
+
+      for (const k of candidateKeys) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              const idx = arr.findIndex((h) => String(h.id || "").trim().toLowerCase() === targetId);
+              if (idx !== -1) {
+                arr[idx].score = score;
+                arr[idx].status_badge = status;
+                arr[idx].status_color =
+                  status === "Exemplary" ? "badge-success" : status === "Proficient" ? "badge-info" : status === "Standard" ? "badge-neutral" : "badge-warning";
+                arr[idx].recommendations = notes;
+                localStorage.setItem(k, JSON.stringify(arr));
+              }
+            }
+          }
+        } catch(e) {}
+      }
+
+      // 3. Cloud Supabase Sync Update
       if (window.authClient && window.authClient.client) {
         try {
           const rawScore = parseFloat(score);
-          window.authClient.client.from("prediction_history")
+          await window.authClient.client.from("prediction_history")
             .update({
               status_badge: status,
               recommendations: notes,
               ...(isNaN(rawScore) ? {} : { predicted_score: rawScore })
             })
-            .eq("id", id)
-            .then().catch(() => {});
-        } catch (cloudErr) {}
+            .eq("id", id);
+        } catch (cloudErr) {
+          console.warn("[Analytics] Supabase cloud update error:", cloudErr.message);
+        }
       }
 
       try {
@@ -1468,18 +1574,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.warn("[API] History update notice:", err.message);
       }
 
-      closeEditModal();
+      window.hideAnalyticsModal(editModal);
       refreshAllViews();
       showToast("Historical prediction record updated successfully!", "success");
     });
-  }
-
-  if (btnCloseEditModal) btnCloseEditModal.onclick = closeEditModal;
-  if (btnCancelEditModal) btnCancelEditModal.onclick = closeEditModal;
-  if (editModal) {
-    editModal.onclick = (e) => {
-      if (e.target === editModal) closeEditModal();
-    };
   }
 
   // --------------------------------------------------------------------------
@@ -1487,20 +1585,47 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --------------------------------------------------------------------------
   window.deleteDiagnostic = async (id) => {
     if (!confirm("Are you sure you want to permanently delete this historical prediction record?")) return;
-    const cleanId = String(id);
-    predictionHistory = predictionHistory.filter((h) => String(h.id) !== cleanId);
+    const targetId = String(id).trim().toLowerCase();
+
+    predictionHistory = predictionHistory.filter((h) => String(h.id || "").trim().toLowerCase() !== targetId);
     persistHistory(predictionHistory);
+
+    // Filter candidate localStorage keys
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const candidateKeys = [];
+    if (user?.id) {
+      candidateKeys.push(`edumetrics_prediction_history_v2_${user.id}`);
+      candidateKeys.push(`edumetrics_prediction_history_${user.id}`);
+      candidateKeys.push(`sp_prediction_history_${user.id}`);
+    }
+    candidateKeys.push("edumetrics_prediction_history_v2");
+    candidateKeys.push("edumetrics_prediction_history");
+
+    for (const k of candidateKeys) {
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            const filtered = arr.filter((h) => String(h.id || "").trim().toLowerCase() !== targetId);
+            localStorage.setItem(k, JSON.stringify(filtered));
+          }
+        }
+      } catch(e) {}
+    }
 
     // Cloud Supabase Sync Deletion
     if (window.authClient && window.authClient.client) {
       try {
-        window.authClient.client.from("prediction_history").delete().eq("id", cleanId).then().catch(() => {});
-      } catch (cloudErr) {}
+        await window.authClient.client.from("prediction_history").delete().eq("id", id);
+      } catch (cloudErr) {
+        console.warn("[Analytics] Supabase cloud delete error:", cloudErr.message);
+      }
     }
 
     try {
       if (window.apiClient) {
-        await window.apiClient.deleteHistoryItem(cleanId);
+        await window.apiClient.deleteHistoryItem(id);
       }
     } catch (err) {
       console.warn("[API] Delete record notice:", err.message);
@@ -1528,7 +1653,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Cloud Supabase Clear
       if (window.authClient && window.authClient.client && user?.id) {
         try {
-          window.authClient.client.from("prediction_history").delete().eq("user_id", user.id).then().catch(() => {});
+          await window.authClient.client.from("prediction_history").delete().eq("user_id", user.id);
         } catch (cloudErr) {}
       }
 
@@ -1544,6 +1669,62 @@ document.addEventListener("DOMContentLoaded", async () => {
       showToast("Historical prediction ledger permanently cleared.", "info");
     });
   }
+
+  // Delegated Global Click Listener for bulletproof CRUD triggering
+  document.addEventListener("click", (e) => {
+    // 1. Trajectory button
+    const trajBtn = e.target.closest("[data-action='trajectory']");
+    if (trajBtn && trajBtn.hasAttribute("data-id")) {
+      e.preventDefault();
+      window.viewTrajectoryGraph(trajBtn.getAttribute("data-id"));
+      return;
+    }
+
+    // 2. View button
+    const viewBtn = e.target.closest("[data-action='view']");
+    if (viewBtn && viewBtn.hasAttribute("data-id")) {
+      e.preventDefault();
+      window.viewDiagnostic(viewBtn.getAttribute("data-id"));
+      return;
+    }
+
+    // 3. Edit button
+    const editBtn = e.target.closest("[data-action='edit']");
+    if (editBtn && editBtn.hasAttribute("data-id")) {
+      e.preventDefault();
+      window.editDiagnostic(editBtn.getAttribute("data-id"));
+      return;
+    }
+
+    // 4. Delete button
+    const deleteBtn = e.target.closest("[data-action='delete']");
+    if (deleteBtn && deleteBtn.hasAttribute("data-id")) {
+      e.preventDefault();
+      window.deleteDiagnostic(deleteBtn.getAttribute("data-id"));
+      return;
+    }
+
+    // 5. Close triggers
+    const closeBtn = e.target.closest("#btn-close-detail-modal, #btn-close-detail-modal-btn, #btn-close-traj-modal, #btn-close-traj-modal-btn, #btn-close-fs-modal, #btn-close-fs-modal-btn, #btn-close-edit-modal, #btn-cancel-edit-modal");
+    if (closeBtn) {
+      e.preventDefault();
+      const modal = closeBtn.closest(".modal-backdrop");
+      if (modal) window.hideAnalyticsModal(modal);
+      return;
+    }
+
+    // 6. Direct click on backdrop overlay (outside modal content dialog)
+    if (e.target.classList.contains("modal-backdrop")) {
+      window.hideAnalyticsModal(e.target);
+    }
+  });
+
+  // ESC key dismisses all active modals
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      window.closeAllAnalyticsModals();
+    }
+  });
 
   // --------------------------------------------------------------------------
   // 20. CHART PNG EXPORT UTILITIES
