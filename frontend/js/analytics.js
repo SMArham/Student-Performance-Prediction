@@ -1292,18 +1292,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span class="badge ${item.status_color || "badge-success"}">${item.status_badge || "Evaluated"}</span>
           </td>
           <td style="text-align: right; white-space: nowrap;">
-            <div class="action-btn-group">
-              <button type="button" class="table-icon-btn" data-action="trajectory" data-id="${cleanId}" onclick="window.viewTrajectoryGraph('${cleanId}')" title="Inspect Trajectory">
-                📈 Trajectory
-              </button>
-              <button type="button" class="table-icon-btn btn-view" data-action="view" data-id="${cleanId}" onclick="window.viewDiagnostic('${cleanId}')" title="View Details">
-                👁️ View
-              </button>
-              <button type="button" class="table-icon-btn btn-edit" data-action="edit" data-id="${cleanId}" onclick="window.editDiagnostic('${cleanId}')" title="Edit Remarks">
-                ✏️ Edit
-              </button>
-              <button type="button" class="table-icon-btn btn-delete" data-action="delete" data-id="${cleanId}" onclick="window.deleteDiagnostic('${cleanId}')" title="Delete Record">
-                🗑️
+            <div class="action-btn-group" style="justify-content: flex-end;">
+              <button type="button" class="table-icon-btn btn-delete" data-action="delete" data-id="${cleanId}" onclick="window.deleteDiagnostic('${cleanId}')" title="Delete Record" style="color: #f87171; border-color: rgba(248, 113, 113, 0.35); background: rgba(239, 68, 68, 0.08); padding: 5px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 6px;">
+                🗑️ Delete
               </button>
             </div>
           </td>
