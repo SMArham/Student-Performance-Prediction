@@ -1156,6 +1156,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           .map(([k, v]) => `${k.replace(/_/g, " ")}: ${formatDiagnosticParam(k, v)}`)
           .join(" | ");
 
+        const cleanId = String(item.id || "").replace(/'/g, "\\'");
+
         return `
         <tr>
           <td>
@@ -1181,16 +1183,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           </td>
           <td style="text-align: right; white-space: nowrap;">
             <div class="action-btn-group">
-              <button type="button" class="table-icon-btn" onclick="window.viewTrajectoryGraph('${item.id}')" title="Inspect Trajectory">
+              <button type="button" class="table-icon-btn" onclick="window.viewTrajectoryGraph('${cleanId}')" title="Inspect Trajectory">
                 📈 Trajectory
               </button>
-              <button type="button" class="table-icon-btn btn-view" onclick="window.viewDiagnostic('${item.id}')" title="View Details">
+              <button type="button" class="table-icon-btn btn-view" onclick="window.viewDiagnostic('${cleanId}')" title="View Details">
                 👁️ View
               </button>
-              <button type="button" class="table-icon-btn btn-edit" onclick="window.editDiagnostic('${item.id}')" title="Edit Remarks">
+              <button type="button" class="table-icon-btn btn-edit" onclick="window.editDiagnostic('${cleanId}')" title="Edit Remarks">
                 ✏️ Edit
               </button>
-              <button type="button" class="table-icon-btn btn-delete" onclick="window.deleteDiagnostic('${item.id}')" title="Delete Record">
+              <button type="button" class="table-icon-btn btn-delete" onclick="window.deleteDiagnostic('${cleanId}')" title="Delete Record">
                 🗑️
               </button>
             </div>
@@ -1220,32 +1222,38 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 17. CRUD OPERATION: READ / VIEW DETAIL & TRAJECTORY MODALS
   // --------------------------------------------------------------------------
   window.viewDiagnostic = (id) => {
-    const item = predictionHistory.find((h) => h.id === id);
+    const cleanId = String(id);
+    const item = predictionHistory.find((h) => String(h.id) === cleanId);
     if (!item || !detailModal) return;
 
-    if (modalDetailScore) modalDetailScore.innerText = item.score;
+    if (modalDetailScore) modalDetailScore.innerText = item.score || "--";
     if (modalDetailBadge) {
       modalDetailBadge.innerText = item.status_badge || "Evaluated";
       modalDetailBadge.className = `badge ${item.status_color || "badge-success"}`;
     }
-    if (modalDetailStage) modalDetailStage.innerText = `Stage: ${(item.stage || "University").toUpperCase()} (${item.role || "Student"})`;
+    if (modalDetailStage) modalDetailStage.innerText = `Stage: ${(item.stage || "University").toUpperCase()} (${(item.role || "Student").toUpperCase()})`;
     if (modalDetailRecs) modalDetailRecs.innerText = item.recommendations || "High academic stability maintained.";
 
     if (modalDetailInputs) {
-      modalDetailInputs.innerHTML = Object.entries(item.payload || {})
-        .map(
-          ([k, v]) => `
-          <div style="padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.06);">
-            <strong style="color: var(--color-lime); text-transform: capitalize;">${k.replace(/_/g, " ")}:</strong> 
-            <span style="color: #ffffff; margin-left: 4px;">${formatDiagnosticParam(k, v)}</span>
-          </div>
-        `
-        )
-        .join("");
+      const payloadEntries = Object.entries(item.payload || {}).filter(([k]) => k !== "subjects" || (Array.isArray(item.payload[k]) && item.payload[k].length > 0));
+      if (payloadEntries.length === 0) {
+        modalDetailInputs.innerHTML = `<div style="grid-column: 1/-1; color: var(--text-muted); font-size: 12px;">Standard Evaluation Record</div>`;
+      } else {
+        modalDetailInputs.innerHTML = payloadEntries
+          .map(
+            ([k, v]) => `
+            <div style="padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.06);">
+              <strong style="color: var(--color-lime); text-transform: capitalize;">${k.replace(/_/g, " ")}:</strong> 
+              <span style="color: #ffffff; margin-left: 4px;">${formatDiagnosticParam(k, v)}</span>
+            </div>
+          `
+          )
+          .join("");
+      }
     }
 
-    detailModal.style.setProperty("display", "flex", "important");
     detailModal.classList.add("active");
+    detailModal.style.setProperty("display", "flex", "important");
   };
 
   const closeDetailModal = () => {
@@ -1265,7 +1273,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Trajectory Modal (Smooth Multi-Segment Line)
   window.viewTrajectoryGraph = (id) => {
-    const item = predictionHistory.find((h) => h.id === id);
+    const cleanId = String(id);
+    const item = predictionHistory.find((h) => String(h.id) === cleanId);
     if (!item || !trajModal) return;
 
     const parsed = parseNormalizedScore(item);
@@ -1284,7 +1293,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (trajModalTitle) trajModalTitle.innerText = `📈 AI Trajectory: Record ${item.id}`;
-    if (trajModalSubtitle) trajModalSubtitle.innerText = `Stage: ${(item.stage || "university").toUpperCase()} • Evaluated: ${new Date(item.timestamp).toLocaleDateString()}`;
+    const dateRaw = item.created_at || item.timestamp;
+    const formattedDate = dateRaw ? new Date(dateRaw).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recent";
+    if (trajModalSubtitle) trajModalSubtitle.innerText = `Stage: ${(item.stage || "university").toUpperCase()} • Evaluated: ${formattedDate}`;
     if (trajValBaseline) trajValBaseline.innerText = isUni ? `${baseline} CGPA` : `${baseline}%`;
     if (trajValCurrent) trajValCurrent.innerText = item.score || (isUni ? `${currentVal} CGPA` : `${currentVal}%`);
     if (trajValTarget) trajValTarget.innerText = isUni ? `${target} CGPA` : `${target}%`;
@@ -1298,7 +1309,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (modalTrajChartInstance) modalTrajChartInstance.destroy();
 
       const unit = isUni ? " CGPA" : "%";
-      const yMin = isUni ? 2.0 : 40;
+      const yMin = isUni ? 0.0 : 0;
       const yMax = isUni ? 4.0 : 100;
 
       modalTrajChartInstance = new Chart(modalCtx, {
@@ -1362,8 +1373,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
-    trajModal.style.setProperty("display", "flex", "important");
     trajModal.classList.add("active");
+    trajModal.style.setProperty("display", "flex", "important");
   };
 
   const closeTrajModal = () => {
@@ -1392,16 +1403,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   window.editDiagnostic = (id) => {
-    const item = predictionHistory.find((h) => h.id === id);
+    const cleanId = String(id);
+    const item = predictionHistory.find((h) => String(h.id) === cleanId);
     if (!item || !editModal) return;
 
     if (editRecordId) editRecordId.value = item.id;
     if (editRecordScore) editRecordScore.value = item.score || "";
-    if (editRecordStatus) editRecordStatus.value = item.status_badge || "Exemplary";
+    if (editRecordStatus) {
+      const currentBadge = item.status_badge || "Exemplary";
+      let matched = false;
+      Array.from(editRecordStatus.options).forEach(opt => {
+        if (opt.value.toLowerCase() === currentBadge.toLowerCase()) {
+          editRecordStatus.value = opt.value;
+          matched = true;
+        }
+      });
+      if (!matched) editRecordStatus.value = "Exemplary";
+    }
     if (editRecordNotes) editRecordNotes.value = item.recommendations || "";
 
-    editModal.style.setProperty("display", "flex", "important");
     editModal.classList.add("active");
+    editModal.style.setProperty("display", "flex", "important");
   };
 
   if (editForm) {
@@ -1412,7 +1434,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const status = editRecordStatus?.value;
       const notes = editRecordNotes?.value.trim();
 
-      const itemIdx = predictionHistory.findIndex((h) => h.id === id);
+      const itemIdx = predictionHistory.findIndex((h) => String(h.id) === String(id));
       if (itemIdx === -1) return;
 
       predictionHistory[itemIdx].score = score;
@@ -1422,6 +1444,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       predictionHistory[itemIdx].recommendations = notes;
 
       persistHistory(predictionHistory);
+
+      // Cloud Supabase Sync Update
+      if (window.authClient && window.authClient.client) {
+        try {
+          const rawScore = parseFloat(score);
+          window.authClient.client.from("prediction_history")
+            .update({
+              status_badge: status,
+              recommendations: notes,
+              ...(isNaN(rawScore) ? {} : { predicted_score: rawScore })
+            })
+            .eq("id", id)
+            .then().catch(() => {});
+        } catch (cloudErr) {}
+      }
 
       try {
         if (window.apiClient) {
@@ -1450,19 +1487,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --------------------------------------------------------------------------
   window.deleteDiagnostic = async (id) => {
     if (!confirm("Are you sure you want to permanently delete this historical prediction record?")) return;
-    predictionHistory = predictionHistory.filter((h) => h.id !== id);
+    const cleanId = String(id);
+    predictionHistory = predictionHistory.filter((h) => String(h.id) !== cleanId);
     persistHistory(predictionHistory);
 
     // Cloud Supabase Sync Deletion
     if (window.authClient && window.authClient.client) {
       try {
-        window.authClient.client.from("prediction_history").delete().eq("id", id).then().catch(() => {});
+        window.authClient.client.from("prediction_history").delete().eq("id", cleanId).then().catch(() => {});
       } catch (cloudErr) {}
     }
 
     try {
       if (window.apiClient) {
-        await window.apiClient.deleteHistoryItem(id);
+        await window.apiClient.deleteHistoryItem(cleanId);
       }
     } catch (err) {
       console.warn("[API] Delete record notice:", err.message);
