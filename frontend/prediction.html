@@ -9,12 +9,12 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- Design System CSS -->
-  <link rel="stylesheet" href="css/variables.css?v=3.0.0">
-  <link rel="stylesheet" href="css/layout.css?v=3.0.0">
-  <link rel="stylesheet" href="css/components.css?v=3.3.2">
-  <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
-  <link rel="stylesheet" href="css/prediction.css?v=3.3.2">
-  <link rel="stylesheet" href="css/tour.css?v=3.1.0">
+  <link rel="stylesheet" href="css/variables.css?v=3.5.0">
+  <link rel="stylesheet" href="css/layout.css?v=3.5.0">
+  <link rel="stylesheet" href="css/components.css?v=3.5.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=3.5.0">
+  <link rel="stylesheet" href="css/prediction.css?v=3.5.0">
+  <link rel="stylesheet" href="css/tour.css?v=3.5.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,11 +28,7 @@
       if (e && typeof e.preventDefault === "function") e.preventDefault();
       var m = document.getElementById("modal-add-term");
       if (m) {
-        m.removeAttribute("style");
-        m.style.setProperty("display", "flex", "important");
-        m.style.setProperty("opacity", "1", "important");
-        m.style.setProperty("visibility", "visible", "important");
-        m.style.setProperty("pointer-events", "auto", "important");
+        m.style.display = "flex";
         m.classList.add("active");
         m.scrollTop = 0;
         var d = m.querySelector(".modal-dialog");
@@ -44,11 +40,8 @@
       if (e && typeof e.preventDefault === "function") e.preventDefault();
       var m = document.getElementById("modal-add-term");
       if (m) {
-        m.style.setProperty("display", "none", "important");
-        m.style.setProperty("opacity", "0", "important");
-        m.style.setProperty("visibility", "hidden", "important");
-        m.style.setProperty("pointer-events", "none", "important");
         m.classList.remove("active");
+        m.style.display = "none";
       }
       document.body.style.overflow = "";
     };
@@ -585,7 +578,7 @@
   <!-- ======================================================================
        MODAL: ADD SEMESTER & COMPLETED COURSES (SUPABASE BACKED)
        ====================================================================== -->
-  <div class="modal-backdrop" id="modal-add-term" style="display: none !important;">
+  <div class="modal-backdrop" id="modal-add-term">
     <div class="modal-dialog" style="max-width: 660px;">
       <div class="modal-header" style="padding: 0 0 10px 0; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
         <h2 class="modal-title" id="term-modal-title" style="font-size: 17px; font-weight: 800; letter-spacing: 0.02em; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -600,12 +593,12 @@
         <input type="hidden" id="term-original-name" value="">
 
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.3;" id="term-modal-subtitle">
-          Enter semester details, GPA/CGPA, attendance, credit hours, and enrolled courses.
+          Enter your semester details, attendance, credit hours, and courses. Your GPA is calculated automatically.
         </div>
 
         <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; margin-bottom: 8px;" id="term-modal-grid-top">
           <div class="form-group" id="term-name-group" style="margin-bottom: 0;">
-            <label class="form-label" for="term-name-input" id="term-name-label" style="font-size: 11px; margin-bottom: 3px;">Semester / Term Name <span style="color:var(--color-lime)">*</span></label>
+            <label class="form-label" for="term-name-input" id="term-name-label" style="font-size: 11px; margin-bottom: 3px;">Semester / Level Name <span style="color:var(--color-lime)">*</span></label>
             <select id="term-name-select" class="form-select" style="margin-bottom: 4px; display: none; height: 34px; font-size: 12.5px; padding: 0 8px;">
               <!-- Populated dynamically per stage -->
             </select>
@@ -680,9 +673,9 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Application Logic Scripts -->
-  <script src="js/supabase-client.js?v=3.0.0"></script>
-  <script src="js/api.js?v=3.3.0"></script>
-  <script src="js/prediction.js?v=3.3.2"></script>
-  <script src="js/tour.js?v=3.1.0"></script>
+  <script src="js/supabase-client.js?v=3.5.0"></script>
+  <script src="js/api.js?v=3.5.0"></script>
+  <script src="js/prediction.js?v=3.5.0"></script>
+  <script src="js/tour.js?v=3.5.0"></script>
 </body>
 </html>

@@ -897,33 +897,34 @@ select.form-select option {
    Academic Semester & Coursework Modal Popup
    ------------------------------------------------------------------------------ */
 #modal-add-term {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background: rgba(4, 6, 10, 0.88) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  display: none !important;
-  align-items: center !important;
-  justify-content: center !important;
-  z-index: 9999999 !important;
-  padding: 16px !important;
-  overflow-y: auto !important;
-  box-sizing: border-box !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(4, 6, 10, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999999;
+  padding: 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 #modal-add-term:not(.active) {
-  display: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
+  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 #modal-add-term.active {
@@ -934,33 +935,33 @@ select.form-select option {
 }
 
 #modal-add-term .modal-dialog {
-  background: #111317 !important;
-  border: 1.5px solid rgba(168, 240, 75, 0.45) !important;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(168, 240, 75, 0.15) !important;
-  border-radius: 16px !important;
-  width: 100% !important;
-  max-width: 660px !important;
-  max-height: calc(100vh - 40px) !important;
-  margin: auto !important;
-  padding: 20px 24px !important;
-  box-sizing: border-box !important;
-  overflow-y: auto !important;
-  position: relative !important;
-  animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  background: #111317;
+  border: 1.5px solid rgba(168, 240, 75, 0.45);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(168, 240, 75, 0.15);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 660px;
+  max-height: calc(100vh - 40px);
+  margin: auto;
+  padding: 20px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  position: relative;
+  animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 #btn-add-semester {
-  cursor: pointer !important;
-  position: relative !important;
-  z-index: 10 !important;
-  pointer-events: auto !important;
-  user-select: none !important;
-  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 #btn-add-semester:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 14px rgba(168, 240, 75, 0.35) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(168, 240, 75, 0.35);
 }
 
 #btn-add-semester:active {

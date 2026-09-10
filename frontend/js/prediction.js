@@ -2077,11 +2077,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Guarantee modal is strictly hidden upon load
   if (modalAddTerm) {
-    modalAddTerm.style.setProperty("display", "none", "important");
-    modalAddTerm.style.setProperty("opacity", "0", "important");
-    modalAddTerm.style.setProperty("visibility", "hidden", "important");
-    modalAddTerm.style.setProperty("pointer-events", "none", "important");
     modalAddTerm.classList.remove("active");
+    modalAddTerm.style.display = "none";
   }
 
   function calculateModalGpaFromRows() {
@@ -2668,11 +2665,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Guaranteed immediate visual display on screen
     const m = document.getElementById("modal-add-term");
     if (m) {
-      m.removeAttribute("style");
-      m.style.setProperty("display", "flex", "important");
-      m.style.setProperty("opacity", "1", "important");
-      m.style.setProperty("visibility", "visible", "important");
-      m.style.setProperty("pointer-events", "auto", "important");
+      m.style.display = "flex";
       m.classList.add("active");
       m.scrollTop = 0;
       const modalDialog = m.querySelector(".modal-dialog");
@@ -2693,26 +2686,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (modalTermSubjectsContainer) {
         modalTermSubjectsContainer.innerHTML = "";
-        if (currentStage === "intermediate") {
-          addModalSubjectRow("Mathematics / Biology", "Core Science", 85, 100);
-          addModalSubjectRow("Physics", "Core Science", 82, 100);
-          addModalSubjectRow("Chemistry / Computer Science", "Core Science", 84, 100);
-          addModalSubjectRow("English Compulsory", "Language", 80, 100);
+        if (currentStage === "university") {
+          addModalSubjectRow("Programming / Core Course 1", "Theory", "", 100);
+          addModalSubjectRow("Calculus / Core Course 2", "Theory", "", 100);
+        } else if (currentStage === "intermediate") {
+          addModalSubjectRow("Physics", "Core Science", "", 100);
+          addModalSubjectRow("Chemistry / Computer Science", "Core Science", "", 100);
+          addModalSubjectRow("Mathematics / Biology", "Core Science", "", 100);
+          addModalSubjectRow("English Compulsory", "Language", "", 100);
         } else if (currentStage === "matric") {
-          addModalSubjectRow("Mathematics", "Science", 88, 100);
-          addModalSubjectRow("General Science / Physics", "Science", 84, 100);
-          addModalSubjectRow("English Compulsory", "Compulsory", 82, 100);
-          addModalSubjectRow("Urdu Compulsory", "Compulsory", 85, 100);
+          addModalSubjectRow("Mathematics", "Science", "", 100);
+          addModalSubjectRow("General Science / Physics", "Science", "", 100);
+          addModalSubjectRow("English Compulsory", "Compulsory", "", 100);
+          addModalSubjectRow("Urdu Compulsory", "Compulsory", "", 100);
         } else if (currentStage === "secondary") {
-          addModalSubjectRow("Mathematics", "Mathematics", 88, 100);
-          addModalSubjectRow("General Science", "Science", 84, 100);
-          addModalSubjectRow("English Language", "Language", 83, 100);
+          addModalSubjectRow("Mathematics", "Mathematics", "", 100);
+          addModalSubjectRow("General Science", "Science", "", 100);
+          addModalSubjectRow("English Language", "Language", "", 100);
         } else if (currentStage === "primary") {
-          addModalSubjectRow("Math & Numeracy", "Numeracy", 88, 100);
-          addModalSubjectRow("Reading & Literacy", "Literacy", 90, 100);
+          addModalSubjectRow("Math & Numeracy", "Numeracy", "", 100);
+          addModalSubjectRow("Reading & Literacy", "Literacy", "", 100);
         } else {
-          addModalSubjectRow("Calculus & Analytical Geometry", "Theory", 82, 100);
-          addModalSubjectRow("Object Oriented Programming", "Lab", 86, 100);
+          addModalSubjectRow("Course Subject 1", "Theory", "", 100);
         }
       }
 
@@ -2726,16 +2721,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const termGpaInput = document.getElementById("term-gpa-input");
       if (termGpaInput) {
-        termGpaInput.value = currentStage === "university" ? "3.60" : "85.0";
+        termGpaInput.value = "";
+        termGpaInput.placeholder = currentStage === "university" ? "e.g. 3.65" : "e.g. 85.0";
       }
       const termCgpaInput = document.getElementById("term-cgpa-input");
-      if (termCgpaInput) termCgpaInput.value = "3.50";
+      if (termCgpaInput) {
+        termCgpaInput.value = "";
+        termCgpaInput.placeholder = currentStage === "university" ? "e.g. 3.50" : "e.g. 85.0";
+      }
       const termAttInput = document.getElementById("term-attendance-input");
-      if (termAttInput) termAttInput.value = currentStage === "primary" ? "94" : currentStage === "secondary" ? "92" : currentStage === "matric" ? "90" : "88";
+      if (termAttInput) {
+        termAttInput.value = "85";
+      }
       const termCreditsInput = document.getElementById("term-credits-input");
-      if (termCreditsInput) termCreditsInput.value = currentStage === "intermediate" ? "5.0" : currentStage === "matric" ? "4.5" : currentStage === "secondary" ? "3.5" : "18";
+      if (termCreditsInput) {
+        termCreditsInput.value = currentStage === "intermediate" ? "5.0" : currentStage === "matric" ? "4.5" : currentStage === "secondary" ? "3.5" : "18";
+      }
       const termMidtermInput = document.getElementById("term-midterm-input");
-      if (termMidtermInput) termMidtermInput.value = currentStage === "intermediate" ? "82" : "80";
+      if (termMidtermInput) termMidtermInput.value = "80";
       const termBacklogsInput = document.getElementById("term-backlogs-input");
       if (termBacklogsInput) termBacklogsInput.value = "0";
 
@@ -2760,11 +2763,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e && typeof e.preventDefault === "function") e.preventDefault();
     const m = document.getElementById("modal-add-term");
     if (m) {
-      m.style.setProperty("display", "none", "important");
-      m.style.setProperty("opacity", "0", "important");
-      m.style.setProperty("visibility", "hidden", "important");
-      m.style.setProperty("pointer-events", "none", "important");
       m.classList.remove("active");
+      m.style.display = "none";
     }
     document.body.style.overflow = "";
   }
@@ -2880,11 +2880,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Guaranteed immediate visual display on screen
     const m = document.getElementById("modal-add-term");
     if (m) {
-      m.removeAttribute("style");
-      m.style.setProperty("display", "flex", "important");
-      m.style.setProperty("opacity", "1", "important");
-      m.style.setProperty("visibility", "visible", "important");
-      m.style.setProperty("pointer-events", "auto", "important");
+      m.style.display = "flex";
       m.classList.add("active");
       m.scrollTop = 0;
       const modalDialog = m.querySelector(".modal-dialog");
