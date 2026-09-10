@@ -852,20 +852,29 @@ select.form-select option {
   background: rgba(0, 0, 0, 0.82) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
-  display: none;
+  display: none !important;
   align-items: center !important;
   justify-content: center !important;
   z-index: 100000 !important;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 16px;
   box-sizing: border-box;
 }
 
+.modal-backdrop:not(.active) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .modal-backdrop.active {
   display: flex !important;
   opacity: 1 !important;
+  visibility: visible !important;
   pointer-events: auto !important;
 }
 
@@ -898,16 +907,23 @@ select.form-select option {
   background: rgba(4, 6, 10, 0.88) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
-  display: none;
+  display: none !important;
   align-items: center !important;
   justify-content: center !important;
   z-index: 9999999 !important;
   padding: 16px !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+#modal-add-term:not(.active) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 #modal-add-term.active {

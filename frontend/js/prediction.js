@@ -2075,6 +2075,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let loggedTerms = [];
 
+  // Guarantee modal is strictly hidden upon load
+  if (modalAddTerm) {
+    modalAddTerm.style.setProperty("display", "none", "important");
+    modalAddTerm.style.setProperty("opacity", "0", "important");
+    modalAddTerm.style.setProperty("visibility", "hidden", "important");
+    modalAddTerm.style.setProperty("pointer-events", "none", "important");
+    modalAddTerm.classList.remove("active");
+  }
+
   function calculateModalGpaFromRows() {
     const termGpaInput = document.getElementById("term-gpa-input");
     if (!termGpaInput || !modalTermSubjectsContainer) return;
@@ -2747,10 +2756,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  function closeTermModal() {
+  function closeTermModal(e) {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
     const m = document.getElementById("modal-add-term");
     if (m) {
-      m.removeAttribute("style");
       m.style.setProperty("display", "none", "important");
       m.style.setProperty("opacity", "0", "important");
       m.style.setProperty("visibility", "hidden", "important");

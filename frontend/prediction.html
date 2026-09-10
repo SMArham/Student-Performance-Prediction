@@ -11,9 +11,9 @@
   <!-- Design System CSS -->
   <link rel="stylesheet" href="css/variables.css?v=3.0.0">
   <link rel="stylesheet" href="css/layout.css?v=3.0.0">
-  <link rel="stylesheet" href="css/components.css?v=3.3.0">
+  <link rel="stylesheet" href="css/components.css?v=3.3.2">
   <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
-  <link rel="stylesheet" href="css/prediction.css?v=3.3.1">
+  <link rel="stylesheet" href="css/prediction.css?v=3.3.2">
   <link rel="stylesheet" href="css/tour.css?v=3.1.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
@@ -40,10 +40,10 @@
         document.body.style.overflow = "hidden";
       }
     };
-    window.closeAddSemesterModal = window.closeAddSemesterModal || function() {
+    window.closeAddSemesterModal = window.closeAddSemesterModal || function(e) {
+      if (e && typeof e.preventDefault === "function") e.preventDefault();
       var m = document.getElementById("modal-add-term");
       if (m) {
-        m.removeAttribute("style");
         m.style.setProperty("display", "none", "important");
         m.style.setProperty("opacity", "0", "important");
         m.style.setProperty("visibility", "hidden", "important");
@@ -585,7 +585,7 @@
   <!-- ======================================================================
        MODAL: ADD SEMESTER & COMPLETED COURSES (SUPABASE BACKED)
        ====================================================================== -->
-  <div class="modal-backdrop" id="modal-add-term">
+  <div class="modal-backdrop" id="modal-add-term" style="display: none !important;">
     <div class="modal-dialog" style="max-width: 660px;">
       <div class="modal-header" style="padding: 0 0 10px 0; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
         <h2 class="modal-title" id="term-modal-title" style="font-size: 17px; font-weight: 800; letter-spacing: 0.02em; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -682,7 +682,7 @@
   <!-- Application Logic Scripts -->
   <script src="js/supabase-client.js?v=3.0.0"></script>
   <script src="js/api.js?v=3.3.0"></script>
-  <script src="js/prediction.js?v=3.3.1"></script>
+  <script src="js/prediction.js?v=3.3.2"></script>
   <script src="js/tour.js?v=3.1.0"></script>
 </body>
 </html>
