@@ -9,12 +9,12 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- Design System CSS -->
-  <link rel="stylesheet" href="css/variables.css?v=3.5.0">
-  <link rel="stylesheet" href="css/layout.css?v=3.5.0">
-  <link rel="stylesheet" href="css/components.css?v=3.5.0">
-  <link rel="stylesheet" href="css/dashboard.css?v=3.5.0">
-  <link rel="stylesheet" href="css/prediction.css?v=3.5.0">
-  <link rel="stylesheet" href="css/tour.css?v=3.5.0">
+  <link rel="stylesheet" href="css/variables.css?v=3.6.0">
+  <link rel="stylesheet" href="css/layout.css?v=3.6.0">
+  <link rel="stylesheet" href="css/components.css?v=3.6.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=3.6.0">
+  <link rel="stylesheet" href="css/prediction.css?v=3.6.0">
+  <link rel="stylesheet" href="css/tour.css?v=3.6.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,20 +24,24 @@
   <!-- Supabase JS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    window.openAddSemesterModal = window.openAddSemesterModal || function(e) {
+    window.openAddSemesterModal = function(e) {
       if (e && typeof e.preventDefault === "function") e.preventDefault();
+      var inline = document.getElementById("inline-term-editor-card");
+      if (inline) {
+        inline.style.display = "block";
+        inline.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       var m = document.getElementById("modal-add-term");
       if (m) {
         m.style.display = "flex";
         m.classList.add("active");
         m.scrollTop = 0;
-        var d = m.querySelector(".modal-dialog");
-        if (d) d.scrollTop = 0;
-        document.body.style.overflow = "hidden";
       }
     };
-    window.closeAddSemesterModal = window.closeAddSemesterModal || function(e) {
+    window.closeInlineSemesterEditor = function(e) {
       if (e && typeof e.preventDefault === "function") e.preventDefault();
+      var inline = document.getElementById("inline-term-editor-card");
+      if (inline) inline.style.display = "none";
       var m = document.getElementById("modal-add-term");
       if (m) {
         m.classList.remove("active");
@@ -45,6 +49,7 @@
       }
       document.body.style.overflow = "";
     };
+    window.closeAddSemesterModal = window.closeInlineSemesterEditor;
   </script>
 </head>
 <body>
@@ -320,6 +325,95 @@
                     <div class="summary-kpi-value" id="kpi-aggregate-pct" style="color: var(--color-orange);">0.0%</div>
                     <div class="summary-kpi-subtitle" id="kpi-sub-4">Lecture Presence</div>
                   </div>
+                </div>
+
+                <!-- INLINE ACTIVE SEMESTER / ACADEMIC RECORD EDITOR -->
+                <div id="inline-term-editor-card" style="display: none; background: rgba(18, 22, 28, 0.96); border: 1.5px solid var(--color-lime); border-radius: 12px; padding: 20px; margin-bottom: var(--space-4); box-shadow: 0 12px 36px rgba(0,0,0,0.85), 0 0 20px rgba(168,240,75,0.15); animation: modalPopIn 0.22s ease-out;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                    <div>
+                      <h3 id="inline-editor-title" style="font-size: 16px; font-weight: 800; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <span>🏛️ Add Academic Semester & Coursework</span>
+                      </h3>
+                      <div id="inline-editor-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                        Enter semester details, attendance, credit hours, and enrolled courses. Everything is calculated automatically.
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-close-inline-editor" onclick="window.closeInlineSemesterEditor && window.closeInlineSemesterEditor()" style="padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--text-muted); cursor: pointer;">✕ Close Form</button>
+                  </div>
+
+                  <form id="inline-term-form">
+                    <input type="hidden" id="inline-term-edit-id" value="">
+                    <input type="hidden" id="inline-term-original-name" value="">
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" id="inline-term-name-label" style="font-size: 11px; margin-bottom: 3px;">Semester / Level Name <span style="color:var(--color-lime)">*</span></label>
+                        <select id="inline-term-name-select" class="form-select" style="height: 35px; font-size: 12.5px;">
+                          <!-- Options populated dynamically per stage -->
+                        </select>
+                        <input type="text" id="inline-term-name-input" class="form-input" placeholder="Type custom name..." style="display: none; margin-top: 4px; height: 34px; font-size: 12.5px;">
+                      </div>
+
+                      <div class="form-group" style="margin-bottom: 0;" id="inline-term-gpa-group">
+                        <label class="form-label" id="inline-term-gpa-label" style="font-size: 11px; margin-bottom: 3px;">Semester GPA (0–4) <span style="color:var(--color-lime)">*</span></label>
+                        <input type="number" step="0.01" min="0" max="100" id="inline-term-gpa-input" class="form-input" placeholder="e.g. 3.65" style="height: 35px; font-size: 12.5px;">
+                      </div>
+
+                      <div class="form-group" style="margin-bottom: 0;" id="inline-term-cgpa-group">
+                        <label class="form-label" id="inline-term-cgpa-label" style="font-size: 11px; margin-bottom: 3px;">Cumulative CGPA</label>
+                        <input type="number" step="0.01" min="0" max="100" id="inline-term-cgpa-input" class="form-input" placeholder="e.g. 3.50" style="height: 35px; font-size: 12.5px;">
+                      </div>
+
+                      <div class="form-group" style="margin-bottom: 0;" id="inline-term-attendance-group">
+                        <label class="form-label" id="inline-term-attendance-label" style="font-size: 11px; margin-bottom: 3px;">Attendance (%) <span style="color:var(--color-lime)">*</span></label>
+                        <input type="number" min="0" max="100" id="inline-term-attendance-input" class="form-input" placeholder="e.g. 85" value="85" required style="height: 35px; font-size: 12.5px;">
+                      </div>
+
+                      <div class="form-group" style="margin-bottom: 0;" id="inline-term-credits-group">
+                        <label class="form-label" id="inline-term-credits-label" style="font-size: 11px; margin-bottom: 3px;">Credit Hours</label>
+                        <input type="number" min="1" max="30" id="inline-term-credits-input" class="form-input" placeholder="e.g. 18" value="18" style="height: 35px; font-size: 12.5px;">
+                      </div>
+
+                      <div class="form-group" style="margin-bottom: 0;" id="inline-term-midterm-group">
+                        <label class="form-label" id="inline-term-midterm-label" style="font-size: 11px; margin-bottom: 3px;">Midterm Exam (%)</label>
+                        <input type="number" min="0" max="100" id="inline-term-midterm-input" class="form-input" placeholder="e.g. 80" value="80" style="height: 35px; font-size: 12.5px;">
+                      </div>
+
+                      <div class="form-group" style="margin-bottom: 0;" id="inline-term-backlogs-group">
+                        <label class="form-label" id="inline-term-backlogs-label" style="font-size: 11px; margin-bottom: 3px;">Failed Backlogs</label>
+                        <input type="number" min="0" max="15" id="inline-term-backlogs-input" class="form-input" placeholder="e.g. 0" value="0" style="height: 35px; font-size: 12.5px;">
+                      </div>
+                    </div>
+
+                    <!-- Enrolled Courses & Subjects Section -->
+                    <div style="margin-top: 12px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="form-label" id="inline-term-courses-label" style="margin: 0; font-size: 12px; font-weight: 700; color: #ffffff;">Enrolled Courses & Marks</label>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-inline-subject-row" style="padding: 3px 10px; font-size: 11.5px; height: 28px;">
+                          <span id="btn-add-inline-subject-row-text">+ Add Course</span>
+                        </button>
+                      </div>
+
+                      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 32px; gap: 8px; margin-bottom: 6px; padding: 0 4px; font-size: 10.5px; text-transform: uppercase; font-weight: 700; color: var(--text-muted);" id="inline-subjects-table-header">
+                        <div id="inline-col-sub-name-header">Course Name</div>
+                        <div id="inline-col-sub-cat-header">Type</div>
+                        <div>Obtained</div>
+                        <div>Max Marks</div>
+                        <div></div>
+                      </div>
+
+                      <div id="inline-term-subjects-container" style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; padding-right: 4px;">
+                        <!-- Populated with dynamic rows -->
+                      </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);">
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-inline-editor" onclick="window.closeInlineSemesterEditor && window.closeInlineSemesterEditor()" style="height: 36px; padding: 0 16px; font-size: 12.5px; cursor: pointer;">Cancel</button>
+                      <button type="submit" class="btn btn-primary btn-sm" id="btn-save-inline-term" style="height: 36px; padding: 0 20px; font-size: 13px; font-weight: 700;">
+                        <span id="btn-save-inline-term-text">💾 Save Semester Record</span>
+                      </button>
+                    </div>
+                  </form>
                 </div>
 
                 <!-- Historical Semesters / Terms Cards Container -->
@@ -673,9 +767,9 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Application Logic Scripts -->
-  <script src="js/supabase-client.js?v=3.5.0"></script>
-  <script src="js/api.js?v=3.5.0"></script>
-  <script src="js/prediction.js?v=3.5.0"></script>
-  <script src="js/tour.js?v=3.5.0"></script>
+  <script src="js/supabase-client.js?v=3.6.0"></script>
+  <script src="js/api.js?v=3.6.0"></script>
+  <script src="js/prediction.js?v=3.6.0"></script>
+  <script src="js/tour.js?v=3.6.0"></script>
 </body>
 </html>

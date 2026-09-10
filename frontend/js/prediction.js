@@ -2656,95 +2656,482 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // INLINE SEMESTER & ACADEMIC RECORD EDITOR CONTROLLERS
+  // --------------------------------------------------------------------------
+  const inlineTermEditorCard = document.getElementById("inline-term-editor-card");
+  const inlineTermForm = document.getElementById("inline-term-form");
+  const inlineTermSubjectsContainer = document.getElementById("inline-term-subjects-container");
+  const btnAddInlineSubjectRow = document.getElementById("btn-add-inline-subject-row");
+
+  function calculateInlineGpaFromRows() {
+    const gpaInput = document.getElementById("inline-term-gpa-input");
+    if (!gpaInput || !inlineTermSubjectsContainer) return;
+    const rows = Array.from(inlineTermSubjectsContainer.querySelectorAll(".inline-subject-row"));
+    let totObt = 0;
+    let totMax = 0;
+    rows.forEach(r => {
+      const obt = parseFloat(r.querySelector(".m-sub-obt")?.value);
+      const max = parseFloat(r.querySelector(".m-sub-max")?.value);
+      if (!isNaN(obt) && !isNaN(max) && max > 0) {
+        totObt += obt;
+        totMax += max;
+      }
+    });
+    if (totMax > 0) {
+      if (currentStage === "university") {
+        const gpa = Math.min(4.0, (totObt / totMax) * 4.0);
+        gpaInput.value = gpa.toFixed(2);
+      } else {
+        const pct = Math.min(100.0, (totObt / totMax) * 100.0);
+        gpaInput.value = pct.toFixed(1);
+      }
+    }
+  }
+  window.calculateInlineGpaFromRows = calculateInlineGpaFromRows;
+
+  function addInlineSubjectRow(name = "", cat = "", obt = "", max = 100) {
+    if (!inlineTermSubjectsContainer) return;
+    const rowId = `in-sub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const row = document.createElement("div");
+    row.className = "inline-subject-row";
+    row.id = rowId;
+    row.style.display = "grid";
+    row.style.gridTemplateColumns = "2fr 1fr 1fr 1fr 32px";
+    row.style.gap = "8px";
+    row.style.alignItems = "center";
+
+    let defaultName = "Calculus";
+    let catOptions = `
+      <option value="Theory" ${cat === "Theory" || !cat ? "selected" : ""}>Theory</option>
+      <option value="Lab" ${cat === "Lab" ? "selected" : ""}>Lab</option>
+    `;
+
+    if (currentStage === "intermediate") {
+      defaultName = "Physics";
+      catOptions = `
+        <option value="Core Science" ${cat === "Core Science" || !cat ? "selected" : ""}>Core Science</option>
+        <option value="Language" ${cat === "Language" ? "selected" : ""}>Language</option>
+        <option value="Elective" ${cat === "Elective" ? "selected" : ""}>Elective</option>
+        <option value="Practical" ${cat === "Practical" ? "selected" : ""}>Practical / Lab</option>
+      `;
+    } else if (currentStage === "matric") {
+      defaultName = "Mathematics";
+      catOptions = `
+        <option value="Science" ${cat === "Science" || !cat ? "selected" : ""}>Science</option>
+        <option value="Compulsory" ${cat === "Compulsory" || !cat ? "selected" : ""}>Compulsory</option>
+        <option value="Elective" ${cat === "Elective" ? "selected" : ""}>Elective</option>
+        <option value="Practical" ${cat === "Practical" ? "selected" : ""}>Practical</option>
+      `;
+    } else if (currentStage === "secondary") {
+      defaultName = "Mathematics";
+      catOptions = `
+        <option value="Core Subject" ${cat === "Core Subject" || !cat ? "selected" : ""}>Core Subject</option>
+        <option value="Science" ${cat === "Science" ? "selected" : ""}>Science</option>
+        <option value="Mathematics" ${cat === "Mathematics" ? "selected" : ""}>Mathematics</option>
+        <option value="Language" ${cat === "Language" ? "selected" : ""}>Language</option>
+        <option value="Practical" ${cat === "Practical" ? "selected" : ""}>Practical</option>
+      `;
+    } else if (currentStage === "primary") {
+      defaultName = "Math & Numeracy";
+      catOptions = `
+        <option value="Foundational" ${cat === "Foundational" || !cat ? "selected" : ""}>Foundational</option>
+        <option value="Numeracy" ${cat === "Numeracy" ? "selected" : ""}>Numeracy</option>
+        <option value="Literacy" ${cat === "Literacy" ? "selected" : ""}>Literacy</option>
+        <option value="Creative Art" ${cat === "Creative Art" ? "selected" : ""}>Creative Art</option>
+        <option value="Activity" ${cat === "Activity" ? "selected" : ""}>Activity</option>
+      `;
+    }
+
+    row.innerHTML = `
+      <input type="text" class="form-input m-sub-name" placeholder="Subject Name (e.g. ${defaultName})" value="${name}" required style="padding:6px 10px;font-size:13px;">
+      <select class="form-select m-sub-cat" style="padding:6px 10px;font-size:13px;">
+        ${catOptions}
+      </select>
+      <input type="number" step="0.5" class="form-input m-sub-obt" placeholder="Marks" value="${obt !== undefined && obt !== null ? obt : ""}" min="0" required style="padding:6px 10px;font-size:13px;">
+      <input type="number" step="0.5" class="form-input m-sub-max" placeholder="Max" value="${max || 100}" min="1" required style="padding:6px 10px;font-size:13px;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="this.parentElement.remove(); window.calculateInlineGpaFromRows && window.calculateInlineGpaFromRows();" style="padding:4px 8px;font-size:12px;color:var(--color-red);" title="Remove Row">✕</button>
+    `;
+
+    const obtInput = row.querySelector(".m-sub-obt");
+    const maxInput = row.querySelector(".m-sub-max");
+    if (obtInput) obtInput.addEventListener("input", calculateInlineGpaFromRows);
+    if (maxInput) maxInput.addEventListener("input", calculateInlineGpaFromRows);
+
+    inlineTermSubjectsContainer.appendChild(row);
+  }
+
+  if (btnAddInlineSubjectRow) {
+    btnAddInlineSubjectRow.addEventListener("click", () => addInlineSubjectRow("", "", "", 100));
+  }
+
+  function setupInlineEditorForCurrentStage(isEdit = false, term = null) {
+    const editId = document.getElementById("inline-term-edit-id");
+    const origName = document.getElementById("inline-term-original-name");
+    const btnSaveText = document.getElementById("btn-save-inline-term-text");
+    const titleEl = document.getElementById("inline-editor-title");
+    const subtitleEl = document.getElementById("inline-editor-subtitle");
+    const nameLabel = document.getElementById("inline-term-name-label");
+    const nameSelect = document.getElementById("inline-term-name-select");
+    const nameInput = document.getElementById("inline-term-name-input");
+    const gpaLabel = document.getElementById("inline-term-gpa-label");
+    const gpaInput = document.getElementById("inline-term-gpa-input");
+    const cgpaGroup = document.getElementById("inline-term-cgpa-group");
+    const creditsGroup = document.getElementById("inline-term-credits-group");
+    const creditsLabel = document.getElementById("inline-term-credits-label");
+    const creditsInput = document.getElementById("inline-term-credits-input");
+    const midtermGroup = document.getElementById("inline-term-midterm-group");
+    const midtermLabel = document.getElementById("inline-term-midterm-label");
+    const backlogsGroup = document.getElementById("inline-term-backlogs-group");
+    const coursesLabel = document.getElementById("inline-term-courses-label");
+    const btnAddSubText = document.getElementById("btn-add-inline-subject-row-text");
+    const colNameHeader = document.getElementById("inline-col-sub-name-header");
+    const colCatHeader = document.getElementById("inline-col-sub-cat-header");
+
+    if (isEdit && term) {
+      if (editId) editId.value = term.id || term.term_name;
+      if (origName) origName.value = term.term_name;
+      if (btnSaveText) btnSaveText.innerText = "💾 Update Record";
+    } else {
+      if (editId) editId.value = "";
+      if (origName) origName.value = "";
+      if (btnSaveText) btnSaveText.innerText = "💾 Save Record";
+    }
+
+    if (currentStage === "university") {
+      if (titleEl) titleEl.innerHTML = isEdit ? `<span>✏️ Edit ${term?.term_name || 'Semester'} Record</span>` : `<span>🏛️ Add Academic Semester & Coursework</span>`;
+      if (subtitleEl) subtitleEl.innerText = "Enter semester details, GPA/CGPA, attendance, credit hours, and enrolled courses.";
+      if (nameLabel) nameLabel.innerHTML = `Semester / Term Name <span style="color:var(--color-lime)">*</span>`;
+      if (nameSelect) {
+        nameSelect.style.display = "block";
+        nameSelect.innerHTML = `
+          <option value="Semester 1">Semester 1</option>
+          <option value="Semester 2">Semester 2</option>
+          <option value="Semester 3">Semester 3</option>
+          <option value="Semester 4">Semester 4</option>
+          <option value="Semester 5">Semester 5</option>
+          <option value="Semester 6">Semester 6</option>
+          <option value="Semester 7">Semester 7</option>
+          <option value="Semester 8">Semester 8</option>
+          <option value="custom">✍️ Custom Term Name...</option>
+        `;
+        const nextNum = loggedTerms.length + 1;
+        const curVal = isEdit ? (term?.term_name || `Semester ${nextNum}`) : `Semester ${nextNum}`;
+        if (nameSelect.querySelector(`option[value="${curVal}"]`)) {
+          nameSelect.value = curVal;
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "none";
+          }
+        } else {
+          nameSelect.value = "custom";
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "block";
+          }
+        }
+      }
+      if (gpaLabel) gpaLabel.innerHTML = `Semester GPA (0–4) <span style="color:var(--color-lime)">*</span>`;
+      if (gpaInput) {
+        gpaInput.min = "0.00";
+        gpaInput.max = "4.00";
+        gpaInput.placeholder = "e.g. 3.65";
+      }
+      if (cgpaGroup) cgpaGroup.style.display = "block";
+      if (creditsGroup) {
+        creditsGroup.style.display = "block";
+        if (creditsLabel) creditsLabel.innerText = "Credit Hours";
+      }
+      if (midtermGroup) midtermGroup.style.display = "block";
+      if (backlogsGroup) backlogsGroup.style.display = "block";
+      if (coursesLabel) coursesLabel.innerText = "Enrolled Courses & Marks";
+      if (btnAddSubText) btnAddSubText.innerText = "+ Add Course";
+      if (colNameHeader) colNameHeader.innerText = "Course Name";
+      if (colCatHeader) colCatHeader.innerText = "Type";
+    } else if (currentStage === "intermediate") {
+      if (titleEl) titleEl.innerHTML = isEdit ? `<span>✏️ Edit ${term?.term_name || 'Intermediate'} Record</span>` : `<span>🎓 Add Intermediate (HSSC) Record</span>`;
+      if (subtitleEl) subtitleEl.innerText = "Log your 1st Year (11th) or 2nd Year (12th) term, marks %, attendance, and subjects.";
+      if (nameLabel) nameLabel.innerHTML = `Intermediate Level / Year <span style="color:var(--color-lime)">*</span>`;
+      if (nameSelect) {
+        nameSelect.style.display = "block";
+        nameSelect.innerHTML = `
+          <option value="1st Year (11th Class)">1st Year (11th Class)</option>
+          <option value="2nd Year (12th Class)">2nd Year (12th Class)</option>
+          <option value="Matriculation Foundation (10th)">Matriculation Foundation (10th)</option>
+          <option value="custom">✍️ Custom Level Name...</option>
+        `;
+        const nextDefault = loggedTerms.length === 0 ? "1st Year (11th Class)" : "2nd Year (12th Class)";
+        const curVal = isEdit ? (term?.term_name || nextDefault) : nextDefault;
+        if (nameSelect.querySelector(`option[value="${curVal}"]`)) {
+          nameSelect.value = curVal;
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "none";
+          }
+        } else {
+          nameSelect.value = "custom";
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "block";
+          }
+        }
+      }
+      if (gpaLabel) gpaLabel.innerHTML = `Term Score / Percentage (%) <span style="color:var(--color-lime)">*</span>`;
+      if (gpaInput) {
+        gpaInput.min = "0";
+        gpaInput.max = "100";
+        gpaInput.placeholder = "e.g. 84.5";
+      }
+      if (cgpaGroup) cgpaGroup.style.display = "none";
+      if (creditsGroup) {
+        creditsGroup.style.display = "block";
+        if (creditsLabel) creditsLabel.innerText = "Daily Study Hours";
+        if (creditsInput) creditsInput.value = term?.study_hours || "5.0";
+      }
+      if (midtermGroup) {
+        midtermGroup.style.display = "block";
+        if (midtermLabel) midtermLabel.innerText = "Sendup / Midterm Score (%)";
+      }
+      if (backlogsGroup) backlogsGroup.style.display = "none";
+      if (coursesLabel) coursesLabel.innerText = "Intermediate Subjects & Marks";
+      if (btnAddSubText) btnAddSubText.innerText = "+ Add Subject";
+      if (colNameHeader) colNameHeader.innerText = "Subject Name";
+      if (colCatHeader) colCatHeader.innerText = "Category";
+    } else if (currentStage === "matric") {
+      if (titleEl) titleEl.innerHTML = isEdit ? `<span>✏️ Edit ${term?.term_name || 'Matric'} Record</span>` : `<span>📜 Add Matric (SSC) Record</span>`;
+      if (subtitleEl) subtitleEl.innerText = "Log your 9th Class (SSC-I) or 10th Class (SSC-II) board marks, attendance, and subjects.";
+      if (nameLabel) nameLabel.innerHTML = `Matric Class / Board Level <span style="color:var(--color-lime)">*</span>`;
+      if (nameSelect) {
+        nameSelect.style.display = "block";
+        nameSelect.innerHTML = `
+          <option value="9th Class (SSC-I)">9th Class (SSC-I)</option>
+          <option value="10th Class (SSC-II)">10th Class (SSC-II)</option>
+          <option value="custom">✍️ Custom Level Name...</option>
+        `;
+        const nextDefault = loggedTerms.length === 0 ? "9th Class (SSC-I)" : "10th Class (SSC-II)";
+        const curVal = isEdit ? (term?.term_name || nextDefault) : nextDefault;
+        if (nameSelect.querySelector(`option[value="${curVal}"]`)) {
+          nameSelect.value = curVal;
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "none";
+          }
+        } else {
+          nameSelect.value = "custom";
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "block";
+          }
+        }
+      }
+      if (gpaLabel) gpaLabel.innerHTML = `Board Score / Percentage (%) <span style="color:var(--color-lime)">*</span>`;
+      if (gpaInput) {
+        gpaInput.min = "0";
+        gpaInput.max = "100";
+        gpaInput.placeholder = "e.g. 85.0";
+      }
+      if (cgpaGroup) cgpaGroup.style.display = "none";
+      if (creditsGroup) {
+        creditsGroup.style.display = "block";
+        if (creditsLabel) creditsLabel.innerText = "Daily Study Hours";
+        if (creditsInput) creditsInput.value = term?.study_hours || "4.5";
+      }
+      if (midtermGroup) midtermGroup.style.display = "none";
+      if (backlogsGroup) backlogsGroup.style.display = "none";
+      if (coursesLabel) coursesLabel.innerText = "Matric Subjects & Board Marks";
+      if (btnAddSubText) btnAddSubText.innerText = "+ Add Subject";
+      if (colNameHeader) colNameHeader.innerText = "Subject Name";
+      if (colCatHeader) colCatHeader.innerText = "Category";
+    } else if (currentStage === "secondary") {
+      if (titleEl) titleEl.innerHTML = isEdit ? `<span>✏️ Edit ${term?.term_name || 'Class'} Record</span>` : `<span>🏫 Add Secondary Class & Subject Coursework</span>`;
+      if (subtitleEl) subtitleEl.innerText = "Select or enter your class grade (e.g. Class 6, Class 7, Class 8), attendance, and subjects.";
+      if (nameLabel) nameLabel.innerHTML = `Secondary Class / Grade <span style="color:var(--color-lime)">*</span>`;
+      if (nameSelect) {
+        nameSelect.style.display = "block";
+        nameSelect.innerHTML = `
+          <option value="Class 5">Class 5</option>
+          <option value="Class 6">Class 6</option>
+          <option value="Class 7">Class 7</option>
+          <option value="Class 8">Class 8</option>
+          <option value="Class 9">Class 9</option>
+          <option value="custom">✍️ Custom Class Name...</option>
+        `;
+        const selectedCur = document.getElementById("manager_current_class_select")?.value || "Class 7";
+        const curVal = isEdit ? (term?.term_name || selectedCur) : selectedCur;
+        if (nameSelect.querySelector(`option[value="${curVal}"]`)) {
+          nameSelect.value = curVal;
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "none";
+          }
+        } else {
+          nameSelect.value = "custom";
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "block";
+          }
+        }
+      }
+      if (gpaLabel) gpaLabel.innerHTML = `Class Final Score (%) <span style="color:var(--color-lime)">*</span>`;
+      if (gpaInput) {
+        gpaInput.min = "0";
+        gpaInput.max = "100";
+        gpaInput.placeholder = "e.g. 85.0";
+      }
+      if (cgpaGroup) cgpaGroup.style.display = "none";
+      if (creditsGroup) {
+        creditsGroup.style.display = "block";
+        if (creditsLabel) creditsLabel.innerText = "Daily Study Hours";
+        if (creditsInput) creditsInput.value = term?.study_hours || "3.5";
+      }
+      if (midtermGroup) midtermGroup.style.display = "none";
+      if (backlogsGroup) backlogsGroup.style.display = "none";
+      if (coursesLabel) coursesLabel.innerText = "Class Subjects & Marks";
+      if (btnAddSubText) btnAddSubText.innerText = "+ Add Subject";
+      if (colNameHeader) colNameHeader.innerText = "Subject Name";
+      if (colCatHeader) colCatHeader.innerText = "Category";
+    } else if (currentStage === "primary") {
+      if (titleEl) titleEl.innerHTML = isEdit ? `<span>✏️ Edit ${term?.term_name || 'Primary Grade'} Record</span>` : `<span>🌱 Add Primary Grade & Learning Skills</span>`;
+      if (subtitleEl) subtitleEl.innerText = "Select or enter your primary grade (e.g. Class 1, Class 2, Class 3), attendance, and learning subjects.";
+      if (nameLabel) nameLabel.innerHTML = `Primary Grade / Class <span style="color:var(--color-lime)">*</span>`;
+      if (nameSelect) {
+        nameSelect.style.display = "block";
+        nameSelect.innerHTML = `
+          <option value="Class 1">Class 1</option>
+          <option value="Class 2">Class 2</option>
+          <option value="Class 3">Class 3</option>
+          <option value="Class 4">Class 4</option>
+          <option value="Class 5">Class 5</option>
+          <option value="custom">✍️ Custom Grade Name...</option>
+        `;
+        const selectedCur = document.getElementById("manager_current_class_select")?.value || "Class 3";
+        const curVal = isEdit ? (term?.term_name || selectedCur) : selectedCur;
+        if (nameSelect.querySelector(`option[value="${curVal}"]`)) {
+          nameSelect.value = curVal;
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "none";
+          }
+        } else {
+          nameSelect.value = "custom";
+          if (nameInput) {
+            nameInput.value = curVal;
+            nameInput.style.display = "block";
+          }
+        }
+      }
+      if (gpaLabel) gpaLabel.innerHTML = `Grade Final Score (%) <span style="color:var(--color-lime)">*</span>`;
+      if (gpaInput) {
+        gpaInput.min = "0";
+        gpaInput.max = "100";
+        gpaInput.placeholder = "e.g. 88.0";
+      }
+      if (cgpaGroup) cgpaGroup.style.display = "none";
+      if (creditsGroup) creditsGroup.style.display = "none";
+      if (midtermGroup) midtermGroup.style.display = "none";
+      if (backlogsGroup) backlogsGroup.style.display = "none";
+      if (coursesLabel) coursesLabel.innerText = "Learning Subjects & Skills";
+      if (btnAddSubText) btnAddSubText.innerText = "+ Add Subject / Skill";
+      if (colNameHeader) colNameHeader.innerText = "Subject / Skill";
+      if (colCatHeader) colCatHeader.innerText = "Type";
+    }
+
+    if (nameSelect && nameInput) {
+      nameSelect.onchange = function() {
+        if (this.value === "custom") {
+          nameInput.style.display = "block";
+          nameInput.value = "";
+          nameInput.placeholder = "Type custom name...";
+          nameInput.focus();
+        } else {
+          nameInput.style.display = "none";
+          nameInput.value = this.value;
+        }
+      };
+    }
+  }
+
   window.openAddSemesterModal = function(e) {
     if (e) {
       if (typeof e.preventDefault === "function") e.preventDefault();
       if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
 
-    // 1. Guaranteed immediate visual display on screen
-    const m = document.getElementById("modal-add-term");
-    if (m) {
-      m.style.display = "flex";
-      m.classList.add("active");
-      m.scrollTop = 0;
-      const modalDialog = m.querySelector(".modal-dialog");
-      if (modalDialog) modalDialog.scrollTop = 0;
-      document.body.style.overflow = "hidden";
+    // 1. OPEN INLINE EDITOR CARD DIRECTLY IN THE LEDGER
+    if (inlineTermEditorCard) {
+      inlineTermEditorCard.style.display = "block";
+      inlineTermEditorCard.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
     // 2. Safe form preparation & population
     try {
-      if (addTermForm) addTermForm.reset();
+      if (inlineTermForm) inlineTermForm.reset();
+      setupInlineEditorForCurrentStage(false);
 
-      const editId = document.getElementById("term-edit-id");
-      if (editId) editId.value = "";
-      const origName = document.getElementById("term-original-name");
-      if (origName) origName.value = "";
-
-      setupModalForCurrentStage(false);
-
-      if (modalTermSubjectsContainer) {
-        modalTermSubjectsContainer.innerHTML = "";
+      if (inlineTermSubjectsContainer) {
+        inlineTermSubjectsContainer.innerHTML = "";
         if (currentStage === "university") {
-          addModalSubjectRow("Programming / Core Course 1", "Theory", "", 100);
-          addModalSubjectRow("Calculus / Core Course 2", "Theory", "", 100);
+          addInlineSubjectRow("Programming / Core Course 1", "Theory", "", 100);
+          addInlineSubjectRow("Calculus / Core Course 2", "Theory", "", 100);
         } else if (currentStage === "intermediate") {
-          addModalSubjectRow("Physics", "Core Science", "", 100);
-          addModalSubjectRow("Chemistry / Computer Science", "Core Science", "", 100);
-          addModalSubjectRow("Mathematics / Biology", "Core Science", "", 100);
-          addModalSubjectRow("English Compulsory", "Language", "", 100);
+          addInlineSubjectRow("Physics", "Core Science", "", 100);
+          addInlineSubjectRow("Chemistry / Computer Science", "Core Science", "", 100);
+          addInlineSubjectRow("Mathematics / Biology", "Core Science", "", 100);
+          addInlineSubjectRow("English Compulsory", "Language", "", 100);
         } else if (currentStage === "matric") {
-          addModalSubjectRow("Mathematics", "Science", "", 100);
-          addModalSubjectRow("General Science / Physics", "Science", "", 100);
-          addModalSubjectRow("English Compulsory", "Compulsory", "", 100);
-          addModalSubjectRow("Urdu Compulsory", "Compulsory", "", 100);
+          addInlineSubjectRow("Mathematics", "Science", "", 100);
+          addInlineSubjectRow("General Science / Physics", "Science", "", 100);
+          addInlineSubjectRow("English Compulsory", "Compulsory", "", 100);
+          addInlineSubjectRow("Urdu Compulsory", "Compulsory", "", 100);
         } else if (currentStage === "secondary") {
-          addModalSubjectRow("Mathematics", "Mathematics", "", 100);
-          addModalSubjectRow("General Science", "Science", "", 100);
-          addModalSubjectRow("English Language", "Language", "", 100);
+          addInlineSubjectRow("Mathematics", "Mathematics", "", 100);
+          addInlineSubjectRow("General Science", "Science", "", 100);
+          addInlineSubjectRow("English Language", "Language", "", 100);
         } else if (currentStage === "primary") {
-          addModalSubjectRow("Math & Numeracy", "Numeracy", "", 100);
-          addModalSubjectRow("Reading & Literacy", "Literacy", "", 100);
+          addInlineSubjectRow("Math & Numeracy", "Numeracy", "", 100);
+          addInlineSubjectRow("Reading & Literacy", "Literacy", "", 100);
         } else {
-          addModalSubjectRow("Course Subject 1", "Theory", "", 100);
+          addInlineSubjectRow("Course Subject 1", "Theory", "", 100);
         }
       }
 
-      const termNameSelect = document.getElementById("term-name-select");
-      const termNameInput = document.getElementById("term-name-input");
-      if (termNameSelect && termNameInput) {
-        if (termNameSelect.value && termNameSelect.value !== "custom") {
-          termNameInput.value = termNameSelect.value;
+      const nameSelect = document.getElementById("inline-term-name-select");
+      const nameInput = document.getElementById("inline-term-name-input");
+      if (nameSelect && nameInput) {
+        if (nameSelect.value && nameSelect.value !== "custom") {
+          nameInput.value = nameSelect.value;
         }
       }
 
-      const termGpaInput = document.getElementById("term-gpa-input");
-      if (termGpaInput) {
-        termGpaInput.value = "";
-        termGpaInput.placeholder = currentStage === "university" ? "e.g. 3.65" : "e.g. 85.0";
+      const gpaInput = document.getElementById("inline-term-gpa-input");
+      if (gpaInput) {
+        gpaInput.value = "";
+        gpaInput.placeholder = currentStage === "university" ? "e.g. 3.65" : "e.g. 85.0";
       }
-      const termCgpaInput = document.getElementById("term-cgpa-input");
-      if (termCgpaInput) {
-        termCgpaInput.value = "";
-        termCgpaInput.placeholder = currentStage === "university" ? "e.g. 3.50" : "e.g. 85.0";
+      const cgpaInput = document.getElementById("inline-term-cgpa-input");
+      if (cgpaInput) {
+        cgpaInput.value = "";
+        cgpaInput.placeholder = currentStage === "university" ? "e.g. 3.50" : "e.g. 85.0";
       }
-      const termAttInput = document.getElementById("term-attendance-input");
-      if (termAttInput) {
-        termAttInput.value = "85";
-      }
-      const termCreditsInput = document.getElementById("term-credits-input");
-      if (termCreditsInput) {
-        termCreditsInput.value = currentStage === "intermediate" ? "5.0" : currentStage === "matric" ? "4.5" : currentStage === "secondary" ? "3.5" : "18";
-      }
-      const termMidtermInput = document.getElementById("term-midterm-input");
-      if (termMidtermInput) termMidtermInput.value = "80";
-      const termBacklogsInput = document.getElementById("term-backlogs-input");
-      if (termBacklogsInput) termBacklogsInput.value = "0";
+      const attInput = document.getElementById("inline-term-attendance-input");
+      if (attInput) attInput.value = "85";
+      const creditsInput = document.getElementById("inline-term-credits-input");
+      if (creditsInput) creditsInput.value = currentStage === "intermediate" ? "5.0" : currentStage === "matric" ? "4.5" : currentStage === "secondary" ? "3.5" : "18";
+      const midtermInput = document.getElementById("inline-term-midterm-input");
+      if (midtermInput) midtermInput.value = "80";
+      const backlogsInput = document.getElementById("inline-term-backlogs-input");
+      if (backlogsInput) backlogsInput.value = "0";
 
-      calculateModalGpaFromRows();
+      calculateInlineGpaFromRows();
     } catch (err) {
-      console.warn("[openAddSemesterModal] Population notice:", err);
+      console.warn("[openAddSemesterModal] Inline editor prep notice:", err);
+    }
+
+    // 3. Fallback Modal Sync
+    const m = document.getElementById("modal-add-term");
+    if (m) {
+      m.style.display = "flex";
+      m.classList.add("active");
     }
   };
 
@@ -2759,8 +3146,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  function closeTermModal(e) {
-    if (e && typeof e.preventDefault === "function") e.preventDefault();
+  function closeInlineSemesterEditor() {
+    if (inlineTermEditorCard) inlineTermEditorCard.style.display = "none";
     const m = document.getElementById("modal-add-term");
     if (m) {
       m.classList.remove("active");
@@ -2768,22 +3155,113 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     document.body.style.overflow = "";
   }
-  window.closeAddSemesterModal = closeTermModal;
+  window.closeInlineSemesterEditor = closeInlineSemesterEditor;
+  window.closeAddSemesterModal = closeInlineSemesterEditor;
 
-  if (btnCloseTermModal) btnCloseTermModal.addEventListener("click", closeTermModal);
-  if (btnCancelTermModal) btnCancelTermModal.addEventListener("click", closeTermModal);
+  if (btnCloseTermModal) btnCloseTermModal.addEventListener("click", closeInlineSemesterEditor);
+  if (btnCancelTermModal) btnCancelTermModal.addEventListener("click", closeInlineSemesterEditor);
   if (modalAddTerm) {
     modalAddTerm.addEventListener("click", (e) => {
-      if (e.target === modalAddTerm) closeTermModal();
+      if (e.target === modalAddTerm) closeInlineSemesterEditor();
     });
   }
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modalAddTerm?.classList.contains("active")) {
-      closeTermModal();
+    if (e.key === "Escape") {
+      closeInlineSemesterEditor();
     }
   });
 
+  // Handle Inline Term Form Submission
+  if (inlineTermForm) {
+    inlineTermForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nameSelect = document.getElementById("inline-term-name-select");
+      const nameInput = document.getElementById("inline-term-name-input");
+      let termName = nameInput?.value.trim();
+      if (!termName && nameSelect && nameSelect.value !== "custom") {
+        termName = nameSelect.value;
+      }
+      if (!termName) {
+        termName = currentStage === "university" ? `Semester ${loggedTerms.length + 1}` : `Class ${loggedTerms.length + 1}`;
+      }
+
+      const editId = document.getElementById("inline-term-edit-id")?.value;
+      const originalTermName = document.getElementById("inline-term-original-name")?.value;
+      const isEdit = Boolean(originalTermName);
+
+      const gpaVal = parseFloat(document.getElementById("inline-term-gpa-input")?.value || (currentStage === "university" ? 3.5 : 85.0));
+      const cgpaVal = parseFloat(document.getElementById("inline-term-cgpa-input")?.value || gpaVal);
+      const attVal = document.getElementById("inline-term-attendance-input")?.value;
+      const att = attVal !== "" && attVal !== undefined ? parseFloat(attVal) : 85.0;
+      const creditsVal = parseFloat(document.getElementById("inline-term-credits-input")?.value || 18);
+      const midtermVal = parseFloat(document.getElementById("inline-term-midterm-input")?.value || 80);
+      const backlogsVal = parseInt(document.getElementById("inline-term-backlogs-input")?.value || 0);
+
+      const rows = inlineTermSubjectsContainer ? Array.from(inlineTermSubjectsContainer.querySelectorAll(".inline-subject-row")) : [];
+      const subjects = rows.map(r => {
+        const obt = parseFloat(r.querySelector(".m-sub-obt")?.value || 0);
+        const maxM = parseFloat(r.querySelector(".m-sub-max")?.value || 100);
+        const pct = maxM > 0 ? (obt / maxM) * 100 : 80;
+        let g = "A";
+        if (pct >= 85) g = "A+";
+        else if (pct >= 75) g = "A";
+        else if (pct >= 65) g = "B";
+        else if (pct >= 50) g = "C";
+        else g = "F";
+
+        return {
+          id: "sub_" + Math.random().toString(36).substring(2, 9),
+          subject_name: r.querySelector(".m-sub-name")?.value.trim() || "Subject",
+          subject_category: r.querySelector(".m-sub-cat")?.value || "Theory",
+          credits: 3,
+          obtained_marks: obt,
+          total_marks: maxM,
+          grade: g
+        };
+      });
+
+      if (isEdit && originalTermName && originalTermName !== termName) {
+        try {
+          if (window.apiClient) {
+            await window.apiClient.deleteAcademicRecord(originalTermName, currentStage);
+          }
+        } catch (delErr) {
+          console.warn("[Academic Record] Rename cleanup notice:", delErr.message);
+        }
+      }
+
+      const isHoursStage = currentStage === "secondary" || currentStage === "intermediate" || currentStage === "matric" || currentStage === "primary";
+      const termPayload = {
+        id: editId || ("term_" + Date.now()),
+        original_term_name: originalTermName,
+        stage: currentStage,
+        term_name: termName,
+        gpa: currentStage === "university" ? gpaVal : +(gpaVal / 25.0).toFixed(2),
+        percentage: currentStage === "university" ? +(gpaVal / 4.0 * 100).toFixed(1) : gpaVal,
+        cgpa: cgpaVal,
+        attendance_pct: att,
+        credit_hours: isHoursStage ? 0 : creditsVal,
+        midterm_score: midtermVal,
+        backlogs: backlogsVal,
+        study_hours: isHoursStage ? creditsVal : 4.5,
+        subjects: subjects.length > 0 ? subjects : [{ subject_name: "Core Subject", subject_category: "Core", obtained_marks: 85, total_marks: 100 }]
+      };
+
+      try {
+        if (window.apiClient) {
+          await window.apiClient.createAcademicRecord(termPayload);
+        }
+        showToast(isEdit ? `Updated ${termName} successfully!` : `Saved ${termName} successfully!`, "success");
+        closeInlineSemesterEditor();
+        await loadAcademicTerms(currentStage);
+      } catch (err) {
+        showToast(`Failed to save record: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // Also keep modal form submit handler synchronized
   if (addTermForm) {
     addTermForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -2832,7 +3310,6 @@ document.addEventListener("DOMContentLoaded", () => {
         };
       });
 
-      // If user renamed an existing semester during edit, remove the old one first
       if (isEdit && originalTermName && originalTermName !== termName) {
         try {
           if (window.apiClient) {
@@ -2865,7 +3342,7 @@ document.addEventListener("DOMContentLoaded", () => {
           await window.apiClient.createAcademicRecord(termPayload);
         }
         showToast(isEdit ? `Updated ${termName} successfully!` : `Saved ${termName} successfully!`, "success");
-        closeTermModal();
+        closeInlineSemesterEditor();
         await loadAcademicTerms(currentStage);
       } catch (err) {
         showToast(`Failed to save record: ${err.message}`, "error");
@@ -2877,64 +3354,53 @@ document.addEventListener("DOMContentLoaded", () => {
     const term = loggedTerms.find(t => t.id === termIdentifier || t.term_name === termIdentifier);
     if (!term) return;
 
-    // 1. Guaranteed immediate visual display on screen
-    const m = document.getElementById("modal-add-term");
-    if (m) {
-      m.style.display = "flex";
-      m.classList.add("active");
-      m.scrollTop = 0;
-      const modalDialog = m.querySelector(".modal-dialog");
-      if (modalDialog) modalDialog.scrollTop = 0;
-      document.body.style.overflow = "hidden";
-    }
+    // Open Inline Editor
+    if (inlineTermEditorCard) {
+      inlineTermEditorCard.style.display = "block";
+      inlineTermEditorCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      setupInlineEditorForCurrentStage(true, term);
 
-    try {
-      if (addTermForm) addTermForm.reset();
-      setupModalForCurrentStage(true, term);
-
-      const editIdInput = document.getElementById("term-edit-id");
-      const origNameInput = document.getElementById("term-original-name");
+      const editIdInput = document.getElementById("inline-term-edit-id");
+      const origNameInput = document.getElementById("inline-term-original-name");
       if (editIdInput) editIdInput.value = term.id || "";
       if (origNameInput) origNameInput.value = term.term_name || "";
 
-      const termNameInput = document.getElementById("term-name-input");
-      const termGpaInput = document.getElementById("term-gpa-input");
-      const termCgpaInput = document.getElementById("term-cgpa-input");
-      const termAttInput = document.getElementById("term-attendance-input");
-      const termCreditsInput = document.getElementById("term-credits-input");
-      const termMidtermInput = document.getElementById("term-midterm-input");
-      const termBacklogsInput = document.getElementById("term-backlogs-input");
+      const nameInput = document.getElementById("inline-term-name-input");
+      const gpaInput = document.getElementById("inline-term-gpa-input");
+      const cgpaInput = document.getElementById("inline-term-cgpa-input");
+      const attInput = document.getElementById("inline-term-attendance-input");
+      const creditsInput = document.getElementById("inline-term-credits-input");
+      const midtermInput = document.getElementById("inline-term-midterm-input");
+      const backlogsInput = document.getElementById("inline-term-backlogs-input");
 
-      if (termNameInput) termNameInput.value = term.term_name;
-      if (termGpaInput) {
+      if (nameInput) nameInput.value = term.term_name;
+      if (gpaInput) {
         if (currentStage === "university") {
-          termGpaInput.value = term.gpa !== undefined ? term.gpa : "3.50";
+          gpaInput.value = term.gpa !== undefined ? term.gpa : "3.50";
         } else {
-          termGpaInput.value = term.percentage !== undefined ? term.percentage : (term.gpa ? (term.gpa > 4 ? term.gpa : term.gpa * 25) : "85.0");
+          gpaInput.value = term.percentage !== undefined ? term.percentage : (term.gpa ? (term.gpa > 4 ? term.gpa : term.gpa * 25) : "85.0");
         }
       }
-      if (termCgpaInput) termCgpaInput.value = term.cgpa !== undefined ? term.cgpa : "3.50";
-      if (termAttInput) termAttInput.value = term.attendance_pct || 85;
-      if (termCreditsInput) {
+      if (cgpaInput) cgpaInput.value = term.cgpa !== undefined ? term.cgpa : "3.50";
+      if (attInput) attInput.value = term.attendance_pct || 85;
+      if (creditsInput) {
         const isHours = currentStage === "secondary" || currentStage === "intermediate" || currentStage === "matric" || currentStage === "primary";
-        termCreditsInput.value = isHours ? (term.study_hours || (currentStage === "intermediate" ? "5.0" : currentStage === "matric" ? "4.5" : "3.5")) : (term.credit_hours || 18);
+        creditsInput.value = isHours ? (term.study_hours || (currentStage === "intermediate" ? "5.0" : currentStage === "matric" ? "4.5" : "3.5")) : (term.credit_hours || 18);
       }
-      if (termMidtermInput) termMidtermInput.value = term.midterm_score || 80;
-      if (termBacklogsInput) termBacklogsInput.value = term.backlogs || 0;
+      if (midtermInput) midtermInput.value = term.midterm_score || 80;
+      if (backlogsInput) backlogsInput.value = term.backlogs || 0;
 
-      if (modalTermSubjectsContainer) {
-        modalTermSubjectsContainer.innerHTML = "";
+      if (inlineTermSubjectsContainer) {
+        inlineTermSubjectsContainer.innerHTML = "";
         const subs = term.subjects || [];
         if (subs.length > 0) {
           subs.forEach(s => {
-            addModalSubjectRow(s.subject_name, s.subject_category || "Theory", s.obtained_marks, s.total_marks);
+            addInlineSubjectRow(s.subject_name, s.subject_category || "Theory", s.obtained_marks, s.total_marks);
           });
         } else {
-          addModalSubjectRow("", "", "", 100);
+          addInlineSubjectRow("", "", "", 100);
         }
       }
-    } catch (err) {
-      console.warn("[editSemester] Edit population notice:", err);
     }
   };
 
