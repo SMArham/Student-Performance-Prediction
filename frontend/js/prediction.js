@@ -2661,65 +2661,102 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  if (btnAddSemester) {
-    btnAddSemester.addEventListener("click", () => {
-      if (addTermForm) addTermForm.reset();
+  window.openAddSemesterModal = function(e) {
+    if (e) {
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      if (typeof e.stopPropagation === "function") e.stopPropagation();
+    }
+
+    if (addTermForm) addTermForm.reset();
+
+    const editId = document.getElementById("term-edit-id");
+    if (editId) editId.value = "";
+    const origName = document.getElementById("term-original-name");
+    if (origName) origName.value = "";
+
+    try {
       setupModalForCurrentStage(false);
+    } catch (err) {
+      console.warn("setupModalForCurrentStage notice:", err);
+    }
 
-      if (modalTermSubjectsContainer) {
-        modalTermSubjectsContainer.innerHTML = "";
-        if (currentStage === "secondary") {
-          addModalSubjectRow("Mathematics", "Mathematics", 88, 100);
-          addModalSubjectRow("General Science", "Science", 84, 100);
-          addModalSubjectRow("English Language", "Language", 83, 100);
-        } else if (currentStage === "primary") {
-          addModalSubjectRow("Math & Numeracy", "Numeracy", 88, 100);
-          addModalSubjectRow("Reading & Literacy", "Literacy", 90, 100);
-        } else {
-          addModalSubjectRow("", "Theory", "", 100);
-        }
+    if (modalTermSubjectsContainer) {
+      modalTermSubjectsContainer.innerHTML = "";
+      if (currentStage === "secondary") {
+        addModalSubjectRow("Mathematics", "Mathematics", 88, 100);
+        addModalSubjectRow("General Science", "Science", 84, 100);
+        addModalSubjectRow("English Language", "Language", 83, 100);
+      } else if (currentStage === "primary") {
+        addModalSubjectRow("Math & Numeracy", "Numeracy", 88, 100);
+        addModalSubjectRow("Reading & Literacy", "Literacy", 90, 100);
+      } else {
+        addModalSubjectRow("", "Theory", "", 100);
       }
+    }
 
-      const termNameSelect = document.getElementById("term-name-select");
-      const termNameInput = document.getElementById("term-name-input");
-      if (termNameSelect && termNameInput) {
-        if (termNameSelect.value && termNameSelect.value !== "custom") {
-          termNameInput.value = termNameSelect.value;
-        }
+    const termNameSelect = document.getElementById("term-name-select");
+    const termNameInput = document.getElementById("term-name-input");
+    if (termNameSelect && termNameInput) {
+      if (termNameSelect.value && termNameSelect.value !== "custom") {
+        termNameInput.value = termNameSelect.value;
       }
+    }
 
-      const termGpaInput = document.getElementById("term-gpa-input");
-      if (termGpaInput) {
-        termGpaInput.value = currentStage === "university" ? "3.60" : "85.0";
-      }
-      const termCgpaInput = document.getElementById("term-cgpa-input");
-      if (termCgpaInput) termCgpaInput.value = "3.50";
-      const termAttInput = document.getElementById("term-attendance-input");
-      if (termAttInput) termAttInput.value = currentStage === "primary" ? "94" : currentStage === "secondary" ? "92" : "85";
-      const termCreditsInput = document.getElementById("term-credits-input");
-      if (termCreditsInput) termCreditsInput.value = currentStage === "secondary" ? "3.5" : "18";
-      const termMidtermInput = document.getElementById("term-midterm-input");
-      if (termMidtermInput) termMidtermInput.value = "80";
-      const termBacklogsInput = document.getElementById("term-backlogs-input");
-      if (termBacklogsInput) termBacklogsInput.value = "0";
+    const termGpaInput = document.getElementById("term-gpa-input");
+    if (termGpaInput) {
+      termGpaInput.value = currentStage === "university" ? "3.60" : "85.0";
+    }
+    const termCgpaInput = document.getElementById("term-cgpa-input");
+    if (termCgpaInput) termCgpaInput.value = "3.50";
+    const termAttInput = document.getElementById("term-attendance-input");
+    if (termAttInput) termAttInput.value = currentStage === "primary" ? "94" : currentStage === "secondary" ? "92" : "85";
+    const termCreditsInput = document.getElementById("term-credits-input");
+    if (termCreditsInput) termCreditsInput.value = currentStage === "secondary" ? "3.5" : "18";
+    const termMidtermInput = document.getElementById("term-midterm-input");
+    if (termMidtermInput) termMidtermInput.value = "80";
+    const termBacklogsInput = document.getElementById("term-backlogs-input");
+    if (termBacklogsInput) termBacklogsInput.value = "0";
 
+    try {
       calculateModalGpaFromRows();
+    } catch (err) {
+      console.warn("calculateModalGpaFromRows notice:", err);
+    }
 
-      if (modalAddTerm) {
-        modalAddTerm.style.setProperty("display", "flex", "important");
-        modalAddTerm.classList.add("active");
-        document.body.style.overflow = "hidden";
-      }
-    });
+    const m = document.getElementById("modal-add-term");
+    if (m) {
+      m.style.setProperty("display", "flex", "important");
+      m.style.setProperty("opacity", "1", "important");
+      m.style.setProperty("visibility", "visible", "important");
+      m.style.setProperty("pointer-events", "auto", "important");
+      m.classList.add("active");
+      document.body.style.overflow = "hidden";
+    }
+  };
+
+  if (btnAddSemester) {
+    btnAddSemester.addEventListener("click", window.openAddSemesterModal);
   }
 
+  document.addEventListener("click", (e) => {
+    const btn = e.target && e.target.closest && e.target.closest("#btn-add-semester");
+    if (btn) {
+      window.openAddSemesterModal(e);
+    }
+  });
+
   function closeTermModal() {
-    if (modalAddTerm) {
-      modalAddTerm.style.setProperty("display", "none", "important");
-      modalAddTerm.classList.remove("active");
+    const m = document.getElementById("modal-add-term");
+    if (m) {
+      m.style.setProperty("display", "none", "important");
+      m.style.setProperty("opacity", "0", "important");
+      m.style.setProperty("visibility", "hidden", "important");
+      m.style.setProperty("pointer-events", "none", "important");
+      m.classList.remove("active");
     }
     document.body.style.overflow = "";
   }
+  window.closeAddSemesterModal = closeTermModal;
 
   if (btnCloseTermModal) btnCloseTermModal.addEventListener("click", closeTermModal);
   if (btnCancelTermModal) btnCancelTermModal.addEventListener("click", closeTermModal);
@@ -2830,6 +2867,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (addTermForm) addTermForm.reset();
     setupModalForCurrentStage(true, term);
 
+    const editIdInput = document.getElementById("term-edit-id");
+    const origNameInput = document.getElementById("term-original-name");
+    if (editIdInput) editIdInput.value = term.id || "";
+    if (origNameInput) origNameInput.value = term.term_name || "";
+
     const termNameInput = document.getElementById("term-name-input");
     const termGpaInput = document.getElementById("term-gpa-input");
     const termCgpaInput = document.getElementById("term-cgpa-input");
@@ -2863,9 +2905,13 @@ document.addEventListener("DOMContentLoaded", () => {
         addModalSubjectRow("", "", "", 100);
       }
     }
-    if (modalAddTerm) {
-      modalAddTerm.style.setProperty("display", "flex", "important");
-      modalAddTerm.classList.add("active");
+    const m = document.getElementById("modal-add-term");
+    if (m) {
+      m.style.setProperty("display", "flex", "important");
+      m.style.setProperty("opacity", "1", "important");
+      m.style.setProperty("visibility", "visible", "important");
+      m.style.setProperty("pointer-events", "auto", "important");
+      m.classList.add("active");
       document.body.style.overflow = "hidden";
     }
   };

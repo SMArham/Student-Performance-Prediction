@@ -11,9 +11,9 @@
   <!-- Design System CSS -->
   <link rel="stylesheet" href="css/variables.css?v=3.0.0">
   <link rel="stylesheet" href="css/layout.css?v=3.0.0">
-  <link rel="stylesheet" href="css/components.css?v=3.2.0">
+  <link rel="stylesheet" href="css/components.css?v=3.2.2">
   <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
-  <link rel="stylesheet" href="css/prediction.css?v=3.0.0">
+  <link rel="stylesheet" href="css/prediction.css?v=3.2.2">
   <link rel="stylesheet" href="css/tour.css?v=3.1.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
@@ -23,6 +23,31 @@
   
   <!-- Supabase JS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.openAddSemesterModal = window.openAddSemesterModal || function(e) {
+      if (e && typeof e.preventDefault === "function") e.preventDefault();
+      var m = document.getElementById("modal-add-term");
+      if (m) {
+        m.style.setProperty("display", "flex", "important");
+        m.style.setProperty("opacity", "1", "important");
+        m.style.setProperty("visibility", "visible", "important");
+        m.style.setProperty("pointer-events", "auto", "important");
+        m.classList.add("active");
+        document.body.style.overflow = "hidden";
+      }
+    };
+    window.closeAddSemesterModal = window.closeAddSemesterModal || function() {
+      var m = document.getElementById("modal-add-term");
+      if (m) {
+        m.style.setProperty("display", "none", "important");
+        m.style.setProperty("opacity", "0", "important");
+        m.style.setProperty("visibility", "hidden", "important");
+        m.style.setProperty("pointer-events", "none", "important");
+        m.classList.remove("active");
+      }
+      document.body.style.overflow = "";
+    };
+  </script>
 </head>
 <body>
   <div class="app-viewport">
@@ -266,7 +291,7 @@
                       </select>
                     </div>
 
-                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-semester">
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-semester" onclick="window.openAddSemesterModal && window.openAddSemesterModal(event)">
                       <span id="btn-add-semester-text">+ Add Semester</span>
                     </button>
                   </div>
@@ -555,13 +580,13 @@
   <!-- ======================================================================
        MODAL: ADD SEMESTER & COMPLETED COURSES (SUPABASE BACKED)
        ====================================================================== -->
-  <div class="modal-backdrop" id="modal-add-term" style="display: none !important;">
+  <div class="modal-backdrop" id="modal-add-term">
     <div class="modal-dialog" style="max-width: 660px;">
       <div class="modal-header" style="padding: 0 0 10px 0; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
         <h2 class="modal-title" id="term-modal-title" style="font-size: 17px; font-weight: 800; letter-spacing: 0.02em; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 8px;">
           <span>🏛️ Add Academic Semester & Coursework</span>
         </h2>
-        <button type="button" class="modal-close-btn" id="btn-close-term-modal" style="font-size: 20px; line-height: 1; color: var(--text-muted); cursor: pointer; background: transparent; border: none; padding: 2px 6px;">&times;</button>
+        <button type="button" class="modal-close-btn" id="btn-close-term-modal" onclick="window.closeAddSemesterModal && window.closeAddSemesterModal()" style="font-size: 20px; line-height: 1; color: var(--text-muted); cursor: pointer; background: transparent; border: none; padding: 2px 6px;">&times;</button>
       </div>
 
       <form id="add-term-form">
@@ -637,7 +662,7 @@
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-term-modal" style="height: 35px; padding: 0 16px; font-size: 12.5px;">Cancel</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-term-modal" onclick="window.closeAddSemesterModal && window.closeAddSemesterModal()" style="height: 35px; padding: 0 16px; font-size: 12.5px; cursor: pointer;">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm" id="btn-save-term-modal" style="height: 35px; padding: 0 18px; font-size: 12.5px; font-weight: 700;">
             <span id="btn-save-term-modal-text">💾 Save Semester Record</span>
           </button>
@@ -651,8 +676,8 @@
 
   <!-- Application Logic Scripts -->
   <script src="js/supabase-client.js?v=3.0.0"></script>
-  <script src="js/api.js?v=3.2.0"></script>
-  <script src="js/prediction.js?v=3.2.0"></script>
+  <script src="js/api.js?v=3.2.2"></script>
+  <script src="js/prediction.js?v=3.2.2"></script>
   <script src="js/tour.js?v=3.1.0"></script>
 </body>
 </html>
