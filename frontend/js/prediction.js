@@ -596,13 +596,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderStep2AcademicFields(stage) {
     if (!dynamicAcademicFields) return;
-    let html = "";
     const uniManagerCard = document.getElementById("university-semesters-manager-card");
     const managerCardTitle = document.getElementById("manager-card-title");
     const managerCardSubtitle = document.getElementById("manager-card-subtitle");
     const managerCurrentClassContainer = document.getElementById("manager-current-class-container");
+    const managerCurrentClassLabel = document.getElementById("manager_current_class_label");
     const managerCurrentClassSelect = document.getElementById("manager_current_class_select");
     const managerTargetClassContainer = document.getElementById("manager-target-class-container");
+    const managerTargetClassLabel = document.getElementById("manager_target_class_label");
     const managerTargetClassSelect = document.getElementById("manager_target_class_select");
     const kpiTitle1 = document.getElementById("kpi-title-1");
     const kpiSub1 = document.getElementById("kpi-standing-sub");
@@ -617,9 +618,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (stage === "university") {
       if (managerCardTitle) managerCardTitle.innerHTML = `<span>🏛️ Academic Semesters & Coursework Ledger</span>`;
-      if (managerCardSubtitle) managerCardSubtitle.innerText = `Add your academic semesters, attendance, credit hours, and enrolled courses. Everything is calculated automatically into your cumulative GPA and performance profile.`;
-      if (managerCurrentClassContainer) managerCurrentClassContainer.style.display = "none";
-      if (managerTargetClassContainer) managerTargetClassContainer.style.display = "none";
+      if (managerCardSubtitle) managerCardSubtitle.innerText = `Select your Current & Target Semester, then add your completed semesters, attendance, credit hours, and enrolled courses. Everything is calculated automatically.`;
+      
+      if (managerCurrentClassContainer) {
+        managerCurrentClassContainer.style.display = "flex";
+        if (managerCurrentClassLabel) managerCurrentClassLabel.innerHTML = `🎓 Current Semester:`;
+        if (managerCurrentClassSelect) {
+          managerCurrentClassSelect.innerHTML = `
+            <option value="Semester 1">Semester 1 (Freshman)</option>
+            <option value="Semester 2">Semester 2 (Freshman)</option>
+            <option value="Semester 3">Semester 3 (Sophomore)</option>
+            <option value="Semester 4">Semester 4 (Sophomore)</option>
+            <option value="Semester 5">Semester 5 (Junior)</option>
+            <option value="Semester 6">Semester 6 (Junior)</option>
+            <option value="Semester 7">Semester 7 (Senior)</option>
+            <option value="Semester 8">Semester 8 (Senior)</option>
+          `;
+          const semVal = loggedTerms.length > 0 ? `Semester ${loggedTerms.length}` : "Semester 1";
+          if (managerCurrentClassSelect.querySelector(`option[value="${semVal}"]`)) {
+            managerCurrentClassSelect.value = semVal;
+          }
+        }
+      }
+
+      if (managerTargetClassContainer) {
+        managerTargetClassContainer.style.display = "flex";
+        if (managerTargetClassLabel) managerTargetClassLabel.innerHTML = `🎯 Target Semester:`;
+        if (managerTargetClassSelect) {
+          managerTargetClassSelect.innerHTML = `
+            <option value="Semester 2">Semester 2 (Freshman)</option>
+            <option value="Semester 3">Semester 3 (Sophomore)</option>
+            <option value="Semester 4">Semester 4 (Sophomore)</option>
+            <option value="Semester 5">Semester 5 (Junior)</option>
+            <option value="Semester 6">Semester 6 (Junior)</option>
+            <option value="Semester 7">Semester 7 (Senior)</option>
+            <option value="Semester 8" selected>Semester 8 (Graduation)</option>
+            <option value="Final Graduation CGPA">Final Graduation CGPA</option>
+          `;
+        }
+      }
+
       if (kpiTitle1) kpiTitle1.innerText = "Current Standing";
       if (kpiSub1) kpiSub1.innerText = "Active Semester";
       if (kpiTitle2) kpiTitle2.innerText = "Latest Semester GPA";
@@ -630,9 +668,31 @@ document.addEventListener("DOMContentLoaded", () => {
       if (kpiSub4) kpiSub4.innerText = "Lecture Presence";
     } else if (stage === "intermediate") {
       if (managerCardTitle) managerCardTitle.innerHTML = `<span>🎒 Intermediate (HSSC) Academic Records & Coursework Ledger</span>`;
-      if (managerCardSubtitle) managerCardSubtitle.innerText = `Add your Intermediate academic records (1st Year / 11th Class, 2nd Year / 12th Class, or Matriculation foundation), attendance, and enrolled subjects with marks.`;
-      if (managerCurrentClassContainer) managerCurrentClassContainer.style.display = "none";
-      if (managerTargetClassContainer) managerTargetClassContainer.style.display = "none";
+      if (managerCardSubtitle) managerCardSubtitle.innerText = `Select your Current Level & Target Level, then log your completed 1st Year / 2nd Year marks, attendance, and enrolled subjects.`;
+      
+      if (managerCurrentClassContainer) {
+        managerCurrentClassContainer.style.display = "flex";
+        if (managerCurrentClassLabel) managerCurrentClassLabel.innerHTML = `🎒 Current Level:`;
+        if (managerCurrentClassSelect) {
+          managerCurrentClassSelect.innerHTML = `
+            <option value="1st Year (11th Class)" selected>1st Year (11th Class)</option>
+            <option value="Matriculation Foundation (10th)">Matriculation Foundation (10th)</option>
+          `;
+        }
+      }
+
+      if (managerTargetClassContainer) {
+        managerTargetClassContainer.style.display = "flex";
+        if (managerTargetClassLabel) managerTargetClassLabel.innerHTML = `🎯 Target Level:`;
+        if (managerTargetClassSelect) {
+          managerTargetClassSelect.innerHTML = `
+            <option value="1st Year (11th Class)">1st Year (11th Class Board)</option>
+            <option value="2nd Year (12th Class)" selected>2nd Year (12th Class Board)</option>
+            <option value="Final Intermediate Total">Final Intermediate (1100 Marks)</option>
+          `;
+        }
+      }
+
       if (kpiTitle1) kpiTitle1.innerText = "Current Standing";
       if (kpiSub1) kpiSub1.innerText = "Active Year / Level";
       if (kpiTitle2) kpiTitle2.innerText = "Latest Term Score";
@@ -643,9 +703,31 @@ document.addEventListener("DOMContentLoaded", () => {
       if (kpiSub4) kpiSub4.innerText = "College Presence";
     } else if (stage === "matric") {
       if (managerCardTitle) managerCardTitle.innerHTML = `<span>📘 Matriculation (SSC) Academic Records & Coursework Ledger</span>`;
-      if (managerCardSubtitle) managerCardSubtitle.innerText = `Add your 9th Class (SSC-I) or 10th Class (SSC-II) academic records, attendance, and enrolled board subjects with marks.`;
-      if (managerCurrentClassContainer) managerCurrentClassContainer.style.display = "none";
-      if (managerTargetClassContainer) managerTargetClassContainer.style.display = "none";
+      if (managerCardSubtitle) managerCardSubtitle.innerText = `Select your Current Class & Target Class, then log your 9th Class (SSC-I) or 10th Class (SSC-II) marks, attendance, and board subjects.`;
+      
+      if (managerCurrentClassContainer) {
+        managerCurrentClassContainer.style.display = "flex";
+        if (managerCurrentClassLabel) managerCurrentClassLabel.innerHTML = `📘 Current Class:`;
+        if (managerCurrentClassSelect) {
+          managerCurrentClassSelect.innerHTML = `
+            <option value="9th Class (SSC-I)" selected>9th Class (SSC-I)</option>
+            <option value="8th Middle Foundation">8th Middle Foundation</option>
+          `;
+        }
+      }
+
+      if (managerTargetClassContainer) {
+        managerTargetClassContainer.style.display = "flex";
+        if (managerTargetClassLabel) managerTargetClassLabel.innerHTML = `🎯 Target Class:`;
+        if (managerTargetClassSelect) {
+          managerTargetClassSelect.innerHTML = `
+            <option value="9th Class (SSC-I)">9th Class (SSC-I Board)</option>
+            <option value="10th Class (SSC-II)" selected>10th Class (SSC-II Board)</option>
+            <option value="Final Matric Total">Final Matric (1100 Marks)</option>
+          `;
+        }
+      }
+
       if (kpiTitle1) kpiTitle1.innerText = "Current Standing";
       if (kpiSub1) kpiSub1.innerText = "Active Class";
       if (kpiTitle2) kpiTitle2.innerText = "Latest Class Score";
@@ -660,6 +742,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       if (managerCurrentClassContainer) {
         managerCurrentClassContainer.style.display = "flex";
+        if (managerCurrentClassLabel) managerCurrentClassLabel.innerHTML = `🏫 Current Class:`;
         if (managerCurrentClassSelect) {
           managerCurrentClassSelect.innerHTML = `
             <option value="Class 5">Class 5</option>
@@ -672,6 +755,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (managerTargetClassContainer) {
         managerTargetClassContainer.style.display = "flex";
+        if (managerTargetClassLabel) managerTargetClassLabel.innerHTML = `🎯 Target Class:`;
         if (managerTargetClassSelect) {
           managerTargetClassSelect.innerHTML = `
             <option value="Class 6">Class 6</option>
@@ -695,19 +779,20 @@ document.addEventListener("DOMContentLoaded", () => {
       
       if (managerCurrentClassContainer) {
         managerCurrentClassContainer.style.display = "flex";
+        if (managerCurrentClassLabel) managerCurrentClassLabel.innerHTML = `🌱 Current Grade:`;
         if (managerCurrentClassSelect) {
           managerCurrentClassSelect.innerHTML = `
             <option value="Class 1">Class 1</option>
             <option value="Class 2">Class 2</option>
             <option value="Class 3" selected>Class 3</option>
             <option value="Class 4">Class 4</option>
-            <option value="Class 5">Class 5</option>
           `;
         }
       }
 
       if (managerTargetClassContainer) {
         managerTargetClassContainer.style.display = "flex";
+        if (managerTargetClassLabel) managerTargetClassLabel.innerHTML = `🎯 Target Grade:`;
         if (managerTargetClassSelect) {
           managerTargetClassSelect.innerHTML = `
             <option value="Class 2">Class 2</option>
@@ -732,17 +817,62 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderStep3HabitsFields(stage) {
     if (!dynamicHabitsFields) return;
-    let html = `
+    
+    if (stage === "primary") {
+      dynamicHabitsFields.innerHTML = `
+        <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="f_study_hours">Daily Reading & Homework Hours <span style="color:var(--accent-rose)">*</span></label>
+            <input type="number" step="0.5" id="f_study_hours" class="form-input" min="0.5" max="6" placeholder="e.g. 1.5" value="1.5" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f_revision_freq">Classroom Attentiveness & Listening</label>
+            <select id="f_revision_freq" class="form-select">
+              <option value="Daily" selected>Active & Attentive Listener</option>
+              <option value="Weekly">Attentive with Occasional Distractions</option>
+              <option value="BeforeExams">Needs Frequent Encouragement</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f_assignment_disc">Homework & Activity Completion</label>
+            <select id="f_assignment_disc" class="form-select">
+              <option value="Always" selected>Consistently On-Time & Neat (100%)</option>
+              <option value="Mostly">Mostly Completed On-Time (80-90%)</option>
+              <option value="Irregular">Needs Parental Reminders</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid-2col">
+          <div class="form-group">
+            <label class="form-label" for="f_ai_tools">Interactive Reading & Educational Activities</label>
+            <select id="f_ai_tools" class="form-select">
+              <option value="Frequent" selected>Daily Storybooks & Learning Games</option>
+              <option value="Occasional">Weekly Interactive Learning</option>
+              <option value="None">Traditional Classroom Textbooks Only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f_tuition">Guidance & Mentorship Support</label>
+            <select id="f_tuition" class="form-select">
+              <option value="Yes" selected>Parental / Teacher Guided Daily Study</option>
+              <option value="No">Independent Learning</option>
+            </select>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    dynamicHabitsFields.innerHTML = `
       <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
         <div class="form-group">
           <label class="form-label" for="f_study_hours">Daily Independent Study Hours <span style="color:var(--accent-rose)">*</span></label>
-          <input type="number" step="0.5" id="f_study_hours" class="form-input" min="0" max="16" placeholder="e.g. 4.5" required>
+          <input type="number" step="0.5" id="f_study_hours" class="form-input" min="0" max="16" placeholder="e.g. 4.5" value="4.5" required>
         </div>
         <div class="form-group">
           <label class="form-label" for="f_revision_freq">Revision Frequency</label>
           <select id="f_revision_freq" class="form-select">
-            <option value="" disabled selected>-- Select Revision Frequency --</option>
-            <option value="Daily">Daily Routine Review</option>
+            <option value="Daily" selected>Daily Routine Review</option>
             <option value="Weekly">Weekly Topic Consolidation</option>
             <option value="BeforeExams">Only Right Before Exams</option>
           </select>
@@ -750,8 +880,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-group">
           <label class="form-label" for="f_assignment_disc">Homework & Assignment Discipline</label>
           <select id="f_assignment_disc" class="form-select">
-            <option value="" disabled selected>-- Select Discipline --</option>
-            <option value="Always">Consistently On-Time (100%)</option>
+            <option value="Always" selected>Consistently On-Time (100%)</option>
             <option value="Mostly">Mostly On-Time (80-90%)</option>
             <option value="Irregular">Occasional Delays (&lt;70%)</option>
           </select>
@@ -761,8 +890,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-group">
           <label class="form-label" for="f_ai_tools">Educational & AI Tools Usage</label>
           <select id="f_ai_tools" class="form-select">
-            <option value="" disabled selected>-- Select Digital Tools Usage --</option>
-            <option value="Frequent">Frequent (Concept explanation & problem solving)</option>
+            <option value="Frequent" selected>Frequent (Concept explanation & problem solving)</option>
             <option value="Occasional">Occasional (Quick lookup)</option>
             <option value="None">None / Traditional Textbooks Only</option>
           </select>
@@ -770,19 +898,56 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="form-group">
           <label class="form-label" for="f_tuition">Extra Tuition / Academy / Mentorship</label>
           <select id="f_tuition" class="form-select">
-            <option value="" disabled selected>-- Select Coaching Option --</option>
             <option value="Yes">Yes (Enrolled in coaching / tutoring)</option>
-            <option value="No">No (Self-study only)</option>
+            <option value="No" selected>No (Self-study only)</option>
           </select>
         </div>
       </div>
     `;
-    dynamicHabitsFields.innerHTML = html;
   }
 
   function renderStep4AssessmentFields(stage) {
     if (!dynamicAssessmentFields) return;
-    let html = `
+
+    if (stage === "primary") {
+      dynamicAssessmentFields.innerHTML = `
+        <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="f_self_motivation">Love of Learning & Curiosity (1 - 10)</label>
+            <input type="number" id="f_self_motivation" class="form-input" min="1" max="10" placeholder="e.g. 9" value="9">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f_self_confidence">Confidence in Reading & Numbers (1 - 10)</label>
+            <input type="number" id="f_self_confidence" class="form-input" min="1" max="10" placeholder="e.g. 9" value="9">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f_self_consistency">Classroom Participation & Habits (1 - 10)</label>
+            <input type="number" id="f_self_consistency" class="form-input" min="1" max="10" placeholder="e.g. 9" value="9">
+          </div>
+        </div>
+        <div class="form-grid-2col">
+          <div class="form-group">
+            <label class="form-label" for="f_learning_goal">Primary Learning Target</label>
+            <select id="f_learning_goal" class="form-select">
+              <option value="distinction" selected>🎯 Master All Core Subjects (All Star Badges)</option>
+              <option value="high_pass">📈 Strengthen Reading & Numeracy Skills</option>
+              <option value="steady">🛡️ Maintain Consistent Classroom Progress</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f_exam_prep">Preferred Learning Style</label>
+            <select id="f_exam_prep" class="form-select">
+              <option value="past_papers" selected>🎨 Visual & Hands-on Learning Activities</option>
+              <option value="summary_notes">📚 Storybooks, Worksheets & Practice</option>
+              <option value="group_study">👥 Group Classroom Play & Sharing</option>
+            </select>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    dynamicAssessmentFields.innerHTML = `
       <div class="form-grid-3col" style="margin-bottom: var(--space-4);">
         <div class="form-group">
           <label class="form-label" for="f_self_motivation">Academic Motivation (1 - 10)</label>
@@ -816,7 +981,6 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       </div>
     `;
-    dynamicAssessmentFields.innerHTML = html;
   }
 
   // ============================================================================
@@ -922,7 +1086,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!studentReviewContainer) return;
     const studyHours = document.getElementById("f_study_hours")?.value || "4.5";
     const revision = document.getElementById("f_revision_freq")?.value || "Daily";
-    const focus = document.getElementById("f_attentive_level")?.value || "High";
     const motivation = document.getElementById("f_self_motivation")?.value || "9";
     const stageName = currentStage.charAt(0).toUpperCase() + currentStage.slice(1);
     const scaleText = currentStage === "university" ? "0.00 – 4.00 CGPA Scale" : currentStage === "intermediate" ? "1100 Marks & Percentage Scale" : "0 – 100% Percentage Scale";
@@ -934,7 +1097,8 @@ document.addEventListener("DOMContentLoaded", () => {
       let cumCgpa = "0.00";
       let avgAtt = "85";
       const semCount = loggedTerms.length || 1;
-      const semStanding = `Semester ${semCount} (${semCount === 1 ? 'Freshman' : semCount === 2 ? 'Sophomore' : semCount <= 4 ? 'Junior' : 'Senior'})`;
+      const curSem = document.getElementById("manager_current_class_select")?.value || `Semester ${semCount}`;
+      const tgtSem = document.getElementById("manager_target_class_select")?.value || `Semester ${semCount + 1}`;
       
       if (loggedTerms.length > 0) {
         let totalObt = 0;
@@ -951,7 +1115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const overallPct = totalMax > 0 ? (totalObt / totalMax) * 100 : 0;
         cumCgpa = (Math.min(4.0, (overallPct / 100.0) * 4.0)).toFixed(2);
       }
-      academicSummary = `${semStanding} | Cumulative CGPA: ${cumCgpa} | Avg Attendance: ${avgAtt}%`;
+      academicSummary = `Current: ${curSem} ➔ Target: ${tgtSem} | Cumulative CGPA: ${cumCgpa} | Avg Attendance: ${avgAtt}%`;
     } else if (currentStage === "intermediate") {
       let totalObt = 0, totalMax = 0, attSum = 0;
       loggedTerms.forEach(t => {
@@ -963,8 +1127,10 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const avgAtt = loggedTerms.length > 0 ? (attSum / loggedTerms.length).toFixed(1) : "88.0";
       const cumPct = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(1) : "85.0";
+      const curLevel = document.getElementById("manager_current_class_select")?.value || "1st Year (11th Class)";
+      const tgtLevel = document.getElementById("manager_target_class_select")?.value || "2nd Year (12th Class)";
       const termNames = loggedTerms.map(t => t.term_name).join(", ") || `${loggedTerms.length} HSSC Terms`;
-      academicSummary = `Logged: ${termNames} (${cumPct}% Score) | Avg Attendance: ${avgAtt}%`;
+      academicSummary = `Current: ${curLevel} ➔ Target: ${tgtLevel} | Logged: ${termNames} (${cumPct}% Score) | Att: ${avgAtt}%`;
     } else if (currentStage === "matric") {
       let totalObt = 0, totalMax = 0, attSum = 0;
       loggedTerms.forEach(t => {
@@ -976,8 +1142,10 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const avgAtt = loggedTerms.length > 0 ? (attSum / loggedTerms.length).toFixed(1) : "90.0";
       const cumPct = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(1) : "85.0";
+      const curClass = document.getElementById("manager_current_class_select")?.value || "9th Class (SSC-I)";
+      const tgtClass = document.getElementById("manager_target_class_select")?.value || "10th Class (SSC-II)";
       const termNames = loggedTerms.map(t => t.term_name).join(", ") || `${loggedTerms.length} SSC Classes`;
-      academicSummary = `Logged: ${termNames} (${cumPct}% Score) | Avg Attendance: ${avgAtt}%`;
+      academicSummary = `Current: ${curClass} ➔ Target: ${tgtClass} | Logged: ${termNames} (${cumPct}% Score) | Att: ${avgAtt}%`;
     } else if (currentStage === "secondary") {
       let totalObt = 0, totalMax = 0, attSum = 0;
       loggedTerms.forEach(t => {
