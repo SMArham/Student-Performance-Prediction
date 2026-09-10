@@ -843,7 +843,6 @@ select.form-select option {
    ------------------------------------------------------------------------------ */
 .modal-backdrop {
   position: fixed !important;
-  inset: 0 !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
@@ -853,7 +852,7 @@ select.form-select option {
   background: rgba(0, 0, 0, 0.82) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
-  display: none !important;
+  display: none;
   align-items: center !important;
   justify-content: center !important;
   z-index: 100000 !important;
@@ -890,7 +889,6 @@ select.form-select option {
    ------------------------------------------------------------------------------ */
 #modal-add-term {
   position: fixed !important;
-  inset: 0 !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
@@ -900,16 +898,16 @@ select.form-select option {
   background: rgba(4, 6, 10, 0.88) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
-  display: none !important;
+  display: none;
   align-items: center !important;
   justify-content: center !important;
-  z-index: 999999 !important;
+  z-index: 9999999 !important;
   padding: 16px !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 #modal-add-term.active {

@@ -2431,26 +2431,26 @@ document.addEventListener("DOMContentLoaded", () => {
       const studyPill = (currentStage === "secondary" || currentStage === "primary") && t.study_hours ? ` • ${t.study_hours}h Study` : "";
       const cgpaPill = currentStage === "university" && t.cgpa ? ` • ${Number(t.cgpa).toFixed(2)} CGPA` : "";
       return `
-        <div class="card" style="padding: 14px 18px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.35); border-radius: 8px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <div class="card" style="padding: 14px 18px; border: 1px solid rgba(255,255,255,0.12); background: rgba(18,20,24,0.78); border-radius: 10px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 220px;">
               <span style="font-weight: 800; color: #ffffff; font-size: 15px;">${cardIcon} ${t.term_name}</span>
               <span class="badge badge-info" style="font-size: 11px;">${t.subjects?.length || 0} ${subLabelUnit}${crPill}${studyPill}${attPill}${cgpaPill}</span>
               <span class="badge badge-success" style="font-size: 11px; font-weight: 700;">${scoreLabel}</span>
             </div>
-            <div style="display: flex; gap: 8px;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="window.editSemester('${(t.id || t.term_name || '').replace(/'/g, "\\'")}')" style="padding: 3px 10px; font-size: 11.5px; color: var(--color-lime);">
+            <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.editSemester('${(t.id || t.term_name || '').replace(/'/g, "\\'")}')" style="padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--color-lime); border: 1px solid rgba(168,240,75,0.45); background: rgba(168,240,75,0.08); border-radius: 6px; cursor: pointer;">
                 ✏️ Edit
               </button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="window.deleteSemester('${(t.id || t.term_name || '').replace(/'/g, "\\'")}')" style="padding: 3px 10px; font-size: 11.5px; color: var(--color-red);">
-                🗑️ Remove
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.deleteSemester('${(t.id || t.term_name || '').replace(/'/g, "\\'")}')" style="padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--color-red); border: 1px solid rgba(248,113,113,0.45); background: rgba(248,113,113,0.08); border-radius: 6px; cursor: pointer;">
+                🗑️ Delete
               </button>
             </div>
           </div>
           <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;">
             ${(t.subjects || []).map(s => {
               const subPct = s.total_marks > 0 ? Math.round((s.obtained_marks / s.total_marks) * 100) : 0;
-              return `<span style="background: rgba(255,255,255,0.06); padding: 5px 12px; border-radius: 6px; font-size: 12px; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.08);">
+              return `<span style="background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 6px; font-size: 11.5px; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.08);">
                 <strong style="color: #ffffff;">${s.subject_name}</strong>: ${s.obtained_marks}/${s.total_marks} (${subPct}%)
               </span>`;
             }).join("") || "<span style='color:var(--text-muted);font-size:12px;'>No subjects recorded</span>"}
@@ -2667,70 +2667,70 @@ document.addEventListener("DOMContentLoaded", () => {
       if (typeof e.stopPropagation === "function") e.stopPropagation();
     }
 
-    if (addTermForm) addTermForm.reset();
-
-    const editId = document.getElementById("term-edit-id");
-    if (editId) editId.value = "";
-    const origName = document.getElementById("term-original-name");
-    if (origName) origName.value = "";
-
-    try {
-      setupModalForCurrentStage(false);
-    } catch (err) {
-      console.warn("setupModalForCurrentStage notice:", err);
-    }
-
-    if (modalTermSubjectsContainer) {
-      modalTermSubjectsContainer.innerHTML = "";
-      if (currentStage === "secondary") {
-        addModalSubjectRow("Mathematics", "Mathematics", 88, 100);
-        addModalSubjectRow("General Science", "Science", 84, 100);
-        addModalSubjectRow("English Language", "Language", 83, 100);
-      } else if (currentStage === "primary") {
-        addModalSubjectRow("Math & Numeracy", "Numeracy", 88, 100);
-        addModalSubjectRow("Reading & Literacy", "Literacy", 90, 100);
-      } else {
-        addModalSubjectRow("", "Theory", "", 100);
-      }
-    }
-
-    const termNameSelect = document.getElementById("term-name-select");
-    const termNameInput = document.getElementById("term-name-input");
-    if (termNameSelect && termNameInput) {
-      if (termNameSelect.value && termNameSelect.value !== "custom") {
-        termNameInput.value = termNameSelect.value;
-      }
-    }
-
-    const termGpaInput = document.getElementById("term-gpa-input");
-    if (termGpaInput) {
-      termGpaInput.value = currentStage === "university" ? "3.60" : "85.0";
-    }
-    const termCgpaInput = document.getElementById("term-cgpa-input");
-    if (termCgpaInput) termCgpaInput.value = "3.50";
-    const termAttInput = document.getElementById("term-attendance-input");
-    if (termAttInput) termAttInput.value = currentStage === "primary" ? "94" : currentStage === "secondary" ? "92" : "85";
-    const termCreditsInput = document.getElementById("term-credits-input");
-    if (termCreditsInput) termCreditsInput.value = currentStage === "secondary" ? "3.5" : "18";
-    const termMidtermInput = document.getElementById("term-midterm-input");
-    if (termMidtermInput) termMidtermInput.value = "80";
-    const termBacklogsInput = document.getElementById("term-backlogs-input");
-    if (termBacklogsInput) termBacklogsInput.value = "0";
-
-    try {
-      calculateModalGpaFromRows();
-    } catch (err) {
-      console.warn("calculateModalGpaFromRows notice:", err);
-    }
-
+    // 1. Guaranteed immediate visual display on screen
     const m = document.getElementById("modal-add-term");
     if (m) {
+      m.removeAttribute("style");
       m.style.setProperty("display", "flex", "important");
       m.style.setProperty("opacity", "1", "important");
       m.style.setProperty("visibility", "visible", "important");
       m.style.setProperty("pointer-events", "auto", "important");
       m.classList.add("active");
       document.body.style.overflow = "hidden";
+    }
+
+    // 2. Safe form preparation & population
+    try {
+      if (addTermForm) addTermForm.reset();
+
+      const editId = document.getElementById("term-edit-id");
+      if (editId) editId.value = "";
+      const origName = document.getElementById("term-original-name");
+      if (origName) origName.value = "";
+
+      setupModalForCurrentStage(false);
+
+      if (modalTermSubjectsContainer) {
+        modalTermSubjectsContainer.innerHTML = "";
+        if (currentStage === "secondary") {
+          addModalSubjectRow("Mathematics", "Mathematics", 88, 100);
+          addModalSubjectRow("General Science", "Science", 84, 100);
+          addModalSubjectRow("English Language", "Language", 83, 100);
+        } else if (currentStage === "primary") {
+          addModalSubjectRow("Math & Numeracy", "Numeracy", 88, 100);
+          addModalSubjectRow("Reading & Literacy", "Literacy", 90, 100);
+        } else {
+          addModalSubjectRow("Calculus & Analytical Geometry", "Theory", 82, 100);
+          addModalSubjectRow("Object Oriented Programming", "Lab", 86, 100);
+        }
+      }
+
+      const termNameSelect = document.getElementById("term-name-select");
+      const termNameInput = document.getElementById("term-name-input");
+      if (termNameSelect && termNameInput) {
+        if (termNameSelect.value && termNameSelect.value !== "custom") {
+          termNameInput.value = termNameSelect.value;
+        }
+      }
+
+      const termGpaInput = document.getElementById("term-gpa-input");
+      if (termGpaInput) {
+        termGpaInput.value = currentStage === "university" ? "3.60" : "85.0";
+      }
+      const termCgpaInput = document.getElementById("term-cgpa-input");
+      if (termCgpaInput) termCgpaInput.value = "3.50";
+      const termAttInput = document.getElementById("term-attendance-input");
+      if (termAttInput) termAttInput.value = currentStage === "primary" ? "94" : currentStage === "secondary" ? "92" : "85";
+      const termCreditsInput = document.getElementById("term-credits-input");
+      if (termCreditsInput) termCreditsInput.value = currentStage === "secondary" ? "3.5" : "18";
+      const termMidtermInput = document.getElementById("term-midterm-input");
+      if (termMidtermInput) termMidtermInput.value = "80";
+      const termBacklogsInput = document.getElementById("term-backlogs-input");
+      if (termBacklogsInput) termBacklogsInput.value = "0";
+
+      calculateModalGpaFromRows();
+    } catch (err) {
+      console.warn("[openAddSemesterModal] Population notice:", err);
     }
   };
 
@@ -2748,6 +2748,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function closeTermModal() {
     const m = document.getElementById("modal-add-term");
     if (m) {
+      m.removeAttribute("style");
       m.style.setProperty("display", "none", "important");
       m.style.setProperty("opacity", "0", "important");
       m.style.setProperty("visibility", "hidden", "important");
@@ -2864,55 +2865,62 @@ document.addEventListener("DOMContentLoaded", () => {
     const term = loggedTerms.find(t => t.id === termIdentifier || t.term_name === termIdentifier);
     if (!term) return;
 
-    if (addTermForm) addTermForm.reset();
-    setupModalForCurrentStage(true, term);
-
-    const editIdInput = document.getElementById("term-edit-id");
-    const origNameInput = document.getElementById("term-original-name");
-    if (editIdInput) editIdInput.value = term.id || "";
-    if (origNameInput) origNameInput.value = term.term_name || "";
-
-    const termNameInput = document.getElementById("term-name-input");
-    const termGpaInput = document.getElementById("term-gpa-input");
-    const termCgpaInput = document.getElementById("term-cgpa-input");
-    const termAttInput = document.getElementById("term-attendance-input");
-    const termCreditsInput = document.getElementById("term-credits-input");
-    const termMidtermInput = document.getElementById("term-midterm-input");
-    const termBacklogsInput = document.getElementById("term-backlogs-input");
-
-    if (termNameInput) termNameInput.value = term.term_name;
-    if (termGpaInput) {
-      if (currentStage === "university") {
-        termGpaInput.value = term.gpa !== undefined ? term.gpa : "3.50";
-      } else {
-        termGpaInput.value = term.percentage !== undefined ? term.percentage : (term.gpa ? (term.gpa > 4 ? term.gpa : term.gpa * 25) : "85.0");
-      }
-    }
-    if (termCgpaInput) termCgpaInput.value = term.cgpa !== undefined ? term.cgpa : "3.50";
-    if (termAttInput) termAttInput.value = term.attendance_pct || 85;
-    if (termCreditsInput) termCreditsInput.value = currentStage === "secondary" ? (term.study_hours || "3.5") : (term.credit_hours || 18);
-    if (termMidtermInput) termMidtermInput.value = term.midterm_score || 80;
-    if (termBacklogsInput) termBacklogsInput.value = term.backlogs || 0;
-
-    if (modalTermSubjectsContainer) {
-      modalTermSubjectsContainer.innerHTML = "";
-      const subs = term.subjects || [];
-      if (subs.length > 0) {
-        subs.forEach(s => {
-          addModalSubjectRow(s.subject_name, s.subject_category || "Theory", s.obtained_marks, s.total_marks);
-        });
-      } else {
-        addModalSubjectRow("", "", "", 100);
-      }
-    }
+    // 1. Guaranteed immediate visual display on screen
     const m = document.getElementById("modal-add-term");
     if (m) {
+      m.removeAttribute("style");
       m.style.setProperty("display", "flex", "important");
       m.style.setProperty("opacity", "1", "important");
       m.style.setProperty("visibility", "visible", "important");
       m.style.setProperty("pointer-events", "auto", "important");
       m.classList.add("active");
       document.body.style.overflow = "hidden";
+    }
+
+    try {
+      if (addTermForm) addTermForm.reset();
+      setupModalForCurrentStage(true, term);
+
+      const editIdInput = document.getElementById("term-edit-id");
+      const origNameInput = document.getElementById("term-original-name");
+      if (editIdInput) editIdInput.value = term.id || "";
+      if (origNameInput) origNameInput.value = term.term_name || "";
+
+      const termNameInput = document.getElementById("term-name-input");
+      const termGpaInput = document.getElementById("term-gpa-input");
+      const termCgpaInput = document.getElementById("term-cgpa-input");
+      const termAttInput = document.getElementById("term-attendance-input");
+      const termCreditsInput = document.getElementById("term-credits-input");
+      const termMidtermInput = document.getElementById("term-midterm-input");
+      const termBacklogsInput = document.getElementById("term-backlogs-input");
+
+      if (termNameInput) termNameInput.value = term.term_name;
+      if (termGpaInput) {
+        if (currentStage === "university") {
+          termGpaInput.value = term.gpa !== undefined ? term.gpa : "3.50";
+        } else {
+          termGpaInput.value = term.percentage !== undefined ? term.percentage : (term.gpa ? (term.gpa > 4 ? term.gpa : term.gpa * 25) : "85.0");
+        }
+      }
+      if (termCgpaInput) termCgpaInput.value = term.cgpa !== undefined ? term.cgpa : "3.50";
+      if (termAttInput) termAttInput.value = term.attendance_pct || 85;
+      if (termCreditsInput) termCreditsInput.value = currentStage === "secondary" ? (term.study_hours || "3.5") : (term.credit_hours || 18);
+      if (termMidtermInput) termMidtermInput.value = term.midterm_score || 80;
+      if (termBacklogsInput) termBacklogsInput.value = term.backlogs || 0;
+
+      if (modalTermSubjectsContainer) {
+        modalTermSubjectsContainer.innerHTML = "";
+        const subs = term.subjects || [];
+        if (subs.length > 0) {
+          subs.forEach(s => {
+            addModalSubjectRow(s.subject_name, s.subject_category || "Theory", s.obtained_marks, s.total_marks);
+          });
+        } else {
+          addModalSubjectRow("", "", "", 100);
+        }
+      }
+    } catch (err) {
+      console.warn("[editSemester] Edit population notice:", err);
     }
   };
 

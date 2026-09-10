@@ -11,9 +11,9 @@
   <!-- Design System CSS -->
   <link rel="stylesheet" href="css/variables.css?v=3.0.0">
   <link rel="stylesheet" href="css/layout.css?v=3.0.0">
-  <link rel="stylesheet" href="css/components.css?v=3.2.2">
+  <link rel="stylesheet" href="css/components.css?v=3.3.0">
   <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
-  <link rel="stylesheet" href="css/prediction.css?v=3.2.2">
+  <link rel="stylesheet" href="css/prediction.css?v=3.3.0">
   <link rel="stylesheet" href="css/tour.css?v=3.1.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
@@ -28,6 +28,7 @@
       if (e && typeof e.preventDefault === "function") e.preventDefault();
       var m = document.getElementById("modal-add-term");
       if (m) {
+        m.removeAttribute("style");
         m.style.setProperty("display", "flex", "important");
         m.style.setProperty("opacity", "1", "important");
         m.style.setProperty("visibility", "visible", "important");
@@ -39,6 +40,7 @@
     window.closeAddSemesterModal = window.closeAddSemesterModal || function() {
       var m = document.getElementById("modal-add-term");
       if (m) {
+        m.removeAttribute("style");
         m.style.setProperty("display", "none", "important");
         m.style.setProperty("opacity", "0", "important");
         m.style.setProperty("visibility", "hidden", "important");
@@ -676,8 +678,8 @@
 
   <!-- Application Logic Scripts -->
   <script src="js/supabase-client.js?v=3.0.0"></script>
-  <script src="js/api.js?v=3.2.2"></script>
-  <script src="js/prediction.js?v=3.2.2"></script>
+  <script src="js/api.js?v=3.3.0"></script>
+  <script src="js/prediction.js?v=3.3.0"></script>
   <script src="js/tour.js?v=3.1.0"></script>
 </body>
 </html>

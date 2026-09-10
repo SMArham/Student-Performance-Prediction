@@ -278,9 +278,9 @@
 
 .subjects-summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
 .summary-kpi-card {
