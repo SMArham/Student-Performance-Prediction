@@ -2439,10 +2439,10 @@ document.addEventListener("DOMContentLoaded", () => {
               <span class="badge badge-success" style="font-size: 11px; font-weight: 700;">${scoreLabel}</span>
             </div>
             <div style="display: flex; gap: 8px;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="window.editSemester('${t.term_name}')" style="padding: 3px 10px; font-size: 11.5px; color: var(--color-lime);">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.editSemester('${(t.id || t.term_name || '').replace(/'/g, "\\'")}')" style="padding: 3px 10px; font-size: 11.5px; color: var(--color-lime);">
                 ✏️ Edit
               </button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="window.deleteSemester('${t.term_name}')" style="padding: 3px 10px; font-size: 11.5px; color: var(--color-red);">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.deleteSemester('${(t.id || t.term_name || '').replace(/'/g, "\\'")}')" style="padding: 3px 10px; font-size: 11.5px; color: var(--color-red);">
                 🗑️ Remove
               </button>
             </div>
@@ -2461,6 +2461,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setupModalForCurrentStage(isEdit = false, term = null) {
+    const termEditId = document.getElementById("term-edit-id");
+    const termOriginalName = document.getElementById("term-original-name");
+    const btnSaveText = document.getElementById("btn-save-term-modal-text");
+
+    if (isEdit && term) {
+      if (termEditId) termEditId.value = term.id || term.term_name;
+      if (termOriginalName) termOriginalName.value = term.term_name;
+      if (btnSaveText) btnSaveText.innerText = "💾 Update Semester Record";
+    } else {
+      if (termEditId) termEditId.value = "";
+      if (termOriginalName) termOriginalName.value = "";
+      if (btnSaveText) btnSaveText.innerText = "💾 Save Semester Record";
+    }
+
     const termModalTitle = document.getElementById("term-modal-title");
     const termModalSubtitle = document.getElementById("term-modal-subtitle");
     const termNameLabel = document.getElementById("term-name-label");
@@ -2694,6 +2708,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (modalAddTerm) {
         modalAddTerm.style.setProperty("display", "flex", "important");
         modalAddTerm.classList.add("active");
+        document.body.style.overflow = "hidden";
       }
     });
   }
@@ -2703,6 +2718,7 @@ document.addEventListener("DOMContentLoaded", () => {
       modalAddTerm.style.setProperty("display", "none", "important");
       modalAddTerm.classList.remove("active");
     }
+    document.body.style.overflow = "";
   }
 
   if (btnCloseTermModal) btnCloseTermModal.addEventListener("click", closeTermModal);
@@ -2712,6 +2728,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.target === modalAddTerm) closeTermModal();
     });
   }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modalAddTerm?.classList.contains("active")) {
+      closeTermModal();
+    }
+  });
 
   if (addTermForm) {
     addTermForm.addEventListener("submit", async (e) => {
@@ -2725,6 +2747,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!termName) {
         termName = currentStage === "university" ? `Semester ${loggedTerms.length + 1}` : `Class ${loggedTerms.length + 1}`;
       }
+
+      const editId = document.getElementById("term-edit-id")?.value;
+      const originalTermName = document.getElementById("term-original-name")?.value;
+      const isEdit = Boolean(originalTermName);
 
       const gpaVal = parseFloat(document.getElementById("term-gpa-input")?.value || (currentStage === "university" ? 3.5 : 85.0));
       const cgpaVal = parseFloat(document.getElementById("term-cgpa-input")?.value || gpaVal);
@@ -2757,23 +2783,38 @@ document.addEventListener("DOMContentLoaded", () => {
         };
       });
 
+      // If user renamed an existing semester during edit, remove the old one first
+      if (isEdit && originalTermName && originalTermName !== termName) {
+        try {
+          if (window.apiClient) {
+            await window.apiClient.deleteAcademicRecord(originalTermName, currentStage);
+          }
+        } catch (delErr) {
+          console.warn("[Academic Record] Rename cleanup notice:", delErr.message);
+        }
+      }
+
+      const termPayload = {
+        id: editId || ("term_" + Date.now()),
+        original_term_name: originalTermName,
+        stage: currentStage,
+        term_name: termName,
+        gpa: currentStage === "university" ? gpaVal : +(gpaVal / 25.0).toFixed(2),
+        percentage: currentStage === "university" ? +(gpaVal / 4.0 * 100).toFixed(1) : gpaVal,
+        cgpa: cgpaVal,
+        attendance_pct: att,
+        credit_hours: creditsVal,
+        midterm_score: midtermVal,
+        backlogs: backlogsVal,
+        study_hours: currentStage === "secondary" ? creditsVal : 4.5,
+        subjects: subjects.length > 0 ? subjects : [{ subject_name: "Core Subject", subject_category: "Core", obtained_marks: 85, total_marks: 100 }]
+      };
+
       try {
         if (window.apiClient) {
-          await window.apiClient.createAcademicRecord({
-            stage: currentStage,
-            term_name: termName,
-            gpa: currentStage === "university" ? gpaVal : +(gpaVal / 25.0).toFixed(2),
-            percentage: currentStage === "university" ? +(gpaVal / 4.0 * 100).toFixed(1) : gpaVal,
-            cgpa: cgpaVal,
-            attendance_pct: att,
-            credit_hours: creditsVal,
-            midterm_score: midtermVal,
-            backlogs: backlogsVal,
-            study_hours: currentStage === "secondary" ? creditsVal : 4.5,
-            subjects: subjects.length > 0 ? subjects : [{ subject_name: "Core Subject", subject_category: "Core", obtained_marks: 85, total_marks: 100 }]
-          });
+          await window.apiClient.createAcademicRecord(termPayload);
         }
-        showToast(`Saved ${termName} successfully!`, "success");
+        showToast(isEdit ? `Updated ${termName} successfully!` : `Saved ${termName} successfully!`, "success");
         closeTermModal();
         await loadAcademicTerms(currentStage);
       } catch (err) {
@@ -2782,8 +2823,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  window.editSemester = (termName) => {
-    const term = loggedTerms.find(t => t.term_name === termName);
+  window.editSemester = (termIdentifier) => {
+    const term = loggedTerms.find(t => t.id === termIdentifier || t.term_name === termIdentifier);
     if (!term) return;
 
     if (addTermForm) addTermForm.reset();
@@ -2825,16 +2866,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (modalAddTerm) {
       modalAddTerm.style.setProperty("display", "flex", "important");
       modalAddTerm.classList.add("active");
+      document.body.style.overflow = "hidden";
     }
   };
 
-  window.deleteSemester = async (termName) => {
-    if (!confirm(`Are you sure you want to remove '${termName}' from your academic records?`)) return;
+  window.deleteSemester = async (termIdentifier) => {
+    const term = loggedTerms.find(t => t.id === termIdentifier || t.term_name === termIdentifier);
+    const targetName = term ? term.term_name : termIdentifier;
+    if (!confirm(`Are you sure you want to remove '${targetName}' from your academic records?`)) return;
     try {
       if (window.apiClient) {
-        await window.apiClient.deleteAcademicRecord(termName, currentStage);
+        await window.apiClient.deleteAcademicRecord(targetName, currentStage);
       }
-      showToast(`Removed ${termName}.`, "info");
+      showToast(`Removed '${targetName}' from records.`, "info");
       await loadAcademicTerms(currentStage);
     } catch (err) {
       showToast(`Error deleting record: ${err.message}`, "error");

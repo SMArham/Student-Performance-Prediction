@@ -870,6 +870,62 @@ select.form-select option {
   pointer-events: auto !important;
 }
 
+@keyframes modalPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-backdrop.active .modal-dialog {
+  animation: modalPopIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ------------------------------------------------------------------------------
+   Academic Semester & Coursework Modal Popup
+   ------------------------------------------------------------------------------ */
+#modal-add-term {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(4, 6, 10, 0.86) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 100000 !important;
+  padding: 16px !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+#modal-add-term.active {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+#modal-add-term .modal-dialog {
+  background: #111317 !important;
+  border: 1.5px solid rgba(168, 240, 75, 0.45) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.88), 0 0 35px rgba(168, 240, 75, 0.12) !important;
+  border-radius: 16px !important;
+  width: 100% !important;
+  max-width: 660px !important;
+  max-height: calc(100vh - 36px) !important;
+  margin: auto !important;
+  padding: 18px 22px !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  position: relative !important;
+}
+
 .modal-dialog {
   background: #121317;
   border: 1px solid var(--border-subtle);

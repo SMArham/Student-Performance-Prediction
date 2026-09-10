@@ -188,11 +188,16 @@ class APIClient {
     try {
       const raw = localStorage.getItem(key) || localStorage.getItem(`sp_academic_records_${stage}`);
       let terms = raw ? JSON.parse(raw) : [];
-      const idx = terms.findIndex(t => t.term_name === termPayload.term_name);
+      const origName = termPayload.original_term_name;
+      const idx = terms.findIndex(t => 
+        (origName && t.term_name === origName) || 
+        (termPayload.id && t.id === termPayload.id) || 
+        t.term_name === termPayload.term_name
+      );
       if (idx >= 0) {
         terms[idx] = { ...terms[idx], ...termPayload, updated_at: new Date().toISOString() };
       } else {
-        terms.push({ id: "term_" + Date.now(), ...termPayload, created_at: new Date().toISOString() });
+        terms.push({ id: termPayload.id || ("term_" + Date.now()), ...termPayload, created_at: new Date().toISOString() });
       }
       localStorage.setItem(key, JSON.stringify(terms));
       localStorage.setItem(`sp_academic_records_${stage}`, JSON.stringify(terms));
@@ -202,6 +207,18 @@ class APIClient {
         const session = window.authClient.getSession();
         const userId = session?.user?.id;
         if (userId) {
+          // If renamed during edit, delete old record from Supabase
+          if (origName && origName !== termPayload.term_name) {
+            window.authClient.client.from("academic_records").delete()
+              .eq("user_id", userId)
+              .eq("term_name", origName)
+              .then().catch(() => {});
+            window.authClient.client.from("academic_subjects").delete()
+              .eq("user_id", userId)
+              .eq("assessment_period", origName)
+              .then().catch(() => {});
+          }
+
           const recId = `rec_${userId}_${(termPayload.term_name || "term").replace(/\s+/g, "_").toLowerCase()}`;
           const cleanRecord = {
             id: recId,
@@ -220,16 +237,16 @@ class APIClient {
 
           // Also persist individual subjects into academic_subjects table if present
           if (Array.isArray(termPayload.subjects) && termPayload.subjects.length > 0) {
-            const subjectRows = termPayload.subjects.map((sub, idx) => {
+            const subjectRows = termPayload.subjects.map((sub, sIdx) => {
               const obtained = parseFloat(sub.marks || sub.obtained_marks || 80);
               const total = parseFloat(sub.total || sub.total_marks || 100);
               const pct = total > 0 ? (obtained / total) * 100 : 80;
               return {
-                id: `sub_${userId}_${idx}_${Date.now()}`,
+                id: `sub_${userId}_${(termPayload.term_name || 'term').replace(/\s+/g, '_').toLowerCase()}_${sIdx}`,
                 user_id: userId,
                 stage: stage,
                 subject_name: sub.name || sub.subject_name || "Course Subject",
-                subject_category: sub.category || "Theory",
+                subject_category: sub.category || sub.subject_category || "Theory",
                 assessment_period: termPayload.term_name || "Current Term",
                 obtained_marks: obtained,
                 total_marks: total,
@@ -256,7 +273,7 @@ class APIClient {
     try {
       const raw = localStorage.getItem(key) || localStorage.getItem(`sp_academic_records_${stage}`);
       let terms = raw ? JSON.parse(raw) : [];
-      terms = terms.filter(t => t.term_name !== termName);
+      terms = terms.filter(t => (t.term_name || "").toLowerCase() !== (termName || "").toLowerCase() && (t.id || "") !== termName);
       localStorage.setItem(key, JSON.stringify(terms));
       localStorage.setItem(`sp_academic_records_${stage}`, JSON.stringify(terms));
 
@@ -268,6 +285,11 @@ class APIClient {
             .eq("user_id", userId)
             .eq("term_name", termName)
             .then().catch(e => console.warn("[Supabase] Academic delete cloud notice:", e.message));
+
+          window.authClient.client.from("academic_subjects").delete()
+            .eq("user_id", userId)
+            .eq("assessment_period", termName)
+            .then().catch(() => {});
         }
       }
     } catch (e) {
@@ -297,10 +319,20 @@ class APIClient {
             .eq("user_id", userId)
             .eq("stage", stage);
           if (!error && Array.isArray(data) && data.length > 0) {
+            const localRaw = localStorage.getItem(this.getLocalAcademicKey(stage));
+            const localTerms = localRaw ? JSON.parse(localRaw) : [];
+            const mergedTerms = data.map(dbTerm => {
+              const matchedLocal = localTerms.find(l => (l.term_name || '').toLowerCase() === (dbTerm.term_name || '').toLowerCase());
+              return { 
+                ...matchedLocal, 
+                ...dbTerm, 
+                subjects: (dbTerm.subjects && dbTerm.subjects.length > 0) ? dbTerm.subjects : (matchedLocal?.subjects || []) 
+              };
+            });
             let totalGpa = 0;
-            for (const t of data) totalGpa += parseFloat(t.gpa || t.percentage || 0);
-            const cgpa = +(totalGpa / data.length).toFixed(2);
-            return { success: true, count: data.length, cumulative_cgpa: cgpa, terms: data };
+            for (const t of mergedTerms) totalGpa += parseFloat(t.gpa || t.percentage || 0);
+            const cgpa = +(totalGpa / mergedTerms.length).toFixed(2);
+            return { success: true, count: mergedTerms.length, cumulative_cgpa: cgpa, terms: mergedTerms };
           }
         }
       } catch (cloudErr) {
