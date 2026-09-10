@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/layout.css?v=3.0.0">
   <link rel="stylesheet" href="css/components.css?v=3.3.0">
   <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
-  <link rel="stylesheet" href="css/prediction.css?v=3.3.0">
+  <link rel="stylesheet" href="css/prediction.css?v=3.3.1">
   <link rel="stylesheet" href="css/tour.css?v=3.1.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
@@ -34,6 +34,9 @@
         m.style.setProperty("visibility", "visible", "important");
         m.style.setProperty("pointer-events", "auto", "important");
         m.classList.add("active");
+        m.scrollTop = 0;
+        var d = m.querySelector(".modal-dialog");
+        if (d) d.scrollTop = 0;
         document.body.style.overflow = "hidden";
       }
     };
@@ -679,7 +682,7 @@
   <!-- Application Logic Scripts -->
   <script src="js/supabase-client.js?v=3.0.0"></script>
   <script src="js/api.js?v=3.3.0"></script>
-  <script src="js/prediction.js?v=3.3.0"></script>
+  <script src="js/prediction.js?v=3.3.1"></script>
   <script src="js/tour.js?v=3.1.0"></script>
 </body>
 </html>
