@@ -131,14 +131,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const kpiGrowthDelta = document.getElementById("kpi-growth-delta");
   const kpiRiskSummary = document.getElementById("kpi-risk-summary");
 
-  // Comparison Matrix DOMs
-  const compareSelectBaseline = document.getElementById("compare-select-baseline");
-  const compareSelectTarget = document.getElementById("compare-select-target");
-  const cmpScoreA = document.getElementById("cmp-score-a");
-  const cmpScoreB = document.getElementById("cmp-score-b");
-  const cmpScoreDelta = document.getElementById("cmp-score-delta");
-  const cmpStatusBadge = document.getElementById("cmp-status-badge");
-  const cmpDetailNotes = document.getElementById("cmp-detail-notes");
+
 
   // Ledger DOMs
   const ledgerTableBody = document.getElementById("analytics-ledger-body");
@@ -368,7 +361,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateSummaryKPIs();
     renderMainAnalyticsChart();
     renderProCognitiveRadarChart();
-    populateComparisonDropdowns();
     renderLedgerTable();
   }
 
@@ -615,55 +607,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       aiForecastVal = Math.min(100, Math.round(currentStandingVal + 7));
     }
 
-    let targetGoalVal = isUni
-      ? Math.min(4.0, +(Math.max(aiForecastVal, currentStandingVal) + 0.35).toFixed(2))
-      : Math.min(100, Math.round(currentStandingVal + 13));
+    const diff = +(aiForecastVal - currentStandingVal).toFixed(2);
+    let liftDelta = isUni ? `${diff >= 0 ? '+' : ''}${diff}` : `${diff >= 0 ? '+' : ''}${diff}%`;
 
-    let liftDelta = isUni ? `+${(aiForecastVal - currentStandingVal).toFixed(2)}` : `+${aiForecastVal - currentStandingVal}%`;
-    let totalGoalDelta = isUni ? `+${(targetGoalVal - currentStandingVal).toFixed(2)}` : `+${targetGoalVal - currentStandingVal}%`;
-
-    const loggedTerms = Array.isArray(latestP.logged_terms) && latestP.logged_terms.length > 0 ? latestP.logged_terms : [];
-
-    if (loggedTerms.length > 1) {
-      const termScores = loggedTerms.map((t) => {
-        let val = parseFloat(t.gpa || t.cgpa || (t.percentage ? t.percentage / 25 : 2.70));
-        if (isUni && val > 4.0) val = +(val / 25.0).toFixed(2);
-        return isUni ? +val.toFixed(2) : Math.round(val);
-      });
-      labels = loggedTerms.map((t, idx) => `${t.term_name || 'Semester ' + (idx + 1)} (${termScores[idx]}${unitLabel})`);
-      labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
-
-      pastScores = [...termScores, null];
-      predScores = termScores.map((v, idx) => (idx === termScores.length - 1 ? v : null));
-      predScores.push(aiForecastVal);
-    } else if (activeList.length === 1) {
-      const baseline = isUni ? Math.max(1.0, +(currentStandingVal - 0.30).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 14));
-      const midExam = isUni ? Math.max(1.0, +(currentStandingVal - 0.15).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 7));
-
-      labels = [
-        `1. Baseline (${baseline}${unitLabel})`,
-        `2. Term Exam (${midExam}${unitLabel})`,
-        `3. Current Standing (${currentStandingVal}${unitLabel})`,
-        `4. ⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`
-      ];
-      pastScores = [baseline, midExam, currentStandingVal, null];
-      predScores = [null, null, currentStandingVal, aiForecastVal];
-    } else {
-      const rawPast = activeList.map((r) => parseVal(r));
-      labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${rawPast[i]}${unitLabel})` : `Test #${i + 1}`));
-      labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
-
-      pastScores = [...rawPast, null];
-      predScores = rawPast.map((v, idx) => (idx === rawPast.length - 1 ? v : null));
-      predScores.push(aiForecastVal);
-    }
+    // Strictly 2 points: 1. Current Standing & 2. ⚡ AI Projected Lift
+    labels = [
+      `1. Current Standing (${currentStandingVal}${unitLabel})`,
+      `2. ⚡ AI Projected Lift (${aiForecastVal}${unitLabel} 🚀)`
+    ];
+    pastScores = [currentStandingVal, null];
+    predScores = [currentStandingVal, aiForecastVal];
 
     if (trajActualEl) trajActualEl.innerText = `${currentStandingVal.toFixed ? currentStandingVal.toFixed(2) : currentStandingVal}${unitLabel}`;
     if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal.toFixed ? aiForecastVal.toFixed(2) : aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
     if (trajProjEl) trajProjEl.innerText = "";
     if (trajBadgeEl) {
-      trajBadgeEl.innerText = "Ascending Growth 🚀";
-      trajBadgeEl.className = `badge ${latestRun.status_color || "badge-success"}`;
+      const isPositive = diff >= 0;
+      trajBadgeEl.innerText = isPositive ? "Ascending Growth 🚀" : "Attention Needed ⚠️";
+      trajBadgeEl.className = `badge ${isPositive ? "badge-success" : "badge-warning"}`;
     }
 
     if (insightEl) {
@@ -671,9 +632,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Dynamic clean Y-Axis bounds
-    let allNonZero = [...pastScores, ...predScores].filter((v) => typeof v === "number" && !isNaN(v));
-    let minScore = Math.min(...allNonZero);
-    let yMin = isUni ? Math.max(1.0, Math.floor((minScore - 0.4) * 2) / 2) : Math.max(30, Math.floor((minScore - 10) / 10) * 10);
+    let minScore = Math.min(currentStandingVal, aiForecastVal);
+    let yMin = isUni ? Math.max(0.0, Math.floor((minScore - 0.5) * 2) / 2) : Math.max(0, Math.floor((minScore - 15) / 10) * 10);
     let yMax = isUni ? 4.0 : 100;
 
     const greenGradient = ctx.createLinearGradient(0, 0, 0, 340);
@@ -690,33 +650,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels: labels,
         datasets: [
           {
-            label: "Verified Past Tests (Baseline)",
+            label: "1. Current Standing (Verified)",
             data: pastScores,
             borderColor: "#A3E635",
             borderWidth: 3.5,
-            fill: true,
+            fill: false,
             backgroundColor: greenGradient,
-            tension: 0.35,
+            tension: 0,
             pointBackgroundColor: "#A3E635",
             pointBorderColor: "#101217",
             pointBorderWidth: 2.5,
-            pointRadius: isMobile ? 6 : 7.5,
+            pointRadius: isMobile ? 7 : 8.5,
             pointHoverRadius: 10
           },
           {
-            label: "⚡ AI Projected Lift (Forecast)",
+            label: "2. ⚡ AI Projected Lift (Forecast)",
             data: predScores,
             borderColor: "#38BDF8",
             borderDash: [6, 4],
             borderWidth: 3.5,
             fill: true,
             backgroundColor: blueGradient,
-            tension: 0.35,
-            pointBackgroundColor: "#38BDF8",
-            pointBorderColor: "#101217",
-            pointBorderWidth: 2.5,
-            pointRadius: isMobile ? 6.5 : 8,
-            pointHoverRadius: 10
+            tension: 0,
+            pointBackgroundColor: ["transparent", "#38BDF8"],
+            pointBorderColor: ["transparent", "#101217"],
+            pointBorderWidth: [0, 2.5],
+            pointRadius: [0, isMobile ? 7.5 : 9],
+            pointHoverRadius: [0, 11]
           }
         ]
       },
@@ -741,12 +701,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             titleColor: "#F8FAFC",
             bodyColor: "#F8FAFC",
             padding: 12,
+            filter: (item) => !(item.datasetIndex === 1 && item.dataIndex === 0),
             callbacks: {
               label: (context) => {
                 if (context.parsed.y === null || context.parsed.y === undefined) return "";
-                const isPred = context.datasetIndex === 1;
-                const prefix = isPred ? "⚡ AI Prediction / Target: " : "🟢 Verified Past Exam: ";
-                return ` ${prefix}${context.parsed.y}${unitLabel}`;
+                if (context.dataIndex === 0) {
+                  return ` 🟢 Current Standing: ${context.parsed.y}${unitLabel}`;
+                } else {
+                  return ` ⚡ AI Projected Lift: ${context.parsed.y}${unitLabel} (Forecast)`;
+                }
               }
             }
           }
@@ -860,64 +823,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       aiForecastVal = Math.min(100, Math.round(currentStandingVal + 7));
     }
 
-    let targetGoalVal = isUni
-      ? Math.min(4.0, +(Math.max(aiForecastVal, currentStandingVal) + 0.35).toFixed(2))
-      : Math.min(100, Math.round(currentStandingVal + 13));
-
-    let liftDelta = isUni ? `+${(aiForecastVal - currentStandingVal).toFixed(2)}` : `+${aiForecastVal - currentStandingVal}%`;
-    let totalGoalDelta = isUni ? `+${(targetGoalVal - currentStandingVal).toFixed(2)}` : `+${targetGoalVal - currentStandingVal}%`;
-
-    const loggedTerms = Array.isArray(latestP.logged_terms) && latestP.logged_terms.length > 0 ? latestP.logged_terms : [];
-
-    if (loggedTerms.length > 1) {
-      const termScores = loggedTerms.map((t) => {
-        let val = parseFloat(t.gpa || t.cgpa || (t.percentage ? t.percentage / 25 : 2.70));
-        if (isUni && val > 4.0) val = +(val / 25.0).toFixed(2);
-        return isUni ? +val.toFixed(2) : Math.round(val);
-      });
-      labels = loggedTerms.map((t, idx) => `${t.term_name || 'Semester ' + (idx + 1)} (${termScores[idx]}${unitLabel})`);
-      labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
-      barValues = [...termScores, aiForecastVal];
-      bgColors = termScores.map(() => "rgba(163, 230, 53, 0.75)").concat(["rgba(56, 189, 248, 0.90)"]);
-      borderColors = termScores.map(() => "#A3E635").concat(["#38BDF8"]);
-    } else if (activeList.length === 1) {
-      const baseline = isUni ? Math.max(1.0, +(currentStandingVal - 0.30).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 14));
-      const midExam = isUni ? Math.max(1.0, +(currentStandingVal - 0.15).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 7));
-
-      labels = [
-        `1. Baseline (${baseline}${unitLabel})`,
-        `2. Term Exam (${midExam}${unitLabel})`,
-        `3. Current (${currentStandingVal}${unitLabel})`,
-        `4. ⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`
-      ];
-      barValues = [baseline, midExam, currentStandingVal, aiForecastVal];
-      bgColors = [
-        "rgba(163, 230, 53, 0.65)",
-        "rgba(163, 230, 53, 0.80)",
-        "rgba(163, 230, 53, 0.95)",
-        "rgba(56, 189, 248, 0.90)"
-      ];
-      borderColors = ["#A3E635", "#A3E635", "#A3E635", "#38BDF8"];
-    } else {
-      const values = activeList.map((r) => parseVal(r));
-      labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${values[i]}${unitLabel})` : `Test #${i + 1}`));
-      labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
-
-      barValues = [...values, aiForecastVal];
-      bgColors = values.map(() => "rgba(163, 230, 53, 0.80)");
-      bgColors.push("rgba(56, 189, 248, 0.90)");
-
-      borderColors = values.map(() => "#A3E635");
-      borderColors.push("#38BDF8");
-    }
+    // Strictly 2 bars: 1. Current Standing & 2. ⚡ AI Projected Lift
+    labels = [
+      `1. Current Standing (${currentStandingVal}${unitLabel})`,
+      `2. ⚡ AI Projected Lift (${aiForecastVal}${unitLabel} 🚀)`
+    ];
+    barValues = [currentStandingVal, aiForecastVal];
+    bgColors = [
+      "rgba(163, 230, 53, 0.85)",
+      "rgba(56, 189, 248, 0.90)"
+    ];
+    borderColors = ["#A3E635", "#38BDF8"];
 
     if (insightEl) {
       insightEl.innerHTML = "";
     }
 
-    let allNonZero = barValues.filter((v) => typeof v === "number" && !isNaN(v));
-    let minScore = Math.min(...allNonZero);
-    let yMin = isUni ? Math.max(1.0, Math.floor((minScore - 0.4) * 2) / 2) : Math.max(30, Math.floor((minScore - 10) / 10) * 10);
+    let minScore = Math.min(currentStandingVal, aiForecastVal);
+    let yMin = isUni ? Math.max(0.0, Math.floor((minScore - 0.5) * 2) / 2) : Math.max(0, Math.floor((minScore - 15) / 10) * 10);
     let yMax = isUni ? 4.0 : 100;
 
     progressionChart = new Chart(ctx, {
@@ -932,7 +855,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             borderColor: borderColors,
             borderWidth: 2,
             borderRadius: 8,
-            maxBarThickness: isMobile ? 38 : 58
+            maxBarThickness: isMobile ? 48 : 64
           }
         ]
       },
@@ -949,7 +872,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             bodyColor: "#F8FAFC",
             padding: 10,
             callbacks: {
-              label: (context) => ` Score: ${context.parsed.y}${unitLabel}`
+              label: (context) => {
+                const prefix = context.dataIndex === 0 ? "🟢 Current Standing: " : "⚡ AI Projected Lift: ";
+                return ` ${prefix}${context.parsed.y}${unitLabel}`;
+              }
             }
           }
         },
@@ -1144,90 +1070,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // --------------------------------------------------------------------------
-  // 14. COMPARISON MATRIX (RUN A VS RUN B DELTA)
-  // --------------------------------------------------------------------------
-  function populateComparisonDropdowns() {
-    if (!compareSelectBaseline || !compareSelectTarget) return;
 
-    if (!predictionHistory || predictionHistory.length === 0) {
-      compareSelectBaseline.innerHTML = '<option value="">No prediction checkpoints available</option>';
-      compareSelectTarget.innerHTML = '<option value="">No prediction checkpoints available</option>';
-      if (cmpScoreA) cmpScoreA.innerText = "--";
-      if (cmpScoreB) cmpScoreB.innerText = "--";
-      if (cmpScoreDelta) {
-        cmpScoreDelta.innerText = "--";
-        cmpScoreDelta.style.color = "var(--text-muted)";
-      }
-      if (cmpStatusBadge) {
-        cmpStatusBadge.innerText = "--";
-        cmpStatusBadge.className = "badge badge-neutral";
-      }
-      if (cmpDetailNotes) {
-        cmpDetailNotes.innerHTML = "No prediction runs found. Perform an AI forecast on the Forecast page to generate comparative analytics.";
-      }
-      return;
-    }
-
-    const options = predictionHistory.map((item) => {
-      const date = item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recent";
-      return `<option value="${item.id}">${item.id} — ${item.score} (${date}) [${(item.stage || "university").toUpperCase()}]</option>`;
-    }).join("");
-
-    compareSelectBaseline.innerHTML = options;
-    compareSelectTarget.innerHTML = options;
-
-    if (predictionHistory.length > 1) {
-      compareSelectBaseline.selectedIndex = predictionHistory.length - 1; // oldest
-      compareSelectTarget.selectedIndex = 0; // latest
-    } else {
-      compareSelectBaseline.selectedIndex = 0;
-      compareSelectTarget.selectedIndex = 0;
-    }
-
-    calculateComparison();
-  }
-
-  function calculateComparison() {
-    const idA = compareSelectBaseline?.value;
-    const idB = compareSelectTarget?.value;
-    if (!idA || !idB) return;
-
-    const itemA = predictionHistory.find((h) => h.id === idA);
-    const itemB = predictionHistory.find((h) => h.id === idB);
-    if (!itemA || !itemB) return;
-
-    if (cmpScoreA) cmpScoreA.innerText = itemA.score;
-    if (cmpScoreB) cmpScoreB.innerText = itemB.score;
-
-    const valA = parseFloat(itemA.score) || 0;
-    const valB = parseFloat(itemB.score) || 0;
-    const isUni = (itemA.stage || "").toLowerCase() === "university" || valA <= 4.0;
-    const delta = +(valB - valA).toFixed(2);
-    const pctChange = valA > 0 ? (((valB - valA) / valA) * 100).toFixed(1) : "0.0";
-    const unit = isUni ? " CGPA" : "%";
-
-    if (cmpScoreDelta) {
-      cmpScoreDelta.innerText = delta >= 0 ? `+${delta}${unit} (+${pctChange}%)` : `${delta}${unit} (${pctChange}%)`;
-      cmpScoreDelta.style.color = delta >= 0 ? "var(--color-lime)" : "var(--color-red)";
-    }
-
-    if (cmpStatusBadge) {
-      const isPositive = delta >= 0;
-      cmpStatusBadge.innerText = isPositive ? "Positive Academic Growth 🚀" : "Remediation Recommended ⚠️";
-      cmpStatusBadge.className = `badge ${isPositive ? "badge-success" : "badge-warning"}`;
-    }
-
-    if (cmpDetailNotes) {
-      cmpDetailNotes.innerHTML = `
-        <strong>Progress Audit:</strong> Milestone transitioned from <em>${itemA.score}</em> (${itemA.status_badge || "Evaluated"}) to <em>${itemB.score}</em> (${itemB.status_badge || "Evaluated"}).
-        Trajectory delta reflects <strong>${delta >= 0 ? '+' : ''}${delta}${unit} (${pctChange}%)</strong> change between checkpoints.
-      `;
-    }
-  }
-
-  if (compareSelectBaseline) compareSelectBaseline.addEventListener("change", calculateComparison);
-  if (compareSelectTarget) compareSelectTarget.addEventListener("change", calculateComparison);
 
   // --------------------------------------------------------------------------
   // 15. HISTORICAL PREDICTION & DIAGNOSTICS LEDGER TABLE

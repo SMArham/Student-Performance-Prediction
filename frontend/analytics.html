@@ -249,55 +249,6 @@
             </div>
           </section>
 
-          <!-- ================================================================
-               COMPARATIVE MILESTONE MATRIX (PROGRESS AUDIT)
-               ================================================================ -->
-          <section class="card" style="margin-bottom: var(--space-6);">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
-                  <span>🔄 Comparative Milestone Matrix (Progress Audit)</span>
-                </h2>
-                <div class="card-subtitle">Select any two prediction checkpoints to quantify academic growth delta and habit changes</div>
-              </div>
-            </div>
-
-            <div class="comparison-grid">
-              <div class="form-group">
-                <label class="form-label" for="compare-select-baseline">Baseline Checkpoint (Run A)</label>
-                <select id="compare-select-baseline" class="form-select"></select>
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="compare-select-target">Comparison Target (Run B)</label>
-                <select id="compare-select-target" class="form-select"></select>
-              </div>
-            </div>
-
-            <div id="comparison-result-card" style="background: var(--bg-input); border: 1px solid var(--border-card); border-radius: var(--radius-lg); padding: var(--space-5);">
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); text-align: center;">
-                <div>
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Baseline Score</div>
-                  <div style="font-size: 20px; font-weight: 800; color: var(--text-primary);" id="cmp-score-a">--</div>
-                </div>
-                <div>
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Evaluated Score</div>
-                  <div style="font-size: 20px; font-weight: 800; color: var(--accent-emerald);" id="cmp-score-b">--</div>
-                </div>
-                <div>
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Calculated Growth Delta</div>
-                  <div style="font-size: 20px; font-weight: 800; color: var(--text-muted);" id="cmp-score-delta">--</div>
-                </div>
-                <div>
-                  <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Trajectory Status</div>
-                  <div style="margin-top: 4px;"><span class="badge badge-neutral" id="cmp-status-badge">--</span></div>
-                </div>
-              </div>
-              <div id="cmp-detail-notes" style="margin-top: var(--space-4); font-size: 13px; color: var(--text-secondary); text-align: center; border-top: 1px solid var(--border-subtle); padding-top: var(--space-3);">
-                Select two records above to generate diagnostic comparison.
-              </div>
-            </div>
-          </section>
 
           <!-- ================================================================
                HISTORICAL PREDICTION & DIAGNOSTICS LEDGER TABLE
