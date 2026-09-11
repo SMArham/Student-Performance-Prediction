@@ -15,28 +15,11 @@ ALTER TABLE IF EXISTS public.academic_subjects DROP CONSTRAINT IF EXISTS academi
 ALTER TABLE IF EXISTS public.teacher_class_roster DROP CONSTRAINT IF EXISTS teacher_class_roster_teacher_id_fkey CASCADE;
 ALTER TABLE IF EXISTS public.prediction_history DROP CONSTRAINT IF EXISTS prediction_history_user_id_fkey CASCADE;
 
--- 3. ENSURE ID COLUMNS ARE TEXT
+-- 3. ENSURE ID COLUMN IN PROFILES IS TEXT
 ALTER TABLE public.profiles ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.profiles ALTER COLUMN id TYPE TEXT;
 
-ALTER TABLE public.academic_records ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.academic_records ALTER COLUMN id TYPE TEXT;
-ALTER TABLE public.academic_records ALTER COLUMN user_id TYPE TEXT;
-
-ALTER TABLE public.academic_subjects ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.academic_subjects ALTER COLUMN id TYPE TEXT;
-ALTER TABLE public.academic_subjects ALTER COLUMN user_id TYPE TEXT;
-
-ALTER TABLE public.teacher_class_roster ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.teacher_class_roster ALTER COLUMN id TYPE TEXT;
-ALTER TABLE public.teacher_class_roster ALTER COLUMN teacher_id TYPE TEXT;
-
-ALTER TABLE public.prediction_history ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.prediction_history ALTER COLUMN id TYPE TEXT;
-ALTER TABLE public.prediction_history ALTER COLUMN user_id TYPE TEXT;
-
 -- 4. MIGRATE EXISTING USERS TO SEQUENTIAL STU-XX AND TCH-XX
--- Convert fatimaa to STU-01, zz to STU-02, keep kk as STU-03
 UPDATE public.profiles
 SET id = 'STU-01'
 WHERE LOWER(email) = 'fatima@gmail.com' OR id = '9e967bbb-9361-4b32-97d6-80b61a13';
@@ -63,15 +46,53 @@ END
 FROM ranked_users ru
 WHERE p.id = ru.id;
 
--- Sync child tables where user_id might still hold old UUIDs
-UPDATE public.academic_records SET user_id = 'STU-01' WHERE user_id = '9e967bbb-9361-4b32-97d6-80b61a13';
-UPDATE public.academic_records SET user_id = 'STU-02' WHERE user_id = 'f8b817d6-2fd3-4fe5-ab24-a8be16aaca';
-UPDATE public.academic_subjects SET user_id = 'STU-01' WHERE user_id = '9e967bbb-9361-4b32-97d6-80b61a13';
-UPDATE public.academic_subjects SET user_id = 'STU-02' WHERE user_id = 'f8b817d6-2fd3-4fe5-ab24-a8be16aaca';
-UPDATE public.prediction_history SET user_id = 'STU-01' WHERE user_id = '9e967bbb-9361-4b32-97d6-80b61a13';
-UPDATE public.prediction_history SET user_id = 'STU-02' WHERE user_id = 'f8b817d6-2fd3-4fe5-ab24-a8be16aaca';
+-- 5. SAFELY UPDATE CHILD TABLES DYNAMICALLY (Only if tables and user_id columns exist)
+DO $$
+BEGIN
+    -- academic_records
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'academic_records' AND column_name = 'id') THEN
+        EXECUTE 'ALTER TABLE public.academic_records ALTER COLUMN id DROP DEFAULT';
+        EXECUTE 'ALTER TABLE public.academic_records ALTER COLUMN id TYPE TEXT';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'academic_records' AND column_name = 'user_id') THEN
+        EXECUTE 'ALTER TABLE public.academic_records ALTER COLUMN user_id TYPE TEXT';
+        EXECUTE 'UPDATE public.academic_records SET user_id = ''STU-01'' WHERE user_id = ''9e967bbb-9361-4b32-97d6-80b61a13''';
+        EXECUTE 'UPDATE public.academic_records SET user_id = ''STU-02'' WHERE user_id = ''f8b817d6-2fd3-4fe5-ab24-a8be16aaca''';
+    END IF;
 
--- 5. RECREATE TRIGGER TO AUTO-ASSIGN SEQUENTIAL IDs ON NEW SIGNUPS
+    -- academic_subjects
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'academic_subjects' AND column_name = 'id') THEN
+        EXECUTE 'ALTER TABLE public.academic_subjects ALTER COLUMN id DROP DEFAULT';
+        EXECUTE 'ALTER TABLE public.academic_subjects ALTER COLUMN id TYPE TEXT';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'academic_subjects' AND column_name = 'user_id') THEN
+        EXECUTE 'ALTER TABLE public.academic_subjects ALTER COLUMN user_id TYPE TEXT';
+        EXECUTE 'UPDATE public.academic_subjects SET user_id = ''STU-01'' WHERE user_id = ''9e967bbb-9361-4b32-97d6-80b61a13''';
+        EXECUTE 'UPDATE public.academic_subjects SET user_id = ''STU-02'' WHERE user_id = ''f8b817d6-2fd3-4fe5-ab24-a8be16aaca''';
+    END IF;
+
+    -- teacher_class_roster
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'teacher_class_roster' AND column_name = 'id') THEN
+        EXECUTE 'ALTER TABLE public.teacher_class_roster ALTER COLUMN id DROP DEFAULT';
+        EXECUTE 'ALTER TABLE public.teacher_class_roster ALTER COLUMN id TYPE TEXT';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'teacher_class_roster' AND column_name = 'teacher_id') THEN
+        EXECUTE 'ALTER TABLE public.teacher_class_roster ALTER COLUMN teacher_id TYPE TEXT';
+    END IF;
+
+    -- prediction_history (only if table and user_id exist)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'prediction_history' AND column_name = 'id') THEN
+        EXECUTE 'ALTER TABLE public.prediction_history ALTER COLUMN id DROP DEFAULT';
+        EXECUTE 'ALTER TABLE public.prediction_history ALTER COLUMN id TYPE TEXT';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'prediction_history' AND column_name = 'user_id') THEN
+        EXECUTE 'ALTER TABLE public.prediction_history ALTER COLUMN user_id TYPE TEXT';
+        EXECUTE 'UPDATE public.prediction_history SET user_id = ''STU-01'' WHERE user_id = ''9e967bbb-9361-4b32-97d6-80b61a13''';
+        EXECUTE 'UPDATE public.prediction_history SET user_id = ''STU-02'' WHERE user_id = ''f8b817d6-2fd3-4fe5-ab24-a8be16aaca''';
+    END IF;
+END $$;
+
+-- 6. RECREATE TRIGGER TO AUTO-ASSIGN SEQUENTIAL IDs ON NEW SIGNUPS
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -127,7 +148,7 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 6. RECREATE CLEAN OPEN POLICIES
+-- 7. RECREATE CLEAN OPEN POLICIES
 DROP POLICY IF EXISTS "Public read profiles" ON public.profiles CASCADE;
 DROP POLICY IF EXISTS "Public insert profiles" ON public.profiles CASCADE;
 DROP POLICY IF EXISTS "Public update profiles" ON public.profiles CASCADE;
