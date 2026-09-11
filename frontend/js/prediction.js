@@ -4468,8 +4468,10 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     }
 
-    teacherResultCard.style.display = "block";
-    teacherResultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (teacherResultCard) {
+      teacherResultCard.style.display = "block";
+      teacherResultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   // ============================================================================
