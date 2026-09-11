@@ -129,7 +129,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const kpiLatestScore = document.getElementById("kpi-latest-score");
   const kpiLatestBadge = document.getElementById("kpi-latest-badge");
   const kpiGrowthDelta = document.getElementById("kpi-growth-delta");
-  const kpiRiskSummary = document.getElementById("kpi-risk-summary");
 
 
 
