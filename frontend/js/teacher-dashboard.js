@@ -568,128 +568,54 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Delete Confirmation Modal DOM Logic
-  let pendingDeleteStudentId = null;
-  let pendingDeleteStudentName = null;
-  const modalDeleteTStudent = document.getElementById("modal-delete-t-student");
-  const btnCloseDelTModal = document.getElementById("btn-close-del-t-modal");
-  const btnCancelDelTModal = document.getElementById("btn-cancel-del-t-modal");
-  const btnConfirmDelTStudent = document.getElementById("btn-confirm-del-t-student");
-
+  // Standardized Table Row Delete Handler
   function attachDashboardDeleteHandlers() {
     document.querySelectorAll(".btn-delete-t-student").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const id = e.currentTarget.getAttribute("data-id");
-        const name = e.currentTarget.getAttribute("data-name");
-        pendingDeleteStudentId = id;
-        pendingDeleteStudentName = name;
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute("data-id");
+        const name = btn.getAttribute("data-name");
+        if (!id) return;
 
-        const targetNameEl = document.getElementById("del-t-target-name");
-        const targetIdEl = document.getElementById("del-t-target-id");
-        if (targetNameEl) targetNameEl.innerText = name || "Student";
-        if (targetIdEl) targetIdEl.innerText = `ID: ${id}`;
+        const displayName = name ? `${name} (ID: ${id})` : `student ${id}`;
+        const confirmed = window.confirm(`Are you sure you want to delete the evaluation record for ${displayName}?`);
+        if (!confirmed) return;
 
-        if (modalDeleteTStudent) {
-          modalDeleteTStudent.classList.add("active");
-        }
+        // Instantly/optimistically remove from UI
+        evaluatedStudentsList = evaluatedStudentsList.filter(
+          (x) => String(x.student_id) !== String(id) && String(x.id) !== String(id)
+        );
+        applyFilters();
+        showToast(`Evaluation record for ${name || id} deleted successfully.`, "success");
+
+        // Background delete from Supabase and LocalStorage
+        await deleteTeacherStudent(id, name);
       });
     });
   }
 
-  const closeDelTModal = () => {
-    if (modalDeleteTStudent) {
-      modalDeleteTStudent.classList.remove("active");
-    }
-    pendingDeleteStudentId = null;
-    pendingDeleteStudentName = null;
-  };
-
-  if (btnCloseDelTModal) btnCloseDelTModal.addEventListener("click", closeDelTModal);
-  if (btnCancelDelTModal) btnCancelDelTModal.addEventListener("click", closeDelTModal);
-
-  if (btnConfirmDelTStudent) {
-    btnConfirmDelTStudent.addEventListener("click", async () => {
-      if (!pendingDeleteStudentId) return;
-
-      const targetId = pendingDeleteStudentId;
-      const targetName = pendingDeleteStudentName;
-
-      btnConfirmDelTStudent.disabled = true;
-      btnConfirmDelTStudent.innerHTML = "<span>⏳ Deleting...</span>";
-
-      await deleteTeacherStudent(targetId, targetName);
-
-      // Remove from memory
-      evaluatedStudentsList = evaluatedStudentsList.filter(
-        (x) => String(x.student_id) !== String(targetId) && String(x.id) !== String(targetId)
-      );
-
-      closeDelTModal();
-      applyFilters();
-
-      btnConfirmDelTStudent.disabled = false;
-      btnConfirmDelTStudent.innerHTML = "<span>🗑️ Confirm Delete</span>";
-
-      showToast(`Evaluation record for ${targetName || targetId} deleted successfully.`, "success");
-    });
-  }
-
-  // Clear Entire Roster Modal ("CLEAR")
-  const modalClearTRoster = document.getElementById("modal-clear-t-roster");
+  // Clear Entire Roster Action
   const btnClearTRoster = document.getElementById("btn-clear-t-roster");
-  const btnCloseClearTModal = document.getElementById("btn-close-clear-t-modal");
-  const btnCancelClearTModal = document.getElementById("btn-cancel-clear-t-modal");
-  const inputConfirmClearTRoster = document.getElementById("input-confirm-clear-t-roster");
-  const btnConfirmWipeTRoster = document.getElementById("btn-confirm-wipe-t-roster");
+  if (btnClearTRoster) {
+    btnClearTRoster.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const val = window.prompt("⚠️ WARNING: This will permanently delete ALL evaluated students from your dashboard.\n\nType CLEAR to confirm:");
+      if (!val || val.trim().toUpperCase() !== "CLEAR") {
+        if (val !== null) {
+          showToast("Clear cancelled: You must type 'CLEAR' to wipe the ledger.", "warning");
+        }
+        return;
+      }
 
-  function openClearTRosterModal() {
-    if (!modalClearTRoster) return;
-    if (inputConfirmClearTRoster) {
-      inputConfirmClearTRoster.value = "";
-    }
-    if (btnConfirmWipeTRoster) {
-      btnConfirmWipeTRoster.disabled = true;
-      btnConfirmWipeTRoster.style.opacity = "0.5";
-      btnConfirmWipeTRoster.style.cursor = "not-allowed";
-      btnConfirmWipeTRoster.innerHTML = "<span>🗑️ Permanently Wipe Ledger</span>";
-    }
-    modalClearTRoster.classList.add("active");
-    if (inputConfirmClearTRoster) inputConfirmClearTRoster.focus();
-  }
-
-  function closeClearTRosterModal() {
-    if (modalClearTRoster) modalClearTRoster.classList.remove("active");
-  }
-
-  if (btnClearTRoster) btnClearTRoster.addEventListener("click", openClearTRosterModal);
-  if (btnCloseClearTModal) btnCloseClearTModal.addEventListener("click", closeClearTRosterModal);
-  if (btnCancelClearTModal) btnCancelClearTModal.addEventListener("click", closeClearTRosterModal);
-
-  if (inputConfirmClearTRoster && btnConfirmWipeTRoster) {
-    inputConfirmClearTRoster.addEventListener("input", () => {
-      const isMatch = inputConfirmClearTRoster.value.trim().toUpperCase() === "CLEAR";
-      btnConfirmWipeTRoster.disabled = !isMatch;
-      btnConfirmWipeTRoster.style.opacity = isMatch ? "1" : "0.5";
-      btnConfirmWipeTRoster.style.cursor = isMatch ? "pointer" : "not-allowed";
-    });
-  }
-
-  if (btnConfirmWipeTRoster) {
-    btnConfirmWipeTRoster.addEventListener("click", async () => {
-      if (inputConfirmClearTRoster && inputConfirmClearTRoster.value.trim().toUpperCase() !== "CLEAR") return;
-      btnConfirmWipeTRoster.disabled = true;
-      btnConfirmWipeTRoster.innerHTML = "<span>⏳ Wiping...</span>";
-
-      await wipeAllTeacherEvaluations();
-
-      closeClearTRosterModal();
+      // Instantly clear UI
       evaluatedStudentsList = [];
       filteredStudentsList = [];
       applyFilters();
       showToast("All student evaluation records permanently wiped.", "info");
 
-      btnConfirmWipeTRoster.disabled = false;
-      btnConfirmWipeTRoster.innerHTML = "<span>🗑️ Permanently Wipe Ledger</span>";
+      // Background wipe from Supabase and LocalStorage
+      await wipeAllTeacherEvaluations();
     });
   }
 

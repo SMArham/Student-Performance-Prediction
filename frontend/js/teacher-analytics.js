@@ -86,14 +86,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ledgerCountBadge = document.getElementById("ledger-count-badge");
   const btnClearLedger = document.getElementById("btn-clear-cohort-ledger");
 
-  // Delete Modal DOM Elements
-  const modalDeleteCohort = document.getElementById("modal-delete-cohort-student");
-  const deleteTargetName = document.getElementById("delete-target-name");
-  const deleteTargetId = document.getElementById("delete-target-id");
-  const btnCloseDeleteModal = document.getElementById("btn-close-delete-modal");
-  const btnCancelDeleteModal = document.getElementById("btn-cancel-delete-modal");
-  const btnConfirmDeleteStudent = document.getElementById("btn-confirm-delete-student");
-
   // Pro Modal Elements
   const proChartCard = document.getElementById("pro-teacher-chart-card");
   const btnUnlockTeacherPro = document.getElementById("btn-unlock-teacher-pro");
@@ -956,121 +948,55 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 8. DELETE EVALUATION RECORD HANDLER (STRICT & CLEAN)
+  // 8. TABLE ROW DELETE EVALUATION RECORD HANDLER (DIRECT & INSTANT)
   // --------------------------------------------------------------------------
-  let pendingDeleteStudentName = null;
-
   function attachLedgerDeleteListeners() {
     document.querySelectorAll(".btn-delete-cohort").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const id = btn.getAttribute("data-id");
         const name = btn.getAttribute("data-name");
-        openDeleteModal(id, name);
+        if (!id) return;
+
+        const displayName = name ? `${name} (ID: ${id})` : `student ${id}`;
+        const confirmed = window.confirm(`Are you sure you want to delete the evaluation record for ${displayName}?`);
+        if (!confirmed) return;
+
+        // Instantly/optimistically remove from UI
+        cohortStudents = cohortStudents.filter(
+          (s) => String(s.student_id) !== String(id) && String(s.id) !== String(id)
+        );
+        updateAnalyticsView();
+        showToast(`Evaluation record for ${name || id} deleted successfully.`, "success");
+
+        // Background delete from Supabase and LocalStorage
+        await deleteTeacherStudent(id, name);
       });
-    });
-  }
-
-  function openDeleteModal(studentId, studentName) {
-    pendingDeleteStudentId = studentId;
-    pendingDeleteStudentName = studentName;
-    if (deleteTargetName) deleteTargetName.innerText = studentName || "Student";
-    if (deleteTargetId) deleteTargetId.innerText = `ID: ${studentId}`;
-    if (modalDeleteCohort) {
-      modalDeleteCohort.classList.add("active");
-    }
-  }
-
-  function closeDeleteModal() {
-    pendingDeleteStudentId = null;
-    pendingDeleteStudentName = null;
-    if (modalDeleteCohort) {
-      modalDeleteCohort.classList.remove("active");
-    }
-  }
-
-  if (btnCloseDeleteModal) btnCloseDeleteModal.addEventListener("click", closeDeleteModal);
-  if (btnCancelDeleteModal) btnCancelDeleteModal.addEventListener("click", closeDeleteModal);
-
-  if (btnConfirmDeleteStudent) {
-    btnConfirmDeleteStudent.addEventListener("click", async () => {
-      if (!pendingDeleteStudentId) return;
-      const targetId = pendingDeleteStudentId;
-      const targetName = pendingDeleteStudentName;
-
-      btnConfirmDeleteStudent.disabled = true;
-      btnConfirmDeleteStudent.innerHTML = "<span>⏳ Deleting...</span>";
-
-      await deleteTeacherStudent(targetId, targetName);
-
-      // Remove from memory
-      cohortStudents = cohortStudents.filter(
-        (s) => String(s.student_id) !== String(targetId) && String(s.id) !== String(targetId)
-      );
-
-      closeDeleteModal();
-      updateAnalyticsView();
-
-      btnConfirmDeleteStudent.disabled = false;
-      btnConfirmDeleteStudent.innerHTML = "<span>🗑️ Confirm Delete</span>";
-
-      showToast(`Evaluation record for ${targetName || targetId} deleted successfully.`, "success");
     });
   }
 
   // --------------------------------------------------------------------------
   // 9. CLEAR LEDGER (WIPE ALL COHORT EVALUATIONS VIA "CLEAR")
   // --------------------------------------------------------------------------
-  const modalClearCohort = document.getElementById("modal-clear-cohort-ledger");
-  const inputConfirmClearCohort = document.getElementById("input-confirm-clear-cohort");
-  const btnCloseClearCohortModal = document.getElementById("btn-close-clear-cohort-modal");
-  const btnCancelClearCohortModal = document.getElementById("btn-cancel-clear-cohort-modal");
-  const btnConfirmWipeCohort = document.getElementById("btn-confirm-wipe-cohort");
+  if (btnClearLedger) {
+    btnClearLedger.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const val = window.prompt("⚠️ WARNING: This will permanently delete ALL cohort evaluations from your ledger.\n\nType CLEAR to confirm:");
+      if (!val || val.trim().toUpperCase() !== "CLEAR") {
+        if (val !== null) {
+          showToast("Clear cancelled: You must type 'CLEAR' to wipe the ledger.", "warning");
+        }
+        return;
+      }
 
-  function openClearCohortModal() {
-    if (!modalClearCohort) return;
-    if (inputConfirmClearCohort) inputConfirmClearCohort.value = "";
-    if (btnConfirmWipeCohort) {
-      btnConfirmWipeCohort.disabled = true;
-      btnConfirmWipeCohort.style.opacity = "0.5";
-      btnConfirmWipeCohort.style.cursor = "not-allowed";
-      btnConfirmWipeCohort.innerHTML = "<span>🗑️ Permanently Wipe Ledger</span>";
-    }
-    modalClearCohort.classList.add("active");
-    if (inputConfirmClearCohort) inputConfirmClearCohort.focus();
-  }
-
-  function closeClearCohortModal() {
-    if (modalClearCohort) modalClearCohort.classList.remove("active");
-  }
-
-  if (btnClearLedger) btnClearLedger.addEventListener("click", openClearCohortModal);
-  if (btnCloseClearCohortModal) btnCloseClearCohortModal.addEventListener("click", closeClearCohortModal);
-  if (btnCancelClearCohortModal) btnCancelClearCohortModal.addEventListener("click", closeClearCohortModal);
-
-  if (inputConfirmClearCohort && btnConfirmWipeCohort) {
-    inputConfirmClearCohort.addEventListener("input", () => {
-      const isMatch = inputConfirmClearCohort.value.trim().toUpperCase() === "CLEAR";
-      btnConfirmWipeCohort.disabled = !isMatch;
-      btnConfirmWipeCohort.style.opacity = isMatch ? "1" : "0.5";
-      btnConfirmWipeCohort.style.cursor = isMatch ? "pointer" : "not-allowed";
-    });
-  }
-
-  if (btnConfirmWipeCohort) {
-    btnConfirmWipeCohort.addEventListener("click", async () => {
-      if (inputConfirmClearCohort && inputConfirmClearCohort.value.trim().toUpperCase() !== "CLEAR") return;
-      btnConfirmWipeCohort.disabled = true;
-      btnConfirmWipeCohort.innerHTML = "<span>⏳ Wiping...</span>";
-
-      await wipeAllTeacherEvaluations();
-
-      closeClearCohortModal();
+      // Instantly clear UI
       cohortStudents = [];
       updateAnalyticsView();
       showToast("All cohort evaluation records permanently wiped.", "info");
 
-      btnConfirmWipeCohort.disabled = false;
-      btnConfirmWipeCohort.innerHTML = "<span>🗑️ Permanently Wipe Ledger</span>";
+      // Background wipe from Supabase and LocalStorage
+      await wipeAllTeacherEvaluations();
     });
   }
 
