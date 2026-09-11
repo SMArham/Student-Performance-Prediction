@@ -244,6 +244,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       const user = window.authClient ? window.authClient.getUser() : null;
       let localList = [];
 
+      // Step 0: Gather tombstoned (permanently deleted) IDs
+      let deletedIds = new Set();
+      try {
+        const tombstoneKeys = [
+          user?.id ? `sp_deleted_prediction_ids_${user.id}` : null,
+          "sp_deleted_prediction_ids"
+        ].filter(Boolean);
+        for (const tk of tombstoneKeys) {
+          const raw = localStorage.getItem(tk);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              arr.forEach((id) => {
+                if (id) deletedIds.add(String(id).trim().toLowerCase());
+              });
+            }
+          }
+        }
+      } catch (e) {}
+
       // Step 1: User-isolated local storage lookup
       if (user?.id) {
         const userKey = `edumetrics_prediction_history_v2_${user.id}`;
@@ -253,7 +273,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           try {
             const parsed = JSON.parse(raw);
             if (Array.isArray(parsed)) {
-              localList = parsed.filter(item => item && (item.user_id === user.id || (!item.user_id && user.email && item.payload?.user_email === user.email)));
+              localList = parsed.filter(item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase()) && (item.user_id === user.id || (!item.user_id && user.email && item.payload?.user_email === user.email)));
             }
           } catch(e) {}
         }
@@ -272,7 +292,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (!error && Array.isArray(data) && data.length > 0) {
             // STRICT USER ISOLATION: Must match current user ID or current user email
             const userRows = data.filter((item) => {
+              if (!item) return false;
+              const itemId = String(item.id || "").trim().toLowerCase();
+              if (itemId && deletedIds.has(itemId)) return false;
               const p = item.input_features || item.payload || {};
+              const pId = String(p.id || "").trim().toLowerCase();
+              if (pId && deletedIds.has(pId)) return false;
               const rowUserId = item.user_id || p.user_id;
               const rowEmail = item.user_email || p.user_email || item.email;
               return (rowUserId && rowUserId === user.id) || (user.email && rowEmail && rowEmail.toLowerCase() === user.email.toLowerCase());
@@ -305,10 +330,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Step 3: Merge & Deduplicate strictly for current user
       const mergedMap = new Map();
-      localList.forEach(item => { if (item && item.id) mergedMap.set(String(item.id), item); });
-      cloudList.forEach(item => { if (item && item.id) mergedMap.set(String(item.id), item); });
+      localList.forEach(item => {
+        if (item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase())) {
+          mergedMap.set(String(item.id), item);
+        }
+      });
+      cloudList.forEach(item => {
+        if (item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase())) {
+          mergedMap.set(String(item.id), item);
+        }
+      });
 
-      let finalList = Array.from(mergedMap.values());
+      let finalList = Array.from(mergedMap.values()).filter(
+        item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase())
+      );
       finalList.sort((a, b) => {
         const tA = new Date(a.timestamp || a.created_at || 0).getTime();
         const tB = new Date(b.timestamp || b.created_at || 0).getTime();
@@ -316,7 +351,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       predictionHistory = finalList;
-      if (user?.id && finalList.length > 0) {
+      if (user?.id) {
         persistHistory(finalList);
       }
 
@@ -1262,6 +1297,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           scoreText = num <= 4.0 ? `${num.toFixed(2)} CGPA` : `${(num / 25.0).toFixed(2)} CGPA`;
         }
 
+        const cleanId = String(item.id || "").replace(/'/g, "\\'");
+
         return `
         <tr>
           <td>
@@ -1317,39 +1354,71 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 16. CRUD OPERATION: DELETE RECORD & PERMANENT CLEAR ALL
   // --------------------------------------------------------------------------
   window.deleteDiagnostic = async (id) => {
+    if (!id || id === "undefined") return;
     if (!confirm("Are you sure you want to permanently delete this historical prediction record?")) return;
     const targetId = String(id).trim().toLowerCase();
 
+    // 1. Remove from in-memory history state
     predictionHistory = predictionHistory.filter((h) => String(h.id || "").trim().toLowerCase() !== targetId);
     persistHistory(predictionHistory);
 
-    // Filter user-isolated candidate localStorage keys
     const user = window.authClient ? window.authClient.getUser() : null;
-    if (user?.id) {
-      const keys = [`edumetrics_prediction_history_v2_${user.id}`, `edumetrics_prediction_history_${user.id}`];
-      for (const k of keys) {
-        try {
-          const raw = localStorage.getItem(k);
-          if (raw) {
-            const arr = JSON.parse(raw);
-            if (Array.isArray(arr)) {
-              const filtered = arr.filter((h) => String(h.id || "").trim().toLowerCase() !== targetId);
-              localStorage.setItem(k, JSON.stringify(filtered));
-            }
-          }
-        } catch(e) {}
+
+    // 2. Mark this ID in persistent tombstones so it never resurrects on refresh
+    try {
+      const tombstoneKeys = [
+        user?.id ? `sp_deleted_prediction_ids_${user.id}` : null,
+        "sp_deleted_prediction_ids"
+      ].filter(Boolean);
+      for (const tk of tombstoneKeys) {
+        const existing = JSON.parse(localStorage.getItem(tk) || "[]");
+        if (!existing.includes(targetId)) {
+          existing.push(targetId);
+          localStorage.setItem(tk, JSON.stringify(existing));
+        }
       }
+    } catch (e) {}
+
+    // 3. Purge from ALL user and shared localStorage keys
+    const storageKeys = [
+      user?.id ? `edumetrics_prediction_history_v2_${user.id}` : null,
+      user?.id ? `edumetrics_prediction_history_${user.id}` : null,
+      user?.id ? `sp_prediction_history_${user.id}` : null,
+      user?.id ? `edumetrics_cached_history_${user.id}` : null,
+      "edumetrics_prediction_history_v2",
+      "edumetrics_prediction_history",
+      "sp_prediction_history",
+      "edumetrics_cached_history"
+    ].filter(Boolean);
+
+    for (const k of storageKeys) {
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            const filtered = arr.filter((h) => String(h.id || "").trim().toLowerCase() !== targetId);
+            localStorage.setItem(k, JSON.stringify(filtered));
+          }
+        }
+      } catch (e) {}
     }
 
-    // Cloud Supabase Sync Deletion
+    // 4. Cloud Supabase Sync Deletion
     if (window.authClient && window.authClient.client) {
       try {
         await window.authClient.client.from("prediction_history").delete().eq("id", id);
       } catch (cloudErr) {
         console.warn("[Analytics] Supabase cloud delete error:", cloudErr.message);
       }
+      try {
+        if (user?.id) {
+          await window.authClient.client.from("prediction_history").delete().eq("user_id", user.id).eq("id", id);
+        }
+      } catch (cloudErr) {}
     }
 
+    // 5. Backend API Client Sync Deletion
     try {
       if (window.apiClient) {
         await window.apiClient.deleteHistoryItem(id);
@@ -1358,6 +1427,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.warn("[API] Delete record notice:", err.message);
     }
 
+    // 6. Refresh ALL analytics UI views immediately
     refreshAllViews();
     showToast("Record permanently removed from ledger.", "info");
   };
@@ -1365,16 +1435,46 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnClearAllHistory) {
     btnClearAllHistory.addEventListener("click", async () => {
       if (!confirm("⚠️ Wipe all historical prediction records? This cannot be undone.")) return;
+
+      const user = window.authClient ? window.authClient.getUser() : null;
+
+      // 1. Tombstone all existing IDs
+      try {
+        const tombstoneKeys = [
+          user?.id ? `sp_deleted_prediction_ids_${user.id}` : null,
+          "sp_deleted_prediction_ids"
+        ].filter(Boolean);
+        for (const tk of tombstoneKeys) {
+          const existing = JSON.parse(localStorage.getItem(tk) || "[]");
+          predictionHistory.forEach((h) => {
+            if (h.id && !existing.includes(String(h.id).trim().toLowerCase())) {
+              existing.push(String(h.id).trim().toLowerCase());
+            }
+          });
+          localStorage.setItem(tk, JSON.stringify(existing));
+        }
+      } catch (e) {}
+
       predictionHistory = [];
       persistHistory([]);
 
-      const user = window.authClient ? window.authClient.getUser() : null;
-      if (user?.id) {
-        localStorage.removeItem(`edumetrics_prediction_history_v2_${user.id}`);
-        localStorage.removeItem(`edumetrics_prediction_history_${user.id}`);
+      // 2. Wipe across all localStorage keys
+      const storageKeysToClear = [
+        user?.id ? `edumetrics_prediction_history_v2_${user.id}` : null,
+        user?.id ? `edumetrics_prediction_history_${user.id}` : null,
+        user?.id ? `sp_prediction_history_${user.id}` : null,
+        user?.id ? `edumetrics_cached_history_${user.id}` : null,
+        "edumetrics_prediction_history_v2",
+        "edumetrics_prediction_history",
+        "sp_prediction_history",
+        "edumetrics_cached_history"
+      ].filter(Boolean);
+
+      for (const k of storageKeysToClear) {
+        localStorage.removeItem(k);
       }
 
-      // Cloud Supabase Clear strictly for this user
+      // 3. Cloud Supabase Clear strictly for this user
       if (window.authClient && window.authClient.client && user?.id) {
         try {
           await window.authClient.client.from("prediction_history").delete().eq("user_id", user.id);

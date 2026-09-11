@@ -4311,6 +4311,24 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem(genKey, JSON.stringify(genHistory.slice(0, 100)));
       localStorage.setItem("edumetrics_prediction_history", JSON.stringify(genHistory.slice(0, 100)));
 
+      // Untombstone new prediction if ID collided
+      try {
+        const tombstoneKeys = [
+          currentUser?.id ? `sp_deleted_prediction_ids_${currentUser.id}` : null,
+          "sp_deleted_prediction_ids"
+        ].filter(Boolean);
+        for (const tk of tombstoneKeys) {
+          const raw = localStorage.getItem(tk);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr) && arr.includes(String(historyItem.id).trim().toLowerCase())) {
+              const updated = arr.filter(id => id !== String(historyItem.id).trim().toLowerCase());
+              localStorage.setItem(tk, JSON.stringify(updated));
+            }
+          }
+        }
+      } catch (e) {}
+
       // 3. Persist into Supabase Cloud prediction_history table
       if (window.authClient && window.authClient.client) {
         const rawScore = typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0);
@@ -4324,6 +4342,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const cloudRecord = {
           id: historyItem.id || `pred-${Date.now().toString().slice(-6)}`,
+          user_id: currentUser?.id || null,
           stage: currentStage || "university",
           input_features: featuresWithUser,
           predicted_score: isNaN(rawScore) ? 85.0 : rawScore,

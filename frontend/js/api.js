@@ -117,6 +117,7 @@ class APIClient {
 
       window.authClient.client.from("prediction_history").insert({
         id: predId,
+        user_id: user?.id || null,
         stage: predictionData.stage || "university",
         input_features: features,
         predicted_score: isNaN(rawScore) ? 85.0 : rawScore,

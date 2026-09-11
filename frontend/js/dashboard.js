@@ -139,6 +139,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadStudentPortalData(stage) {
     const userKey = currentUser?.id ? `edumetrics_prediction_history_v2_${currentUser.id}` : null;
 
+    // Step 0: Gather tombstoned (permanently deleted) IDs
+    let deletedIds = new Set();
+    try {
+      const tombstoneKeys = [
+        currentUser?.id ? `sp_deleted_prediction_ids_${currentUser.id}` : null,
+        "sp_deleted_prediction_ids"
+      ].filter(Boolean);
+      for (const tk of tombstoneKeys) {
+        const raw = localStorage.getItem(tk);
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            arr.forEach((id) => {
+              if (id) deletedIds.add(String(id).trim().toLowerCase());
+            });
+          }
+        }
+      }
+    } catch (e) {}
+
     // 1. Load user-isolated local cache
     if (userKey) {
       const localData = localStorage.getItem(userKey);
@@ -146,7 +166,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
           const parsed = JSON.parse(localData);
           if (Array.isArray(parsed)) {
-            predictionHistory = parsed.filter(item => item && (item.user_id === currentUser.id || (!item.user_id && currentUser.email && item.payload?.user_email === currentUser.email)));
+            predictionHistory = parsed.filter(item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase()) && (item.user_id === currentUser.id || (!item.user_id && currentUser.email && item.payload?.user_email === currentUser.email)));
           }
         } catch (e) {}
       }
@@ -163,7 +183,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (!error && Array.isArray(data)) {
           const userRows = data.filter((item) => {
+            if (!item) return false;
+            const itemId = String(item.id || "").trim().toLowerCase();
+            if (itemId && deletedIds.has(itemId)) return false;
             const p = item.input_features || item.payload || {};
+            const pId = String(p.id || "").trim().toLowerCase();
+            if (pId && deletedIds.has(pId)) return false;
             const rowUserId = item.user_id || p.user_id;
             const rowEmail = item.user_email || p.user_email || item.email;
             return (rowUserId && rowUserId === currentUser.id) || (currentUser.email && rowEmail && rowEmail.toLowerCase() === currentUser.email.toLowerCase());
@@ -180,7 +205,8 @@ document.addEventListener("DOMContentLoaded", async () => {
               timestamp: item.created_at,
               payload: item.input_features || item.payload || {}
             };
-          });
+          }).filter(item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase()));
+
           if (userKey) {
             localStorage.setItem(userKey, JSON.stringify(predictionHistory));
           }
