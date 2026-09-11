@@ -115,7 +115,7 @@ class APIClient {
       };
       const predId = predictionData.id || `pred-${Date.now().toString().slice(-6)}`;
 
-      window.authClient.client.from("prediction_history").insert({
+      const record = {
         id: predId,
         user_id: user?.id || null,
         stage: predictionData.stage || "university",
@@ -124,8 +124,17 @@ class APIClient {
         predicted_grade: predictionData.predicted_grade || predictionData.grade || "Grade A",
         status_badge: predictionData.status_badge || "On Track",
         created_at: localTime
-      }).then(() => {
-        console.log("[Supabase] Prediction saved to prediction_history successfully.");
+      };
+
+      window.authClient.client.from("prediction_history").insert(record).then(({ error }) => {
+        if (error) {
+          console.warn("[Supabase] api.js primary insert notice:", error.message);
+          const fallback = { ...record };
+          delete fallback.user_id;
+          return window.authClient.client.from("prediction_history").insert(fallback);
+        } else {
+          console.log("[Supabase] Prediction saved to prediction_history successfully.");
+        }
       }).catch(e => console.warn("[Supabase] Cloud savePrediction note:", e.message));
     }
 

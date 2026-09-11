@@ -4339,11 +4339,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (window.authClient && window.authClient.client) {
         const rawScore = typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0);
         const localNow = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
+        const userMeta = currentUser?.user_metadata || {};
         const featuresWithUser = {
           ...(payload || {}),
           user_id: currentUser?.id,
           user_email: currentUser?.email,
-          student_id_code: userMeta.student_id || userMeta.id_code
+          student_id_code: userMeta.student_id || userMeta.id_code || currentUser?.id || "STU-01"
         };
 
         const cloudRecord = {
@@ -4357,8 +4358,22 @@ document.addEventListener("DOMContentLoaded", () => {
           created_at: localNow
         };
 
-        window.authClient.client.from("prediction_history").insert(cloudRecord).then(() => {
-          console.log("[Supabase] Latest prediction successfully persisted to database.");
+        window.authClient.client.from("prediction_history").insert(cloudRecord).then(({ error }) => {
+          if (error) {
+            console.warn("[Supabase] Primary prediction insert notice:", error.message);
+            // If user_id column doesn't exist yet on prediction_history table, retry without top-level user_id
+            const fallbackRecord = { ...cloudRecord };
+            delete fallbackRecord.user_id;
+            return window.authClient.client.from("prediction_history").insert(fallbackRecord);
+          } else {
+            console.log("[Supabase] Latest prediction successfully persisted to database.");
+          }
+        }).then((retryRes) => {
+          if (retryRes && retryRes.error) {
+            console.warn("[Supabase] Prediction fallback insert error:", retryRes.error.message);
+          } else if (retryRes) {
+            console.log("[Supabase] Latest prediction persisted via adaptive schema fallback.");
+          }
         }).catch((cloudErr) => {
           console.warn("[Supabase] Cloud history insert note:", cloudErr.message);
         });

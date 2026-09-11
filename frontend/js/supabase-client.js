@@ -861,7 +861,10 @@ class SupabaseAuthClient {
 
       // 2. Sync real predictions entered by the user
       const predKeys = [
+        `edumetrics_prediction_history_v2_${userId}`,
+        `edumetrics_prediction_history_${userId}`,
         `sp_prediction_history_${userId}`,
+        "edumetrics_prediction_history_v2",
         "edumetrics_prediction_history",
         "sp_prediction_history"
       ];
@@ -872,18 +875,29 @@ class SupabaseAuthClient {
             const preds = JSON.parse(rawPreds);
             if (Array.isArray(preds) && preds.length > 0) {
               for (const p of preds) {
-                const rawScore = typeof p.score === "number" ? p.score : parseFloat(p.predicted_score || 85.0);
+                const rawScore = typeof p.score === "number" ? p.score : parseFloat(p.predicted_score || p.score || 85.0);
+                const features = {
+                  ...(p.input_features || p.payload || {}),
+                  user_id: userId,
+                  user_email: cleanEmail
+                };
                 const predRow = {
                   id: p.id || `pred-${Date.now().toString().slice(-6)}`,
                   user_id: userId,
                   stage: p.stage || "university",
-                  input_features: p.input_features || p.payload || {},
+                  input_features: features,
                   predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
                   predicted_grade: p.predicted_grade || p.grade || "Grade A",
                   status_badge: p.status_badge || "On Track",
-                  created_at: p.created_at || new Date().toISOString()
+                  created_at: p.created_at || p.timestamp || new Date().toISOString()
                 };
-                await this.client.from("prediction_history").upsert(predRow, { onConflict: "id" });
+                const { error } = await this.client.from("prediction_history").upsert(predRow, { onConflict: "id" });
+                if (error) {
+                  // Adaptive fallback if user_id column is not in prediction_history table
+                  const fallback = { ...predRow };
+                  delete fallback.user_id;
+                  await this.client.from("prediction_history").upsert(fallback, { onConflict: "id" });
+                }
               }
             }
           } catch (pErr) {
