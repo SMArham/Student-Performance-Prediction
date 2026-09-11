@@ -159,7 +159,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const localData = localStorage.getItem(userKey);
       if (localData) {
         try {
-          predictionHistory = JSON.parse(localData);
+          const parsed = JSON.parse(localData);
+          if (Array.isArray(parsed)) {
+            predictionHistory = parsed.filter(item => item && (item.user_id === currentUser.id || (!item.user_id && currentUser.email && item.payload?.user_email === currentUser.email)));
+          }
         } catch (e) {}
       }
     }
@@ -176,7 +179,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!error && Array.isArray(data)) {
           const userRows = data.filter((item) => {
             const p = item.input_features || item.payload || {};
-            return !p.user_id || p.user_id === currentUser.id || (currentUser.email && p.user_email === currentUser.email);
+            const rowUserId = item.user_id || p.user_id;
+            const rowEmail = item.user_email || p.user_email || item.email;
+            return (rowUserId && rowUserId === currentUser.id) || (currentUser.email && rowEmail && rowEmail.toLowerCase() === currentUser.email.toLowerCase());
           });
           predictionHistory = userRows.map((item) => {
             const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);

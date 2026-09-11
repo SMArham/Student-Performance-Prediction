@@ -155,15 +155,15 @@ class APIClient {
   // Academic Terms & Historical Semesters CRUD (Offline-First Resilient)
   // --------------------------------------------------------------------------
   getLocalAcademicKey(stage) {
-    const session = window.authClient ? window.authClient.getSession() : null;
-    const userId = session?.user?.id || "default_user";
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const userId = user?.id || (user?.email ? user.email.replace(/[^a-zA-Z0-9]/g, "_") : "guest_user");
     return `sp_academic_records_${userId}_${stage}`;
   }
 
   getLocalAcademicRecords(stage = "university") {
     try {
       const key = this.getLocalAcademicKey(stage);
-      const raw = localStorage.getItem(key) || localStorage.getItem(`sp_academic_records_${stage}`);
+      const raw = localStorage.getItem(key);
       const terms = raw ? JSON.parse(raw) : [];
       let totalGpa = 0;
       let count = terms.length;
@@ -186,7 +186,7 @@ class APIClient {
     const stage = termPayload.stage || "university";
     const key = this.getLocalAcademicKey(stage);
     try {
-      const raw = localStorage.getItem(key) || localStorage.getItem(`sp_academic_records_${stage}`);
+      const raw = localStorage.getItem(key);
       let terms = raw ? JSON.parse(raw) : [];
       const origName = termPayload.original_term_name;
       const idx = terms.findIndex(t => 
@@ -276,7 +276,7 @@ class APIClient {
   deleteLocalAcademicRecord(termName, stage = "university") {
     const key = this.getLocalAcademicKey(stage);
     try {
-      const raw = localStorage.getItem(key) || localStorage.getItem(`sp_academic_records_${stage}`);
+      const raw = localStorage.getItem(key);
       let terms = raw ? JSON.parse(raw) : [];
       terms = terms.filter(t => (t.term_name || "").toLowerCase() !== (termName || "").toLowerCase() && (t.id || "") !== termName);
       localStorage.setItem(key, JSON.stringify(terms));

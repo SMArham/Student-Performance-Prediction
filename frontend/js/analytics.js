@@ -1,9 +1,7 @@
 /**
  * ============================================================================
  * EDUMETRICS AI — DEDICATED ANALYTICS & LONGITUDINAL INTELLIGENCE (analytics.js)
- * Dual Chart Engine: 
- *  1. Live AI Performance Trajectory & Learning Analytics (Unlocked)
- *  2. Longitudinal Cognitive Diagnostic & Risk Matrix (PRO Locked & Blurred)
+ * Dual Chart Engine with Strict User-Isolation & Zero-State Initial Experience
  * ============================================================================
  */
 
@@ -42,7 +40,7 @@ window.closeAllAnalyticsModals = function() {
   document.querySelectorAll(".modal-backdrop").forEach(m => window.hideAnalyticsModal(m));
 };
 
-// Universal helper to find a history record by ID across memory & localStorage
+// Universal helper to find a history record by ID strictly for current user
 window.findAnalyticsHistoryItem = function(id) {
   if (!id) return null;
   const targetId = String(id).trim().toLowerCase();
@@ -53,20 +51,11 @@ window.findAnalyticsHistoryItem = function(id) {
   );
   if (inMemory) return inMemory;
 
-  // 2. Check all known localStorage candidate keys
+  // 2. Check user-isolated localStorage
   const user = window.authClient ? window.authClient.getUser() : null;
-  const candidateKeys = [];
   if (user?.id) {
-    candidateKeys.push(`edumetrics_prediction_history_v2_${user.id}`);
-    candidateKeys.push(`edumetrics_prediction_history_${user.id}`);
-    candidateKeys.push(`sp_prediction_history_${user.id}`);
-  }
-  candidateKeys.push("edumetrics_prediction_history_v2");
-  candidateKeys.push("edumetrics_prediction_history");
-
-  for (const k of candidateKeys) {
     try {
-      const raw = localStorage.getItem(k);
+      const raw = localStorage.getItem(`edumetrics_prediction_history_v2_${user.id}`) || localStorage.getItem(`edumetrics_prediction_history_${user.id}`);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
@@ -125,7 +114,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // Set Chart.js universal font to Inter for unified design system consistency
+  // Set Chart.js universal font to Inter
   if (window.Chart) {
     Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
   }
@@ -234,7 +223,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 5. PERSISTENCE & HISTORY STORAGE HELPER
+  // 5. PERSISTENCE & HISTORY STORAGE HELPER (STRICTLY USER ISOLATED)
   // --------------------------------------------------------------------------
   function persistHistory(historyList) {
     predictionHistory = historyList;
@@ -244,60 +233,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem(`edumetrics_prediction_history_v2_${user.id}`, JSON.stringify(historyList));
       localStorage.setItem(`edumetrics_prediction_history_${user.id}`, JSON.stringify(historyList));
     }
-    localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(historyList));
-    localStorage.setItem("edumetrics_prediction_history", JSON.stringify(historyList));
   }
   window.persistHistory = persistHistory;
 
   // --------------------------------------------------------------------------
-  // 6. LOAD PREDICTION HISTORY (AGGREGATE OFFLINE-FIRST + SUPABASE CLOUD SYNC)
+  // 6. LOAD PREDICTION HISTORY (STRICTLY USER ISOLATED)
   // --------------------------------------------------------------------------
   async function loadHistory() {
     try {
       const user = window.authClient ? window.authClient.getUser() : null;
       let localList = [];
 
-      // Step 1: Aggregate and deduplicate across all known candidate keys
-      const candidateKeys = [];
+      // Step 1: User-isolated local storage lookup
       if (user?.id) {
-        candidateKeys.push(`edumetrics_prediction_history_v2_${user.id}`);
-        candidateKeys.push(`edumetrics_prediction_history_${user.id}`);
-        candidateKeys.push(`sp_prediction_history_${user.id}`);
-      }
-      candidateKeys.push("edumetrics_prediction_history_v2");
-      candidateKeys.push("edumetrics_prediction_history");
-
-      const localMap = new Map();
-      for (const k of candidateKeys) {
-        try {
-          const raw = localStorage.getItem(k);
-          if (raw) {
+        const userKey = `edumetrics_prediction_history_v2_${user.id}`;
+        const altUserKey = `edumetrics_prediction_history_${user.id}`;
+        const raw = localStorage.getItem(userKey) || localStorage.getItem(altUserKey);
+        if (raw) {
+          try {
             const parsed = JSON.parse(raw);
             if (Array.isArray(parsed)) {
-              parsed.forEach((item) => {
-                if (item && item.id) {
-                  if (!item.user_id || !user?.id || item.user_id === user.id) {
-                    if (!localMap.has(String(item.id))) {
-                      localMap.set(String(item.id), item);
-                    }
-                  }
-                }
-              });
+              localList = parsed.filter(item => item && (item.user_id === user.id || (!item.user_id && user.email && item.payload?.user_email === user.email)));
             }
-          }
-        } catch (e) {}
-      }
-      localList = Array.from(localMap.values());
-
-      // If local list found, render immediately
-      if (localList.length > 0) {
-        predictionHistory = localList;
-        refreshAllViews();
+          } catch(e) {}
+        }
       }
 
-      // Step 2: Live Supabase Cloud Database Table Query
+      // Step 2: Live Supabase Cloud Database Query strictly for current user
       let cloudList = [];
-      if (window.authClient && window.authClient.client) {
+      if (window.authClient && window.authClient.client && user?.id) {
         try {
           const { data, error } = await window.authClient.client
             .from("prediction_history")
@@ -306,11 +270,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             .limit(50);
 
           if (!error && Array.isArray(data) && data.length > 0) {
+            // STRICT USER ISOLATION: Must match current user ID or current user email
             const userRows = data.filter((item) => {
               const p = item.input_features || item.payload || {};
-              if (!user?.id) return true;
-              return !p.user_id || p.user_id === user.id || (user.email && p.user_email === user.email);
+              const rowUserId = item.user_id || p.user_id;
+              const rowEmail = item.user_email || p.user_email || item.email;
+              return (rowUserId && rowUserId === user.id) || (user.email && rowEmail && rowEmail.toLowerCase() === user.email.toLowerCase());
             });
+
             cloudList = userRows.map((item) => {
               const stage = item.stage || "university";
               const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
@@ -326,7 +293,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 status_badge: item.status_badge || (isLowRisk ? "Exemplary" : "Proficient"),
                 status_color: item.status_color || (isLowRisk ? "badge-success" : "badge-info"),
                 payload: item.input_features || item.payload || {},
-                recommendations: item.recommendations || "Maintain steady academic momentum."
+                recommendations: item.recommendations || "Maintain steady academic momentum.",
+                user_id: user.id
               };
             });
           }
@@ -335,17 +303,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      // Step 3: Backend API fallback if both yielded no records
-      if (localList.length === 0 && cloudList.length === 0 && window.apiClient) {
-        try {
-          const apiRecords = await window.apiClient.getHistory(50);
-          if (Array.isArray(apiRecords) && apiRecords.length > 0) {
-            cloudList = apiRecords;
-          }
-        } catch (e) {}
-      }
-
-      // Step 4: Merge & Deduplicate by record ID
+      // Step 3: Merge & Deduplicate strictly for current user
       const mergedMap = new Map();
       localList.forEach(item => { if (item && item.id) mergedMap.set(String(item.id), item); });
       cloudList.forEach(item => { if (item && item.id) mergedMap.set(String(item.id), item); });
@@ -357,11 +315,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         return tB - tA;
       });
 
-      if (finalList.length > 0) {
-        predictionHistory = finalList;
+      predictionHistory = finalList;
+      if (user?.id && finalList.length > 0) {
         persistHistory(finalList);
-      } else if (localList.length > 0) {
-        predictionHistory = localList;
       }
 
       refreshAllViews();
@@ -475,6 +431,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
+  // Helper to display clean zero-state placeholders for brand new accounts
+  // --------------------------------------------------------------------------
+  function updateChartEmptyState(canvasId, isEmpty, emptyConfig = {}) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    let emptyEl = parent.querySelector(".chart-empty-state-overlay");
+    if (isEmpty) {
+      canvas.style.display = "none";
+      if (!emptyEl) {
+        emptyEl = document.createElement("div");
+        emptyEl.className = "chart-empty-state-overlay";
+        emptyEl.style.cssText = "display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:280px; height:100%; text-align:center; padding:2rem; background:rgba(0,0,0,0.25); border-radius:8px; border:1px dashed rgba(255,255,255,0.15);";
+        parent.appendChild(emptyEl);
+      }
+      emptyEl.innerHTML = `
+        <div style="font-size:2.5rem; margin-bottom:0.75rem; opacity:0.85;">${emptyConfig.icon || "📊"}</div>
+        <div style="font-weight:800; color:var(--text-primary); font-size:1.05rem; margin-bottom:0.35rem;">${emptyConfig.title || "No Academic Evaluations Logged Yet"}</div>
+        <div style="font-size:0.85rem; color:var(--text-secondary); max-width:380px; line-height:1.5; margin-bottom:1.25rem;">${emptyConfig.description || "Run your first AI prediction to generate live trajectory curves and growth analytics."}</div>
+        ${emptyConfig.buttonText ? `<a href="${emptyConfig.buttonHref || 'prediction.html'}" class="btn btn-primary btn-sm" style="font-size:0.85rem; text-decoration:none; padding:8px 18px; font-weight:700;">${emptyConfig.buttonText}</a>` : ''}
+      `;
+    } else {
+      canvas.style.display = "block";
+      if (emptyEl) emptyEl.remove();
+    }
+  }
+
+  // --------------------------------------------------------------------------
   // 10. CHART 1: PERFORMANCE TRAJECTORY (UNLOCKED & LIVE EVALUATION DATA)
   // --------------------------------------------------------------------------
   function renderProgressionChart() {
@@ -501,6 +487,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     const trajBadgeEl = document.getElementById("trajectory-status-badge");
     const insightEl = document.getElementById("score-insight-text");
 
+    if (!stageRecords || stageRecords.length === 0) {
+      // Clean Zero-State for Brand New Account
+      updateChartEmptyState("analyticsProgressionChart", true, {
+        icon: "📈",
+        title: "No Academic Evaluations Logged Yet",
+        description: "Complete your first AI forecast on the Forecast page to log your verified scores and generate your live performance trajectory.",
+        buttonText: "⚡ Run AI Forecast",
+        buttonHref: "prediction.html"
+      });
+
+      if (trajActualEl) trajActualEl.innerText = "--";
+      if (trajAiLiftEl) trajAiLiftEl.innerText = "--";
+      if (trajProjEl) trajProjEl.innerText = "--";
+      if (trajBadgeEl) {
+        trajBadgeEl.innerText = "Awaiting Evaluation";
+        trajBadgeEl.className = "badge badge-neutral";
+      }
+      if (insightEl) {
+        insightEl.innerHTML = `💡 <strong>No academic evaluations logged yet.</strong> Go to the <a href="prediction.html" style="color:var(--color-lime);text-decoration:underline;">Forecast page</a> and click <strong>⚡ Run AI</strong> to log your verified marks and generate your personalized live growth curve!`;
+      }
+      return;
+    }
+
+    // Records Exist: Render Real User Trajectory
+    updateChartEmptyState("analyticsProgressionChart", false);
+
     const parseVal = (r) => {
       const parsed = parseNormalizedScore(r);
       if (isUni) {
@@ -512,105 +524,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     let labels = [];
     let pastScores = [];
     let predScores = [];
-    let currentStandingVal = 0;
-    let aiForecastVal = 0;
-    let targetGoalVal = 0;
-    let liftDelta = "";
-    let totalGoalDelta = "";
 
-    if (!stageRecords || stageRecords.length === 0) {
-      // Clean baseline guidance for a brand new account
-      if (isUni) {
-        pastScores = [2.65, 2.95, 3.25, null, null];
-        currentStandingVal = 3.25;
-        aiForecastVal = 3.60;
-        targetGoalVal = 3.85;
-        liftDelta = "+0.35";
-        totalGoalDelta = "+0.60";
-        predScores = [null, null, 3.25, 3.60, 3.85];
-      } else {
-        pastScores = [65, 74, 82, null, null];
-        currentStandingVal = 82;
-        aiForecastVal = 89;
-        targetGoalVal = 95;
-        liftDelta = "+7%";
-        totalGoalDelta = "+13%";
-        predScores = [null, null, 82, 89, 95];
-      }
+    const activeList = stageRecords.slice().reverse();
+    const latestRun = stageRecords[0];
+    const latestVal = parseVal(latestRun);
+    const currentStandingVal = latestVal;
+
+    let aiForecastVal = isUni ? Math.min(4.0, +(latestVal + 0.35).toFixed(2)) : Math.min(100, Math.round(latestVal + 7));
+    let targetGoalVal = isUni ? Math.min(4.0, +(latestVal + 0.60).toFixed(2)) : Math.min(100, Math.round(latestVal + 13));
+    let liftDelta = isUni ? `+${(aiForecastVal - latestVal).toFixed(2)}` : `+${aiForecastVal - latestVal}%`;
+    let totalGoalDelta = isUni ? `+${(targetGoalVal - latestVal).toFixed(2)}` : `+${targetGoalVal - latestVal}%`;
+
+    if (activeList.length === 1) {
+      const baseline = isUni ? Math.max(1.5, +(latestVal - 0.50).toFixed(2)) : Math.max(40, Math.round(latestVal - 14));
+      const midExam = isUni ? Math.max(1.5, +(latestVal - 0.25).toFixed(2)) : Math.max(40, Math.round(latestVal - 7));
 
       labels = [
         "1. Baseline Diagnostic",
         "2. Term Examination",
-        "3. Current Standing",
+        `3. Current Standing (${latestVal}${unitLabel})`,
         `4. ⚡ AI Prediction (${liftDelta} Lift 🚀)`,
         `5. 🎯 Target Milestone (${totalGoalDelta} Goal ⭐)`
       ];
-
-      if (trajActualEl) trajActualEl.innerText = `${currentStandingVal}${unitLabel}`;
-      if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
-      if (trajProjEl) trajProjEl.innerText = `${targetGoalVal}${unitLabel} (${totalGoalDelta} ⭐)`;
-      if (trajBadgeEl) {
-        trajBadgeEl.innerText = "Initial Baseline 🚀";
-        trajBadgeEl.className = "badge badge-info";
-      }
-
-      if (insightEl) {
-        insightEl.innerHTML = `💡 <strong>Initial AI Projection:</strong> Run an evaluation on the <a href="prediction.html" style="color:var(--color-lime);text-decoration:underline;">Forecast page</a> to log your verified marks and generate your personalized live growth curve!`;
-      }
+      pastScores = [baseline, midExam, latestVal, null, null];
+      predScores = [null, null, latestVal, aiForecastVal, targetGoalVal];
     } else {
-      // User has logged prediction attempts from prediction.html!
-      const activeList = stageRecords.slice().reverse();
-      const latestRun = stageRecords[0];
-      const latestVal = parseVal(latestRun);
-      currentStandingVal = latestVal;
+      const rawPast = activeList.map((r) => parseVal(r));
+      labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${rawPast[i]}${unitLabel})` : `Test #${i + 1}`));
+      labels.push(`⚡ AI Prediction (${liftDelta} 🚀)`);
+      labels.push(`🎯 Target Milestone (${totalGoalDelta} ⭐)`);
 
-      if (isUni) {
-        aiForecastVal = Math.min(4.0, +(latestVal + 0.35).toFixed(2));
-        targetGoalVal = Math.min(4.0, +(latestVal + 0.60).toFixed(2));
-        liftDelta = `+${(aiForecastVal - latestVal).toFixed(2)}`;
-        totalGoalDelta = `+${(targetGoalVal - latestVal).toFixed(2)}`;
-      } else {
-        aiForecastVal = Math.min(100, Math.round(latestVal + 7));
-        targetGoalVal = Math.min(100, Math.round(latestVal + 13));
-        liftDelta = `+${aiForecastVal - latestVal}%`;
-        totalGoalDelta = `+${targetGoalVal - latestVal}%`;
-      }
+      pastScores = [...rawPast, null, null];
+      predScores = rawPast.map((v, idx) => (idx === rawPast.length - 1 ? v : null));
+      predScores.push(aiForecastVal, targetGoalVal);
+    }
 
-      if (activeList.length === 1) {
-        const baseline = isUni ? Math.max(1.5, +(latestVal - 0.50).toFixed(2)) : Math.max(40, Math.round(latestVal - 14));
-        const midExam = isUni ? Math.max(1.5, +(latestVal - 0.25).toFixed(2)) : Math.max(40, Math.round(latestVal - 7));
+    if (trajActualEl) trajActualEl.innerText = latestRun.score || `${currentStandingVal}${unitLabel}`;
+    if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
+    if (trajProjEl) trajProjEl.innerText = `${targetGoalVal}${unitLabel} (${totalGoalDelta} ⭐)`;
+    if (trajBadgeEl) {
+      trajBadgeEl.innerText = "Ascending Growth 🚀";
+      trajBadgeEl.className = `badge ${latestRun.status_color || "badge-success"}`;
+    }
 
-        labels = [
-          "1. Baseline Diagnostic",
-          "2. Term Examination",
-          `3. Current Standing (${latestVal}${unitLabel})`,
-          `4. ⚡ AI Prediction (${liftDelta} Lift 🚀)`,
-          `5. 🎯 Target Milestone (${totalGoalDelta} Goal ⭐)`
-        ];
-        pastScores = [baseline, midExam, latestVal, null, null];
-        predScores = [null, null, latestVal, aiForecastVal, targetGoalVal];
-      } else {
-        const rawPast = activeList.map((r) => parseVal(r));
-        labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${rawPast[i]}${unitLabel})` : `Test #${i + 1}`));
-        labels.push(`⚡ AI Prediction (${liftDelta} 🚀)`);
-        labels.push(`🎯 Target Milestone (${totalGoalDelta} ⭐)`);
-
-        pastScores = [...rawPast, null, null];
-        predScores = rawPast.map((v, idx) => (idx === rawPast.length - 1 ? v : null));
-        predScores.push(aiForecastVal, targetGoalVal);
-      }
-
-      if (trajActualEl) trajActualEl.innerText = latestRun.score || `${currentStandingVal}${unitLabel}`;
-      if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
-      if (trajProjEl) trajProjEl.innerText = `${targetGoalVal}${unitLabel} (${totalGoalDelta} ⭐)`;
-      if (trajBadgeEl) {
-        trajBadgeEl.innerText = "Ascending Growth 🚀";
-        trajBadgeEl.className = `badge ${latestRun.status_color || "badge-success"}`;
-      }
-
-      if (insightEl) {
-        insightEl.innerHTML = `🚀 <strong>Verified Evaluation Trajectory:</strong> Based on your logged attempt of <strong>${currentStandingVal}${unitLabel}</strong>, the AI models an expected upward surge of <strong>${liftDelta}</strong> to <strong>${aiForecastVal}${unitLabel}</strong>, putting you firmly on track for <strong>${targetGoalVal}${unitLabel}</strong>!`;
-      }
+    if (insightEl) {
+      insightEl.innerHTML = `🚀 <strong>Verified Evaluation Trajectory:</strong> Based on your logged attempt of <strong>${currentStandingVal}${unitLabel}</strong>, the AI models an expected upward surge of <strong>${liftDelta}</strong> to <strong>${aiForecastVal}${unitLabel}</strong>, putting you firmly on track for <strong>${targetGoalVal}${unitLabel}</strong>!`;
     }
 
     // Dynamic clean Y-Axis bounds
@@ -739,97 +697,76 @@ document.addEventListener("DOMContentLoaded", async () => {
       return Math.round(parsed.pct);
     };
 
+    const stageRecords = isAll
+      ? predictionHistory
+      : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
+
+    if (!stageRecords || stageRecords.length === 0) {
+      updateChartEmptyState("analyticsProgressionChart", true, {
+        icon: "📊",
+        title: "No Academic Evaluations Logged Yet",
+        description: "Complete your first AI forecast on the Forecast page to generate comparative milestone bar charts.",
+        buttonText: "⚡ Run AI Forecast",
+        buttonHref: "prediction.html"
+      });
+      return;
+    }
+
+    updateChartEmptyState("analyticsProgressionChart", false);
+
     let labels = [];
     let barValues = [];
     let bgColors = [];
     let borderColors = [];
 
     const insightEl = document.getElementById("score-insight-text");
+    const activeList = stageRecords.slice().reverse();
+    const latestRun = stageRecords[0];
+    const latestVal = parseVal(latestRun);
 
-    const stageRecords = isAll
-      ? predictionHistory
-      : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
+    let aiForecastVal = isUni ? Math.min(4.0, +(latestVal + 0.35).toFixed(2)) : Math.min(100, Math.round(latestVal + 7));
+    let targetGoalVal = isUni ? Math.min(4.0, +(latestVal + 0.60).toFixed(2)) : Math.min(100, Math.round(latestVal + 13));
+    let liftDelta = isUni ? `+${(aiForecastVal - latestVal).toFixed(2)}` : `+${aiForecastVal - latestVal}%`;
+    let totalGoalDelta = isUni ? `+${(targetGoalVal - latestVal).toFixed(2)}` : `+${targetGoalVal - latestVal}%`;
 
-    if (!stageRecords || stageRecords.length === 0) {
-      if (isUni) {
-        barValues = [2.65, 2.95, 3.25, 3.60, 3.85];
-        labels = [
-          "1. Baseline (2.65)",
-          "2. Term Exam (2.95)",
-          "3. Current (3.25)",
-          "4. ⚡ AI Prediction (+0.35 🚀)",
-          "5. 🎯 Target Goal (+0.60 ⭐)"
-        ];
-      } else {
-        barValues = [65, 74, 82, 89, 95];
-        labels = [
-          "1. Baseline (65%)",
-          "2. Term Exam (74%)",
-          "3. Current (82%)",
-          "4. ⚡ AI Prediction (+7% 🚀)",
-          "5. 🎯 Target Goal (+13% ⭐)"
-        ];
-      }
+    if (activeList.length === 1) {
+      const baseline = isUni ? Math.max(1.5, +(latestVal - 0.50).toFixed(2)) : Math.max(40, Math.round(latestVal - 14));
+      const midExam = isUni ? Math.max(1.5, +(latestVal - 0.25).toFixed(2)) : Math.max(40, Math.round(latestVal - 7));
+
+      labels = [
+        `1. Baseline (${baseline}${unitLabel})`,
+        `2. Term Exam (${midExam}${unitLabel})`,
+        `3. Current (${latestVal}${unitLabel})`,
+        `4. ⚡ AI Prediction (${liftDelta} 🚀)`,
+        `5. 🎯 Target (${totalGoalDelta} ⭐)`
+      ];
+      barValues = [baseline, midExam, latestVal, aiForecastVal, targetGoalVal];
       bgColors = [
-        "rgba(163, 230, 53, 0.70)",
+        "rgba(163, 230, 53, 0.65)",
         "rgba(163, 230, 53, 0.80)",
         "rgba(163, 230, 53, 0.95)",
         "rgba(56, 189, 248, 0.90)",
         "rgba(245, 158, 11, 0.90)"
       ];
       borderColors = ["#A3E635", "#A3E635", "#A3E635", "#38BDF8", "#F59E0B"];
-      if (insightEl) {
-        insightEl.innerHTML = `📊 <strong>Bar Chart Mode:</strong> Ascending milestone bars showing past tests on the left and projected <strong>+${isUni ? '0.35 CGPA' : '7%'} AI Lift</strong> on the right.`;
-      }
     } else {
-      const activeList = stageRecords.slice().reverse();
-      const latestRun = stageRecords[0];
-      const latestVal = parseVal(latestRun);
+      const values = activeList.map((r) => parseVal(r));
+      labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${values[i]}${unitLabel})` : `Test #${i + 1}`));
+      labels.push(`⚡ AI Prediction (${liftDelta} 🚀)`);
+      labels.push(`🎯 Target Goal (${totalGoalDelta} ⭐)`);
 
-      let aiForecastVal = isUni ? Math.min(4.0, +(latestVal + 0.35).toFixed(2)) : Math.min(100, Math.round(latestVal + 7));
-      let targetGoalVal = isUni ? Math.min(4.0, +(latestVal + 0.60).toFixed(2)) : Math.min(100, Math.round(latestVal + 13));
-      let liftDelta = isUni ? `+${(aiForecastVal - latestVal).toFixed(2)}` : `+${aiForecastVal - latestVal}%`;
-      let totalGoalDelta = isUni ? `+${(targetGoalVal - latestVal).toFixed(2)}` : `+${targetGoalVal - latestVal}%`;
+      barValues = [...values, aiForecastVal, targetGoalVal];
+      bgColors = values.map(() => "rgba(163, 230, 53, 0.80)");
+      bgColors.push("rgba(56, 189, 248, 0.90)");
+      bgColors.push("rgba(245, 158, 11, 0.90)");
 
-      if (activeList.length === 1) {
-        const baseline = isUni ? Math.max(1.5, +(latestVal - 0.50).toFixed(2)) : Math.max(40, Math.round(latestVal - 14));
-        const midExam = isUni ? Math.max(1.5, +(latestVal - 0.25).toFixed(2)) : Math.max(40, Math.round(latestVal - 7));
+      borderColors = values.map(() => "#A3E635");
+      borderColors.push("#38BDF8");
+      borderColors.push("#F59E0B");
+    }
 
-        labels = [
-          `1. Baseline (${baseline}${unitLabel})`,
-          `2. Term Exam (${midExam}${unitLabel})`,
-          `3. Current (${latestVal}${unitLabel})`,
-          `4. ⚡ AI Prediction (${liftDelta} 🚀)`,
-          `5. 🎯 Target (${totalGoalDelta} ⭐)`
-        ];
-        barValues = [baseline, midExam, latestVal, aiForecastVal, targetGoalVal];
-        bgColors = [
-          "rgba(163, 230, 53, 0.65)",
-          "rgba(163, 230, 53, 0.80)",
-          "rgba(163, 230, 53, 0.95)",
-          "rgba(56, 189, 248, 0.90)",
-          "rgba(245, 158, 11, 0.90)"
-        ];
-        borderColors = ["#A3E635", "#A3E635", "#A3E635", "#38BDF8", "#F59E0B"];
-      } else {
-        const values = activeList.map((r) => parseVal(r));
-        labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${values[i]}${unitLabel})` : `Test #${i + 1}`));
-        labels.push(`⚡ AI Prediction (${liftDelta} 🚀)`);
-        labels.push(`🎯 Target Goal (${totalGoalDelta} ⭐)`);
-
-        barValues = [...values, aiForecastVal, targetGoalVal];
-        bgColors = values.map(() => "rgba(163, 230, 53, 0.80)");
-        bgColors.push("rgba(56, 189, 248, 0.90)");
-        bgColors.push("rgba(245, 158, 11, 0.90)");
-
-        borderColors = values.map(() => "#A3E635");
-        borderColors.push("#38BDF8");
-        borderColors.push("#F59E0B");
-      }
-
-      if (insightEl) {
-        insightEl.innerHTML = `📊 <strong>Bar Chart Overview:</strong> Clear ascending bar comparison demonstrating the projected <strong>${liftDelta} growth lift</strong> over your current standing.`;
-      }
+    if (insightEl) {
+      insightEl.innerHTML = `📊 <strong>Bar Chart Overview:</strong> Clear ascending bar comparison demonstrating the projected <strong>${liftDelta} growth lift</strong> over your current standing.`;
     }
 
     let allNonZero = barValues.filter((v) => typeof v === "number" && !isNaN(v));
@@ -1168,7 +1105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ledgerTableBody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; color: var(--text-muted); padding: var(--space-6);">
-            No prediction records found matching the active filters.
+            No prediction records found for this account. Complete an AI evaluation on the Forecast page to start your historical ledger.
           </td>
         </tr>
       `;
@@ -1261,28 +1198,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     predictionHistory = predictionHistory.filter((h) => String(h.id || "").trim().toLowerCase() !== targetId);
     persistHistory(predictionHistory);
 
-    // Filter candidate localStorage keys
+    // Filter user-isolated candidate localStorage keys
     const user = window.authClient ? window.authClient.getUser() : null;
-    const candidateKeys = [];
     if (user?.id) {
-      candidateKeys.push(`edumetrics_prediction_history_v2_${user.id}`);
-      candidateKeys.push(`edumetrics_prediction_history_${user.id}`);
-      candidateKeys.push(`sp_prediction_history_${user.id}`);
-    }
-    candidateKeys.push("edumetrics_prediction_history_v2");
-    candidateKeys.push("edumetrics_prediction_history");
-
-    for (const k of candidateKeys) {
-      try {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr)) {
-            const filtered = arr.filter((h) => String(h.id || "").trim().toLowerCase() !== targetId);
-            localStorage.setItem(k, JSON.stringify(filtered));
+      const keys = [`edumetrics_prediction_history_v2_${user.id}`, `edumetrics_prediction_history_${user.id}`];
+      for (const k of keys) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              const filtered = arr.filter((h) => String(h.id || "").trim().toLowerCase() !== targetId);
+              localStorage.setItem(k, JSON.stringify(filtered));
+            }
           }
-        }
-      } catch(e) {}
+        } catch(e) {}
+      }
     }
 
     // Cloud Supabase Sync Deletion
@@ -1311,17 +1242,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!confirm("⚠️ Wipe all historical prediction records? This cannot be undone.")) return;
       predictionHistory = [];
       persistHistory([]);
-      localStorage.setItem("edumetrics_history_explicitly_cleared", "true");
 
       const user = window.authClient ? window.authClient.getUser() : null;
       if (user?.id) {
         localStorage.removeItem(`edumetrics_prediction_history_v2_${user.id}`);
         localStorage.removeItem(`edumetrics_prediction_history_${user.id}`);
       }
-      localStorage.removeItem("edumetrics_prediction_history_v2");
-      localStorage.removeItem("edumetrics_prediction_history");
 
-      // Cloud Supabase Clear
+      // Cloud Supabase Clear strictly for this user
       if (window.authClient && window.authClient.client && user?.id) {
         try {
           await window.authClient.client.from("prediction_history").delete().eq("user_id", user.id);
@@ -1355,7 +1283,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --------------------------------------------------------------------------
   function saveChartAsPng(canvasId, fileNamePrefix) {
     const canvas = document.getElementById(canvasId);
-    if (!canvas) {
+    if (!canvas || canvas.style.display === "none") {
       showToast("No evaluation chart data recorded yet to export.", "info");
       return;
     }
