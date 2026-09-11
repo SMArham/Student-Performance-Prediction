@@ -802,6 +802,24 @@ document.addEventListener("DOMContentLoaded", () => {
           timestamp: new Date().toISOString()
         };
 
+        // Clear tombstone for this student if previously deleted
+        try {
+          const teacherCode = userMeta.id_code || userMeta.student_id || "TCH-01";
+          const teacherUniqueId = currentUser?.id || teacherCode;
+          const candidateTombstoneKeys = [
+            `sp_deleted_teacher_student_ids_${teacherUniqueId}`,
+            `sp_deleted_teacher_student_ids_${teacherCode}`,
+            `sp_deleted_teacher_student_ids_default`
+          ];
+          Array.from(new Set(candidateTombstoneKeys)).forEach((tk) => {
+            let tList = JSON.parse(localStorage.getItem(tk) || "[]");
+            if (Array.isArray(tList) && tList.length > 0) {
+              tList = tList.filter((x) => x !== "*" && x !== String(studentId) && x !== `STU-${studentId}`);
+              localStorage.setItem(tk, JSON.stringify(tList));
+            }
+          });
+        } catch (tErr) {}
+
         // 1. LocalStorage De-duplicated Upsert by student_id across candidate teacher keys
         try {
           const teacherCode = userMeta.id_code || userMeta.student_id || "TCH-01";

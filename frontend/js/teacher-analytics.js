@@ -148,6 +148,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 3. Load All Cohort Evaluations for Logged-In Instructor
   async function loadCohortData() {
     const teacher = getTeacherIdentity();
+
+    // Check tombstones for this teacher
+    const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id || teacher.code || "default"}`;
+    let tombstones = [];
+    try {
+      tombstones = JSON.parse(localStorage.getItem(tombstoneKey) || "[]");
+      if (!Array.isArray(tombstones)) tombstones = [];
+    } catch (e) {
+      tombstones = [];
+    }
+
+    if (tombstones.includes("*")) {
+      cohortStudents = [];
+      updateAnalyticsView();
+      return;
+    }
+
     let localEvals = [];
 
     // Read from candidate teacher keys
@@ -258,6 +275,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     [...remoteEvals, ...localEvals].forEach((s) => {
       if (s && s.student_id) {
         const sId = String(s.student_id);
+        if (tombstones.includes(sId) || tombstones.includes(`STU-${sId}`)) {
+          return; // Exclude deleted student
+        }
         const sTime = s.timestamp || s.created_at || new Date().toISOString();
         if (!combinedMap.has(sId) || new Date(sTime) > new Date(combinedMap.get(sId).timestamp)) {
           combinedMap.set(sId, { ...s, timestamp: sTime });
@@ -775,9 +795,171 @@ document.addEventListener("DOMContentLoaded", async () => {
     attachLedgerDeleteListeners();
   }
 
+  // ==========================================================================
+  // DELETE & PURGE HELPERS (SUPABASE + LOCAL STORAGE + TOMBSTONES)
+  // ==========================================================================
+  async function deleteTeacherStudent(studentId, studentName) {
+    if (!studentId) return;
+    const teacher = getTeacherIdentity();
+    const targetIdStr = String(studentId).trim();
+
+    // 1. Tombstone in localStorage
+    const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id || teacher.code || "default"}`;
+    try {
+      let tombstones = JSON.parse(localStorage.getItem(tombstoneKey) || "[]");
+      if (!Array.isArray(tombstones)) tombstones = [];
+      if (!tombstones.includes(targetIdStr)) tombstones.push(targetIdStr);
+      if (!tombstones.includes(`STU-${targetIdStr}`)) tombstones.push(`STU-${targetIdStr}`);
+      localStorage.setItem(tombstoneKey, JSON.stringify(tombstones));
+    } catch (e) {}
+
+    // 2. Remove from candidate localStorage keys
+    const candidateKeys = [
+      teacher.storageKey,
+      `edumetrics_teacher_${teacher.code}`,
+      `edumetrics_teacher_${teacher.id}`,
+      "edumetrics_teacher_default"
+    ];
+    Array.from(new Set(candidateKeys)).forEach((k) => {
+      try {
+        const stored = localStorage.getItem(k);
+        if (stored) {
+          let list = JSON.parse(stored) || [];
+          if (Array.isArray(list)) {
+            list = list.filter((s) => {
+              const sid = String(s.student_id || s.id || "");
+              return sid !== targetIdStr && sid !== `STU-${targetIdStr}` && (!studentName || s.student_name !== studentName);
+            });
+            localStorage.setItem(k, JSON.stringify(list));
+          }
+        }
+      } catch (e) {}
+    });
+
+    // 3. Delete from Supabase `teacher_class_roster`
+    if (window.authClient && window.authClient.client) {
+      try {
+        await window.authClient.client
+          .from("teacher_class_roster")
+          .delete()
+          .or(`id.eq.${targetIdStr},id.eq.STU-${targetIdStr},student_id_code.eq.${targetIdStr}`);
+      } catch (err) {
+        console.warn("[Delete] Roster table delete notice:", err);
+      }
+      if (studentName) {
+        try {
+          let q = window.authClient.client.from("teacher_class_roster").delete().eq("student_name", studentName);
+          if (teacher.id) q = q.eq("teacher_id", teacher.id);
+          await q;
+        } catch (err) {}
+      }
+
+      // 4. Delete from Supabase `prediction_history`
+      try {
+        const { data: histData } = await window.authClient.client
+          .from("prediction_history")
+          .select("id, input_features, payload, user_id")
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (Array.isArray(histData)) {
+          const idsToDelete = histData.filter((h) => {
+            const p = h.input_features || h.payload || {};
+            const matchesTeacher = (teacher.id && (h.user_id === teacher.id || p.teacher_id === teacher.id)) ||
+                                   (teacher.code && p.teacher_id === teacher.code) ||
+                                   (p.role === "teacher");
+            if (!matchesTeacher) return false;
+            const pStudentId = String(p.student_id || p.student_id_code || h.id || "");
+            const pStudentName = p.student_name || "";
+            return pStudentId === targetIdStr || pStudentId === `STU-${targetIdStr}` || (studentName && pStudentName === studentName);
+          }).map((h) => h.id);
+
+          if (idsToDelete.length > 0) {
+            await window.authClient.client
+              .from("prediction_history")
+              .delete()
+              .in("id", idsToDelete);
+          }
+        }
+      } catch (err) {
+        console.warn("[Delete] Prediction history delete notice:", err);
+      }
+    }
+  }
+
+  async function wipeAllTeacherEvaluations() {
+    const teacher = getTeacherIdentity();
+
+    // 1. Record wildcard tombstone
+    const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id || teacher.code || "default"}`;
+    localStorage.setItem(tombstoneKey, JSON.stringify(["*"]));
+
+    // 2. Clear all candidate localStorage keys
+    const candidateKeys = [
+      teacher.storageKey,
+      `edumetrics_teacher_${teacher.code}`,
+      `edumetrics_teacher_${teacher.id}`,
+      "edumetrics_teacher_default"
+    ];
+    Array.from(new Set(candidateKeys)).forEach((k) => localStorage.removeItem(k));
+
+    // 3. Delete from Supabase `teacher_class_roster`
+    if (window.authClient && window.authClient.client) {
+      try {
+        if (teacher.id && teacher.code) {
+          await window.authClient.client
+            .from("teacher_class_roster")
+            .delete()
+            .or(`teacher_id.eq.${teacher.id},teacher_id.eq.${teacher.code}`);
+        } else if (teacher.id) {
+          await window.authClient.client
+            .from("teacher_class_roster")
+            .delete()
+            .eq("teacher_id", teacher.id);
+        } else if (teacher.code) {
+          await window.authClient.client
+            .from("teacher_class_roster")
+            .delete()
+            .eq("teacher_id", teacher.code);
+        }
+      } catch (err) {
+        console.warn("[Wipe] Roster table wipe notice:", err);
+      }
+
+      // 4. Delete from Supabase `prediction_history`
+      try {
+        const { data: histData } = await window.authClient.client
+          .from("prediction_history")
+          .select("id, input_features, payload, user_id")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        if (Array.isArray(histData)) {
+          const idsToDelete = histData.filter((h) => {
+            const p = h.input_features || h.payload || {};
+            const matchesTeacher = (teacher.id && (h.user_id === teacher.id || p.teacher_id === teacher.id)) ||
+                                   (teacher.code && p.teacher_id === teacher.code);
+            return matchesTeacher;
+          }).map((h) => h.id);
+
+          if (idsToDelete.length > 0) {
+            await window.authClient.client
+              .from("prediction_history")
+              .delete()
+              .in("id", idsToDelete);
+          }
+        }
+      } catch (err) {
+        console.warn("[Wipe] Prediction history wipe notice:", err);
+      }
+    }
+  }
+
   // --------------------------------------------------------------------------
   // 8. DELETE EVALUATION RECORD HANDLER (STRICT & CLEAN)
   // --------------------------------------------------------------------------
+  let pendingDeleteStudentName = null;
+
   function attachLedgerDeleteListeners() {
     document.querySelectorAll(".btn-delete-cohort").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -790,17 +972,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function openDeleteModal(studentId, studentName) {
     pendingDeleteStudentId = studentId;
+    pendingDeleteStudentName = studentName;
     if (deleteTargetName) deleteTargetName.innerText = studentName || "Student";
     if (deleteTargetId) deleteTargetId.innerText = `ID: ${studentId}`;
     if (modalDeleteCohort) {
-      modalDeleteCohort.style.cssText = "display: flex !important;";
+      modalDeleteCohort.classList.add("active");
     }
   }
 
   function closeDeleteModal() {
     pendingDeleteStudentId = null;
+    pendingDeleteStudentName = null;
     if (modalDeleteCohort) {
-      modalDeleteCohort.style.cssText = "display: none !important;";
+      modalDeleteCohort.classList.remove("active");
     }
   }
 
@@ -811,60 +995,82 @@ document.addEventListener("DOMContentLoaded", async () => {
     btnConfirmDeleteStudent.addEventListener("click", async () => {
       if (!pendingDeleteStudentId) return;
       const targetId = pendingDeleteStudentId;
-      const teacher = getTeacherIdentity();
+      const targetName = pendingDeleteStudentName;
 
-      // 1. Remove from all teacher localStorage keys
-      const candidateKeys = [
-        teacher.storageKey,
-        `edumetrics_teacher_${teacher.code}`,
-        `edumetrics_teacher_${teacher.id}`,
-        "edumetrics_teacher_default"
-      ];
-      Array.from(new Set(candidateKeys)).forEach((k) => {
-        const stored = localStorage.getItem(k);
-        if (stored) {
-          try {
-            let list = JSON.parse(stored) || [];
-            list = list.filter((s) => String(s.student_id) !== String(targetId) && String(s.id) !== String(targetId));
-            localStorage.setItem(k, JSON.stringify(list));
-          } catch (e) {}
-        }
-      });
+      btnConfirmDeleteStudent.disabled = true;
+      btnConfirmDeleteStudent.innerHTML = "<span>⏳ Deleting...</span>";
 
-      // 2. Delete from Supabase Cloud Table teacher_class_roster & prediction_history
-      if (window.authClient && window.authClient.client) {
-        try {
-          await window.authClient.client
-            .from("teacher_class_roster")
-            .delete()
-            .or(`student_id_code.eq.${targetId},id.eq.${targetId},id.eq.STU-${targetId}`);
-        } catch (rErr) {
-          console.warn("[Delete] Supabase roster delete note:", rErr);
-        }
-      }
+      await deleteTeacherStudent(targetId, targetName);
+
+      // Remove from memory
+      cohortStudents = cohortStudents.filter(
+        (s) => String(s.student_id) !== String(targetId) && String(s.id) !== String(targetId)
+      );
 
       closeDeleteModal();
-      showToast(`Evaluation record for student ${targetId} deleted successfully.`, "success");
-      await loadCohortData();
+      updateAnalyticsView();
+
+      btnConfirmDeleteStudent.disabled = false;
+      btnConfirmDeleteStudent.innerHTML = "<span>🗑️ Confirm Delete</span>";
+
+      showToast(`Evaluation record for ${targetName || targetId} deleted successfully.`, "success");
     });
   }
 
   // --------------------------------------------------------------------------
-  // 9. CLEAR LEDGER (LOCAL EVALUATIONS)
+  // 9. CLEAR LEDGER (WIPE ALL COHORT EVALUATIONS VIA "CLEAR")
   // --------------------------------------------------------------------------
-  if (btnClearLedger) {
-    btnClearLedger.addEventListener("click", async () => {
-      if (!confirm("Are you sure you want to clear your local evaluated students ledger?")) return;
-      const teacher = getTeacherIdentity();
-      const candidateKeys = [
-        teacher.storageKey,
-        `edumetrics_teacher_${teacher.code}`,
-        `edumetrics_teacher_${teacher.id}`,
-        "edumetrics_teacher_default"
-      ];
-      Array.from(new Set(candidateKeys)).forEach((k) => localStorage.removeItem(k));
-      showToast("Local evaluated student ledger cleared.", "info");
-      await loadCohortData();
+  const modalClearCohort = document.getElementById("modal-clear-cohort-ledger");
+  const inputConfirmClearCohort = document.getElementById("input-confirm-clear-cohort");
+  const btnCloseClearCohortModal = document.getElementById("btn-close-clear-cohort-modal");
+  const btnCancelClearCohortModal = document.getElementById("btn-cancel-clear-cohort-modal");
+  const btnConfirmWipeCohort = document.getElementById("btn-confirm-wipe-cohort");
+
+  function openClearCohortModal() {
+    if (!modalClearCohort) return;
+    if (inputConfirmClearCohort) inputConfirmClearCohort.value = "";
+    if (btnConfirmWipeCohort) {
+      btnConfirmWipeCohort.disabled = true;
+      btnConfirmWipeCohort.style.opacity = "0.5";
+      btnConfirmWipeCohort.style.cursor = "not-allowed";
+      btnConfirmWipeCohort.innerHTML = "<span>🗑️ Permanently Wipe Ledger</span>";
+    }
+    modalClearCohort.classList.add("active");
+    if (inputConfirmClearCohort) inputConfirmClearCohort.focus();
+  }
+
+  function closeClearCohortModal() {
+    if (modalClearCohort) modalClearCohort.classList.remove("active");
+  }
+
+  if (btnClearLedger) btnClearLedger.addEventListener("click", openClearCohortModal);
+  if (btnCloseClearCohortModal) btnCloseClearCohortModal.addEventListener("click", closeClearCohortModal);
+  if (btnCancelClearCohortModal) btnCancelClearCohortModal.addEventListener("click", closeClearCohortModal);
+
+  if (inputConfirmClearCohort && btnConfirmWipeCohort) {
+    inputConfirmClearCohort.addEventListener("input", () => {
+      const isMatch = inputConfirmClearCohort.value.trim().toUpperCase() === "CLEAR";
+      btnConfirmWipeCohort.disabled = !isMatch;
+      btnConfirmWipeCohort.style.opacity = isMatch ? "1" : "0.5";
+      btnConfirmWipeCohort.style.cursor = isMatch ? "pointer" : "not-allowed";
+    });
+  }
+
+  if (btnConfirmWipeCohort) {
+    btnConfirmWipeCohort.addEventListener("click", async () => {
+      if (inputConfirmClearCohort && inputConfirmClearCohort.value.trim().toUpperCase() !== "CLEAR") return;
+      btnConfirmWipeCohort.disabled = true;
+      btnConfirmWipeCohort.innerHTML = "<span>⏳ Wiping...</span>";
+
+      await wipeAllTeacherEvaluations();
+
+      closeClearCohortModal();
+      cohortStudents = [];
+      updateAnalyticsView();
+      showToast("All cohort evaluation records permanently wiped.", "info");
+
+      btnConfirmWipeCohort.disabled = false;
+      btnConfirmWipeCohort.innerHTML = "<span>🗑️ Permanently Wipe Ledger</span>";
     });
   }
 

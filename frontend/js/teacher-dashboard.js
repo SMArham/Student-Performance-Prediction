@@ -85,6 +85,23 @@ document.addEventListener("DOMContentLoaded", () => {
     let rawList = [];
     const teacher = getTeacherIdentity();
 
+    // Check tombstones for this teacher
+    const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id || teacher.code || "default"}`;
+    let tombstones = [];
+    try {
+      tombstones = JSON.parse(localStorage.getItem(tombstoneKey) || "[]");
+      if (!Array.isArray(tombstones)) tombstones = [];
+    } catch (e) {
+      tombstones = [];
+    }
+
+    if (tombstones.includes("*")) {
+      evaluatedStudentsList = [];
+      filteredStudentsList = [];
+      applyFilters();
+      return;
+    }
+
     // 1. Read strictly from this teacher's isolated storage key
     try {
       const candidateKeys = [teacher.storageKey];
@@ -217,7 +234,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const studentMap = new Map();
     rawList.forEach((item) => {
       const payload = item.payload || {};
-      const sId = item.student_id || payload.student_id || payload.student_id_code || item.roll_no || item.id || "STU-001";
+      const sId = String(item.student_id || payload.student_id || payload.student_id_code || item.roll_no || item.id || "STU-001");
+      if (tombstones.includes(sId) || tombstones.includes(`STU-${sId}`)) {
+        return; // Exclude deleted student
+      }
       const sName = item.student_name || payload.student_name || payload.name || "Student";
       const sStage = (item.stage || payload.stage || "university").toLowerCase();
       const score = item.predicted_score ?? item.score ?? payload.predicted_score ?? 3.5;
@@ -388,8 +408,169 @@ document.addEventListener("DOMContentLoaded", () => {
     attachDashboardDeleteHandlers();
   }
 
-  // Standardized Delete Confirmation Logic
+  // ==========================================================================
+  // DELETE & PURGE HELPERS (SUPABASE + LOCAL STORAGE + TOMBSTONES)
+  // ==========================================================================
+  async function deleteTeacherStudent(studentId, studentName) {
+    if (!studentId) return;
+    const teacher = getTeacherIdentity();
+    const targetIdStr = String(studentId).trim();
+
+    // 1. Tombstone in localStorage
+    const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id || teacher.code || "default"}`;
+    try {
+      let tombstones = JSON.parse(localStorage.getItem(tombstoneKey) || "[]");
+      if (!Array.isArray(tombstones)) tombstones = [];
+      if (!tombstones.includes(targetIdStr)) tombstones.push(targetIdStr);
+      if (!tombstones.includes(`STU-${targetIdStr}`)) tombstones.push(`STU-${targetIdStr}`);
+      localStorage.setItem(tombstoneKey, JSON.stringify(tombstones));
+    } catch (e) {}
+
+    // 2. Remove from candidate localStorage keys
+    const candidateKeys = [
+      teacher.storageKey,
+      `edumetrics_teacher_${teacher.code}`,
+      `edumetrics_teacher_${teacher.id}`,
+      "edumetrics_teacher_default"
+    ];
+    Array.from(new Set(candidateKeys)).forEach((k) => {
+      try {
+        const stored = localStorage.getItem(k);
+        if (stored) {
+          let list = JSON.parse(stored) || [];
+          if (Array.isArray(list)) {
+            list = list.filter((s) => {
+              const sid = String(s.student_id || s.id || "");
+              return sid !== targetIdStr && sid !== `STU-${targetIdStr}` && (!studentName || s.student_name !== studentName);
+            });
+            localStorage.setItem(k, JSON.stringify(list));
+          }
+        }
+      } catch (e) {}
+    });
+
+    // 3. Delete from Supabase `teacher_class_roster`
+    if (window.authClient && window.authClient.client) {
+      try {
+        await window.authClient.client
+          .from("teacher_class_roster")
+          .delete()
+          .or(`id.eq.${targetIdStr},id.eq.STU-${targetIdStr},student_id_code.eq.${targetIdStr}`);
+      } catch (err) {
+        console.warn("[Delete] Roster table delete notice:", err);
+      }
+      if (studentName) {
+        try {
+          let q = window.authClient.client.from("teacher_class_roster").delete().eq("student_name", studentName);
+          if (teacher.id) q = q.eq("teacher_id", teacher.id);
+          await q;
+        } catch (err) {}
+      }
+
+      // 4. Delete from Supabase `prediction_history`
+      try {
+        const { data: histData } = await window.authClient.client
+          .from("prediction_history")
+          .select("id, input_features, payload, user_id")
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (Array.isArray(histData)) {
+          const idsToDelete = histData.filter((h) => {
+            const p = h.input_features || h.payload || {};
+            const matchesTeacher = (teacher.id && (h.user_id === teacher.id || p.teacher_id === teacher.id)) ||
+                                   (teacher.code && p.teacher_id === teacher.code) ||
+                                   (p.role === "teacher");
+            if (!matchesTeacher) return false;
+            const pStudentId = String(p.student_id || p.student_id_code || h.id || "");
+            const pStudentName = p.student_name || "";
+            return pStudentId === targetIdStr || pStudentId === `STU-${targetIdStr}` || (studentName && pStudentName === studentName);
+          }).map((h) => h.id);
+
+          if (idsToDelete.length > 0) {
+            await window.authClient.client
+              .from("prediction_history")
+              .delete()
+              .in("id", idsToDelete);
+          }
+        }
+      } catch (err) {
+        console.warn("[Delete] Prediction history delete notice:", err);
+      }
+    }
+  }
+
+  async function wipeAllTeacherEvaluations() {
+    const teacher = getTeacherIdentity();
+
+    // 1. Record wildcard tombstone
+    const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id || teacher.code || "default"}`;
+    localStorage.setItem(tombstoneKey, JSON.stringify(["*"]));
+
+    // 2. Clear all candidate localStorage keys
+    const candidateKeys = [
+      teacher.storageKey,
+      `edumetrics_teacher_${teacher.code}`,
+      `edumetrics_teacher_${teacher.id}`,
+      "edumetrics_teacher_default"
+    ];
+    Array.from(new Set(candidateKeys)).forEach((k) => localStorage.removeItem(k));
+
+    // 3. Delete from Supabase `teacher_class_roster`
+    if (window.authClient && window.authClient.client) {
+      try {
+        if (teacher.id && teacher.code) {
+          await window.authClient.client
+            .from("teacher_class_roster")
+            .delete()
+            .or(`teacher_id.eq.${teacher.id},teacher_id.eq.${teacher.code}`);
+        } else if (teacher.id) {
+          await window.authClient.client
+            .from("teacher_class_roster")
+            .delete()
+            .eq("teacher_id", teacher.id);
+        } else if (teacher.code) {
+          await window.authClient.client
+            .from("teacher_class_roster")
+            .delete()
+            .eq("teacher_id", teacher.code);
+        }
+      } catch (err) {
+        console.warn("[Wipe] Roster table wipe notice:", err);
+      }
+
+      // 4. Delete from Supabase `prediction_history`
+      try {
+        const { data: histData } = await window.authClient.client
+          .from("prediction_history")
+          .select("id, input_features, payload, user_id")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        if (Array.isArray(histData)) {
+          const idsToDelete = histData.filter((h) => {
+            const p = h.input_features || h.payload || {};
+            const matchesTeacher = (teacher.id && (h.user_id === teacher.id || p.teacher_id === teacher.id)) ||
+                                   (teacher.code && p.teacher_id === teacher.code);
+            return matchesTeacher;
+          }).map((h) => h.id);
+
+          if (idsToDelete.length > 0) {
+            await window.authClient.client
+              .from("prediction_history")
+              .delete()
+              .in("id", idsToDelete);
+          }
+        }
+      } catch (err) {
+        console.warn("[Wipe] Prediction history wipe notice:", err);
+      }
+    }
+  }
+
+  // Delete Confirmation Modal DOM Logic
   let pendingDeleteStudentId = null;
+  let pendingDeleteStudentName = null;
   const modalDeleteTStudent = document.getElementById("modal-delete-t-student");
   const btnCloseDelTModal = document.getElementById("btn-close-del-t-modal");
   const btnCancelDelTModal = document.getElementById("btn-cancel-del-t-modal");
@@ -401,6 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const id = e.currentTarget.getAttribute("data-id");
         const name = e.currentTarget.getAttribute("data-name");
         pendingDeleteStudentId = id;
+        pendingDeleteStudentName = name;
 
         const targetNameEl = document.getElementById("del-t-target-name");
         const targetIdEl = document.getElementById("del-t-target-id");
@@ -408,7 +590,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (targetIdEl) targetIdEl.innerText = `ID: ${id}`;
 
         if (modalDeleteTStudent) {
-          modalDeleteTStudent.style.setProperty("display", "flex", "important");
           modalDeleteTStudent.classList.add("active");
         }
       });
@@ -418,31 +599,99 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeDelTModal = () => {
     if (modalDeleteTStudent) {
       modalDeleteTStudent.classList.remove("active");
-      modalDeleteTStudent.style.setProperty("display", "none", "important");
     }
+    pendingDeleteStudentId = null;
+    pendingDeleteStudentName = null;
   };
 
   if (btnCloseDelTModal) btnCloseDelTModal.addEventListener("click", closeDelTModal);
   if (btnCancelDelTModal) btnCancelDelTModal.addEventListener("click", closeDelTModal);
 
   if (btnConfirmDelTStudent) {
-    btnConfirmDelTStudent.addEventListener("click", () => {
+    btnConfirmDelTStudent.addEventListener("click", async () => {
       if (!pendingDeleteStudentId) return;
 
-      const teacher = getTeacherIdentity();
-      evaluatedStudentsStore = evaluatedStudentsStore.filter((x) => String(x.student_id) !== String(pendingDeleteStudentId));
-      localStorage.setItem(teacher.storageKey, JSON.stringify(evaluatedStudentsStore));
+      const targetId = pendingDeleteStudentId;
+      const targetName = pendingDeleteStudentName;
+
+      btnConfirmDelTStudent.disabled = true;
+      btnConfirmDelTStudent.innerHTML = "<span>⏳ Deleting...</span>";
+
+      await deleteTeacherStudent(targetId, targetName);
+
+      // Remove from memory
+      evaluatedStudentsList = evaluatedStudentsList.filter(
+        (x) => String(x.student_id) !== String(targetId) && String(x.id) !== String(targetId)
+      );
 
       closeDelTModal();
-      pendingDeleteStudentId = null;
+      applyFilters();
 
-      renderRosterTable();
-      computeDashboardKPIs(evaluatedStudentsStore);
-      showToast("Student evaluation removed from dashboard.", "success");
+      btnConfirmDelTStudent.disabled = false;
+      btnConfirmDelTStudent.innerHTML = "<span>🗑️ Confirm Delete</span>";
+
+      showToast(`Evaluation record for ${targetName || targetId} deleted successfully.`, "success");
     });
   }
 
+  // Clear Entire Roster Modal ("CLEAR")
+  const modalClearTRoster = document.getElementById("modal-clear-t-roster");
+  const btnClearTRoster = document.getElementById("btn-clear-t-roster");
+  const btnCloseClearTModal = document.getElementById("btn-close-clear-t-modal");
+  const btnCancelClearTModal = document.getElementById("btn-cancel-clear-t-modal");
+  const inputConfirmClearTRoster = document.getElementById("input-confirm-clear-t-roster");
+  const btnConfirmWipeTRoster = document.getElementById("btn-confirm-wipe-t-roster");
 
+  function openClearTRosterModal() {
+    if (!modalClearTRoster) return;
+    if (inputConfirmClearTRoster) {
+      inputConfirmClearTRoster.value = "";
+    }
+    if (btnConfirmWipeTRoster) {
+      btnConfirmWipeTRoster.disabled = true;
+      btnConfirmWipeTRoster.style.opacity = "0.5";
+      btnConfirmWipeTRoster.style.cursor = "not-allowed";
+      btnConfirmWipeTRoster.innerHTML = "<span>🗑️ Permanently Wipe Ledger</span>";
+    }
+    modalClearTRoster.classList.add("active");
+    if (inputConfirmClearTRoster) inputConfirmClearTRoster.focus();
+  }
+
+  function closeClearTRosterModal() {
+    if (modalClearTRoster) modalClearTRoster.classList.remove("active");
+  }
+
+  if (btnClearTRoster) btnClearTRoster.addEventListener("click", openClearTRosterModal);
+  if (btnCloseClearTModal) btnCloseClearTModal.addEventListener("click", closeClearTRosterModal);
+  if (btnCancelClearTModal) btnCancelClearTModal.addEventListener("click", closeClearTRosterModal);
+
+  if (inputConfirmClearTRoster && btnConfirmWipeTRoster) {
+    inputConfirmClearTRoster.addEventListener("input", () => {
+      const isMatch = inputConfirmClearTRoster.value.trim().toUpperCase() === "CLEAR";
+      btnConfirmWipeTRoster.disabled = !isMatch;
+      btnConfirmWipeTRoster.style.opacity = isMatch ? "1" : "0.5";
+      btnConfirmWipeTRoster.style.cursor = isMatch ? "pointer" : "not-allowed";
+    });
+  }
+
+  if (btnConfirmWipeTRoster) {
+    btnConfirmWipeTRoster.addEventListener("click", async () => {
+      if (inputConfirmClearTRoster && inputConfirmClearTRoster.value.trim().toUpperCase() !== "CLEAR") return;
+      btnConfirmWipeTRoster.disabled = true;
+      btnConfirmWipeTRoster.innerHTML = "<span>⏳ Wiping...</span>";
+
+      await wipeAllTeacherEvaluations();
+
+      closeClearTRosterModal();
+      evaluatedStudentsList = [];
+      filteredStudentsList = [];
+      applyFilters();
+      showToast("All student evaluation records permanently wiped.", "info");
+
+      btnConfirmWipeTRoster.disabled = false;
+      btnConfirmWipeTRoster.innerHTML = "<span>🗑️ Permanently Wipe Ledger</span>";
+    });
+  }
 
   // Initial Load
   loadEvaluatedStudents();
