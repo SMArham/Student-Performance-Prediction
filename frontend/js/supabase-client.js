@@ -785,10 +785,115 @@ class SupabaseAuthClient {
           });
         }
       }
+
+      // Automatically sync any real user academic records and predictions to Supabase
+      if (prof && prof.id) {
+        await this.syncLocalRecordsToCloud(prof.id);
+      }
     } catch (err) {
       console.warn("[Auth] Live profile sync warning:", err);
     }
     return user;
+  }
+
+  async syncLocalRecordsToCloud(userId) {
+    if (!this.client || !userId) return;
+    try {
+      // 1. Sync real academic records & subjects entered by the user
+      const stages = ["university", "matric_inter", "secondary", "primary"];
+      for (const st of stages) {
+        const localKey = `sp_academic_records_${userId}_${st}`;
+        const fallbackKey = `sp_academic_records_${st}`;
+        const raw = localStorage.getItem(localKey) || localStorage.getItem(fallbackKey);
+        if (raw) {
+          try {
+            const terms = JSON.parse(raw);
+            if (Array.isArray(terms) && terms.length > 0) {
+              for (const term of terms) {
+                const recId = term.id && !term.id.startsWith("term_") 
+                  ? term.id 
+                  : `rec_${userId}_${(term.term_name || "term").replace(/\s+/g, "_").toLowerCase()}`;
+                const cleanRecord = {
+                  id: recId,
+                  user_id: userId,
+                  stage: term.stage || st,
+                  term_name: term.term_name || "Current Term",
+                  gpa: parseFloat(term.gpa) || 3.5,
+                  cgpa: parseFloat(term.cgpa || term.gpa) || 3.5,
+                  attendance_pct: term.attendance_pct !== undefined ? parseFloat(term.attendance_pct) : 85,
+                  credit_hours: term.credit_hours !== undefined ? parseFloat(term.credit_hours) : 18,
+                  midterm_score: term.midterm_score !== undefined ? parseFloat(term.midterm_score) : 80,
+                  backlogs: term.backlogs !== undefined ? parseInt(term.backlogs) : 0,
+                  study_hours: term.study_hours !== undefined ? parseFloat(term.study_hours) : 4.5,
+                  subjects: term.subjects || [],
+                  created_at: term.created_at || new Date().toISOString()
+                };
+
+                await this.client.from("academic_records").upsert(cleanRecord, { onConflict: "id" });
+
+                if (Array.isArray(term.subjects) && term.subjects.length > 0) {
+                  const subjectRows = term.subjects.map((sub, sIdx) => {
+                    const obtained = parseFloat(sub.marks || sub.obtained_marks || 80);
+                    const total = parseFloat(sub.total || sub.total_marks || 100);
+                    const pct = total > 0 ? (obtained / total) * 100 : 80;
+                    return {
+                      id: `sub_${userId}_${(term.term_name || "term").replace(/\s+/g, "_").toLowerCase()}_${sIdx}`,
+                      user_id: userId,
+                      stage: term.stage || st,
+                      subject_name: sub.name || sub.subject_name || "Course Subject",
+                      subject_category: sub.category || sub.subject_category || "Core",
+                      assessment_period: term.term_name || "Current Term",
+                      obtained_marks: obtained,
+                      total_marks: total,
+                      percentage: parseFloat(pct.toFixed(1)),
+                      created_at: term.created_at || new Date().toISOString()
+                    };
+                  });
+                  await this.client.from("academic_subjects").upsert(subjectRows, { onConflict: "id" });
+                }
+              }
+            }
+          } catch (termErr) {
+            console.warn("[Sync] Academic record parse notice:", termErr);
+          }
+        }
+      }
+
+      // 2. Sync real predictions entered by the user
+      const predKeys = [
+        `sp_prediction_history_${userId}`,
+        "edumetrics_prediction_history",
+        "sp_prediction_history"
+      ];
+      for (const pk of predKeys) {
+        const rawPreds = localStorage.getItem(pk);
+        if (rawPreds) {
+          try {
+            const preds = JSON.parse(rawPreds);
+            if (Array.isArray(preds) && preds.length > 0) {
+              for (const p of preds) {
+                const rawScore = typeof p.score === "number" ? p.score : parseFloat(p.predicted_score || 85.0);
+                const predRow = {
+                  id: p.id || `pred-${Date.now().toString().slice(-6)}`,
+                  user_id: userId,
+                  stage: p.stage || "university",
+                  input_features: p.input_features || p.payload || {},
+                  predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
+                  predicted_grade: p.predicted_grade || p.grade || "Grade A",
+                  status_badge: p.status_badge || "On Track",
+                  created_at: p.created_at || new Date().toISOString()
+                };
+                await this.client.from("prediction_history").upsert(predRow, { onConflict: "id" });
+              }
+            }
+          } catch (pErr) {
+            console.warn("[Sync] Prediction parse notice:", pErr);
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.warn("[Sync] Cloud data auto-sync notice:", syncErr);
+    }
   }
 }
 
