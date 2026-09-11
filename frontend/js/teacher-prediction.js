@@ -19,16 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Live Database Health Check
-  if (window.authClient && typeof window.authClient.checkDatabaseHealth === "function") {
-    window.authClient.checkDatabaseHealth().then((status) => {
-      const text = document.getElementById("db-health-text");
-      if (text) {
-        text.innerText = status.connected ? `Supabase Cloud (${status.latency}ms)` : "Local Cache Active";
-      }
-    });
-  }
-
   // Teacher State for the CURRENT student being evaluated
   let teacherSubjectsStore = [];
   let editingSubjectId = null;

@@ -21,21 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     primary: "Primary School (1st-5th)"
   };
 
-  // 3. Live Database Health Check
-  if (window.authClient && typeof window.authClient.checkDatabaseHealth === "function") {
-    window.authClient.checkDatabaseHealth().then((status) => {
-      const text = document.getElementById("db-health-text");
-      if (text) {
-        if (status.connected) {
-          text.innerText = `Supabase Cloud (${status.latency}ms)`;
-        } else {
-          text.innerText = "Local Cache Active";
-        }
-      }
-    });
-  }
-
-  // 4. Instant Sign Out
+  // 3. Instant Sign Out
   const logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {

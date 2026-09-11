@@ -22,16 +22,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // Live Database Health Check
-  if (window.authClient && typeof window.authClient.checkDatabaseHealth === "function") {
-    window.authClient.checkDatabaseHealth().then((status) => {
-      const text = document.getElementById("db-health-text");
-      if (text) {
-        text.innerText = status.connected ? `Supabase Cloud (${status.latency}ms)` : "Local Cache Active";
-      }
-    });
-  }
-
   // Set Chart.js universal font to Inter for unified design system consistency
   if (window.Chart) {
     Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
