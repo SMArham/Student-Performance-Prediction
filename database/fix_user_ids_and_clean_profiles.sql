@@ -8,7 +8,10 @@ ALTER TABLE public.profiles DROP COLUMN IF EXISTS current_gpa CASCADE;
 ALTER TABLE public.profiles DROP COLUMN IF EXISTS updated_at CASCADE;
 ALTER TABLE public.profiles DROP COLUMN IF EXISTS short_id CASCADE;
 
--- 2. DROP RESTRICTIVE FOREIGN KEY CONSTRAINTS (Allow clean STU-XX, TCH-XX IDs)
+-- 2. DROP UNWANTED TABLES (model_registry is obsolete and not used)
+DROP TABLE IF EXISTS public.model_registry CASCADE;
+
+-- 3. DROP RESTRICTIVE FOREIGN KEY CONSTRAINTS (Allow clean STU-XX, TCH-XX IDs)
 ALTER TABLE IF EXISTS public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey CASCADE;
 ALTER TABLE IF EXISTS public.academic_records DROP CONSTRAINT IF EXISTS academic_records_user_id_fkey CASCADE;
 ALTER TABLE IF EXISTS public.academic_subjects DROP CONSTRAINT IF EXISTS academic_subjects_user_id_fkey CASCADE;
