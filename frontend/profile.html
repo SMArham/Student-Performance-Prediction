@@ -11,12 +11,13 @@
   <!-- Production API Base URL -->
   <meta name="api-base-url" content="">
 
-  <!-- Stylesheets (v3.0.0 cache-buster) -->
-  <link rel="stylesheet" href="css/variables.css?v=3.0.0">
-  <link rel="stylesheet" href="css/layout.css?v=3.0.0">
-  <link rel="stylesheet" href="css/components.css?v=3.0.0">
-  <link rel="stylesheet" href="css/dashboard.css?v=3.0.0">
-  <link rel="stylesheet" href="css/tour.css?v=3.1.0">
+  <!-- Stylesheets (v3.2.0 cache-buster) -->
+  <link rel="stylesheet" href="css/variables.css?v=3.2.0">
+  <link rel="stylesheet" href="css/layout.css?v=3.2.0">
+  <link rel="stylesheet" href="css/components.css?v=3.2.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=3.2.0">
+  <link rel="stylesheet" href="css/profile.css?v=3.2.0">
+  <link rel="stylesheet" href="css/tour.css?v=3.2.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -95,37 +96,77 @@
         </aside>
 
         <!-- Main Content Canvas -->
-        <main class="main-content-canvas" style="max-width: 960px; margin: 0 auto; width: 100%;">
+        <main class="main-content-canvas" style="max-width: 980px; margin: 0 auto; width: 100%;">
           
           <!-- Top Row: Page Title -->
-          <div class="dashboard-top-row" style="margin-bottom: var(--space-4);">
+          <div class="dashboard-top-row" style="margin-bottom: var(--space-5);">
             <div>
               <h1 class="page-title-display" style="font-size: 32px; letter-spacing: 0.04em; margin-bottom: 4px;">
                 STUDENT PROFILE & SETTINGS
               </h1>
-              <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
-                Manage personal information, academic credentials, security credentials, and system preferences.
+              <p style="color: var(--text-secondary); font-size: 13.5px; margin: 0;">
+                Manage personal identification, academic credentials, security credentials, and platform preferences.
               </p>
             </div>
             <div style="margin-left: auto;">
-              <a href="dashboard.html" class="btn btn-secondary btn-sm">
-                <span>← Back to Dashboard</span>
+              <a href="dashboard.html" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <span>Dashboard</span>
               </a>
             </div>
           </div>
 
-          <!-- Profile Card Container -->
-          <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--border-subtle); background: var(--color-surface-base);">
+          <!-- Hero Identity Profile Card -->
+          <div class="profile-hero-card">
+            <div class="profile-hero-main">
+              <div class="hero-avatar-wrapper">
+                <div class="hero-avatar-circle" id="hero-profile-avatar">SP</div>
+                <div class="hero-status-pulse" title="Active Session"></div>
+              </div>
+              <div class="profile-hero-info">
+                <div class="hero-name-row">
+                  <div class="hero-display-name" id="hero-profile-name">Student User</div>
+                  <div class="hero-id-badge" id="hero-profile-id">STU-2026-001</div>
+                </div>
+                <div class="hero-meta-chips">
+                  <div class="hero-meta-chip" id="hero-profile-stage-badge">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                    <span id="hero-stage-text">University (CGPA)</span>
+                  </div>
+                  <div class="hero-meta-chip" id="hero-profile-email-chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span id="hero-email-text">student@university.edu</span>
+                  </div>
+                  <div class="hero-meta-chip" id="hero-profile-program-chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <span id="hero-program-text">Major Not Specified</span>
+                  </div>
+                  <div class="hero-meta-chip" id="hero-profile-institution-chip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                    <span id="hero-institution-text">Institution Not Specified</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="hero-quick-actions">
+              <a href="prediction.html" class="btn btn-primary btn-sm" style="box-shadow: 0 0 12px rgba(168,240,75,0.25);">
+                <span>⚡ Run Forecast</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Profile Management Card & Segmented Tabs Container -->
+          <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--border-subtle); background: var(--color-surface-base); box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
             
-            <!-- Navigation Tabs Bar -->
-            <div class="profile-tabs-bar" style="background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border-subtle); padding: 12px 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <!-- Modern Segmented Tabs Bar -->
+            <div class="profile-tabs-container">
               <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <span>Academic Profile</span>
+                <span>Academic & Personal Profile</span>
               </button>
               <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>Security</span>
+                <span>Security & Password</span>
               </button>
               <button type="button" class="modal-tab-btn danger-tab" data-tab="tab-profile-danger">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -133,74 +174,123 @@
               </button>
             </div>
 
-            <div style="padding: var(--space-6);">
+            <!-- TAB CONTENTS -->
+            <div class="profile-content-area">
               
               <!-- TAB 1: Academic & Personal Profile -->
               <div class="profile-tab-content active" id="tab-profile-general">
                 <form id="profile-details-form">
-                  <div class="profile-section-card" style="background: var(--color-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: var(--space-6); margin-bottom: var(--space-6);">
-                    <div class="profile-section-heading" style="font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: var(--space-4); text-transform: uppercase; letter-spacing: 0.05em;">
-                      Personal & Academic Identification
-                    </div>
+                  <div class="profile-card-group">
                     
-                    <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-                      <div class="form-group">
-                        <label class="form-label" for="setting-fullname">Full Name <span style="color: var(--color-lime);">*</span></label>
-                        <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Muhammad Ali" required>
-                      </div>
-
-                      <div class="form-group">
-                        <label class="form-label" for="setting-email">
-                          Email Address <span class="badge-fixed-tag">🔒 Readonly</span>
-                        </label>
-                        <div class="fixed-input-wrapper">
-                          <input type="email" id="setting-email" class="form-input readonly-fixed-input" placeholder="student@university.edu" readonly>
+                    <!-- Section A: Personal & Account Identity -->
+                    <div class="profile-bento-section">
+                      <div class="section-title-bar">
+                        <div class="section-title-left">
+                          <div class="section-icon-badge">👤</div>
+                          <div>
+                            <div class="section-title-text">Personal & Student Identity</div>
+                            <div class="section-title-sub">Basic identification and registered credentials</div>
+                          </div>
                         </div>
-                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Your registered student email address.</div>
                       </div>
-                    </div>
-
-                    <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-                      <div class="form-group">
-                        <label class="form-label" for="setting-studentid">
-                          Student ID Code <span class="badge-fixed-tag">🔒 Fixed</span>
-                        </label>
-                        <div class="fixed-input-wrapper">
-                          <input type="text" id="setting-studentid" class="form-input readonly-fixed-input" placeholder="STU-2026-001" readonly>
+                      
+                      <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); margin-bottom: var(--space-4);">
+                        <div class="form-group">
+                          <label class="form-label" for="setting-fullname">
+                            Full Name <span style="color: var(--color-lime);">*</span>
+                          </label>
+                          <div class="field-icon-wrapper">
+                            <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Syed Muhammad Arham" required>
+                            <span class="field-icon">👤</span>
+                          </div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Displayed across student reports and certificates.</div>
                         </div>
-                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Generated automatically upon registration. Immutable.</div>
+
+                        <div class="form-group">
+                          <label class="form-label" for="setting-email">
+                            Email Address <span class="input-badge-pill badge-verified">✓ Verified</span>
+                          </label>
+                          <div class="field-icon-wrapper">
+                            <input type="email" id="setting-email" class="form-input readonly-highlight" placeholder="student@university.edu" readonly>
+                            <span class="field-icon">✉️</span>
+                          </div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Primary authentication identity (Fixed).</div>
+                        </div>
                       </div>
 
-                      <div class="form-group">
-                        <label class="form-label" for="setting-stage">Academic Stage</label>
-                        <select id="setting-stage" class="form-select">
-                          <option value="university">University (0.00 – 4.00 CGPA)</option>
-                          <option value="intermediate">Intermediate (HSSC / FSC)</option>
-                          <option value="matric">Matriculation (SSC / 9th-10th)</option>
-                          <option value="secondary">Secondary School</option>
-                          <option value="primary">Primary School</option>
-                        </select>
-                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Active educational tier for ML model routing.</div>
+                      <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5);">
+                        <div class="form-group">
+                          <label class="form-label" for="setting-studentid">
+                            Student ID Identifier <span class="input-badge-pill badge-locked">🔒 Immutable</span>
+                          </label>
+                          <div class="field-icon-wrapper">
+                            <input type="text" id="setting-studentid" class="form-input readonly-highlight" placeholder="STU-2026-001" readonly>
+                            <span class="field-icon">🆔</span>
+                          </div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Unique hash generated on registration.</div>
+                        </div>
+
+                        <div class="form-group">
+                          <label class="form-label" for="setting-stage">
+                            Active Academic Stage <span style="color: var(--color-lime);">*</span>
+                          </label>
+                          <div class="field-icon-wrapper">
+                            <select id="setting-stage" class="form-select">
+                              <option value="university">🎓 University (0.00 – 4.00 CGPA & Semesters)</option>
+                              <option value="intermediate">🏛️ Intermediate (HSSC / FSC / 11th-12th)</option>
+                              <option value="matric">🏫 Matriculation (SSC / 9th-10th)</option>
+                              <option value="secondary">🎒 Secondary School (Middle Grades)</option>
+                              <option value="primary">🌟 Primary School (Foundational)</option>
+                            </select>
+                            <span class="field-icon">🎓</span>
+                          </div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Routes ML prediction engine to the appropriate stage model.</div>
+                        </div>
                       </div>
                     </div>
 
-                    <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
-                      <div class="form-group">
-                        <label class="form-label" for="setting-program">Enrolled Program / Major</label>
-                        <input type="text" id="setting-program" class="form-input" placeholder="e.g. Software Engineering / Computer Science">
-                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Your primary degree or academic stream.</div>
+                    <!-- Section B: Academic Stream & Institution Details -->
+                    <div class="profile-bento-section">
+                      <div class="section-title-bar">
+                        <div class="section-title-left">
+                          <div class="section-icon-badge">🏛️</div>
+                          <div>
+                            <div class="section-title-text">Enrolled Stream & Institution</div>
+                            <div class="section-title-sub">Academic department, field of study, and school/college</div>
+                          </div>
+                        </div>
                       </div>
+                      
+                      <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5);">
+                        <div class="form-group">
+                          <label class="form-label" for="setting-program">Enrolled Major / Degree Program</label>
+                          <div class="field-icon-wrapper">
+                            <input type="text" id="setting-program" class="form-input" placeholder="e.g. BS Software Engineering / Computer Science">
+                            <span class="field-icon">📚</span>
+                          </div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Used to contextualize curriculum difficulty scoring.</div>
+                        </div>
 
-                      <div class="form-group">
-                        <label class="form-label" for="setting-institution">Institution Name</label>
-                        <input type="text" id="setting-institution" class="form-input" placeholder="e.g. Faculty of Engineering / Govt College">
-                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Your registered school, college, or university.</div>
+                        <div class="form-group">
+                          <label class="form-label" for="setting-institution">University / College / School Name</label>
+                          <div class="field-icon-wrapper">
+                            <input type="text" id="setting-institution" class="form-input" placeholder="e.g. FAST-NUCES / National University">
+                            <span class="field-icon">🏛️</span>
+                          </div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Your registered educational institution.</div>
+                        </div>
                       </div>
                     </div>
+
                   </div>
 
-                  <div class="profile-action-row" style="display: flex; justify-content: flex-end;">
-                    <button type="submit" class="btn btn-primary" style="height: 44px; padding: 0 28px; font-size: 14px; font-weight: 700;">
+                  <!-- Profile Save Footer -->
+                  <div class="profile-form-footer">
+                    <div class="form-sync-indicator">
+                      <span class="sync-dot"></span>
+                      <span>Changes are securely synchronized to Supabase Cloud</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btn-save-profile" style="height: 46px; padding: 0 32px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 14px rgba(168, 240, 75, 0.3);">
                       💾 Save Profile Changes
                     </button>
                   </div>
@@ -210,24 +300,65 @@
               <!-- TAB 2: Security & Password -->
               <div class="profile-tab-content" id="tab-profile-security" style="display: none;">
                 <form id="profile-security-form">
-                  <div class="profile-section-card" style="background: var(--color-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); padding: var(--space-6); margin-bottom: var(--space-6);">
-                    <div class="profile-section-heading" style="font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: var(--space-4); text-transform: uppercase; letter-spacing: 0.05em;">
-                      Password & Authentication Security
-                    </div>
+                  <div class="profile-card-group">
                     
-                    <div class="form-group" style="margin-bottom: var(--space-4); max-width: 480px;">
-                      <label class="form-label" for="setting-new-password">New Password</label>
-                      <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password">
+                    <div class="profile-bento-section">
+                      <div class="section-title-bar">
+                        <div class="section-title-left">
+                          <div class="section-icon-badge">🔐</div>
+                          <div>
+                            <div class="section-title-text">Password & Authentication</div>
+                            <div class="section-title-sub">Ensure your account is protected with a robust password</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style="display: flex; flex-direction: column; gap: var(--space-4); max-width: 540px;">
+                        
+                        <div class="form-group">
+                          <label class="form-label" for="setting-new-password">
+                            New Password <span style="color: var(--color-lime);">*</span>
+                          </label>
+                          <div class="field-icon-wrapper">
+                            <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password">
+                            <span class="field-icon">🔑</span>
+                            <button type="button" class="btn-toggle-pwd" data-target="setting-new-password" title="Toggle visibility">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                          </div>
+                          <div class="pwd-strength-container">
+                            <div class="pwd-strength-bar-bg">
+                              <div class="pwd-strength-bar-fill" id="pwd-meter-fill"></div>
+                            </div>
+                            <div class="pwd-strength-label" id="pwd-meter-text">Strength: Enter password</div>
+                          </div>
+                        </div>
+
+                        <div class="form-group">
+                          <label class="form-label" for="setting-confirm-password">
+                            Confirm New Password <span style="color: var(--color-lime);">*</span>
+                          </label>
+                          <div class="field-icon-wrapper">
+                            <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter new password to verify" required autocomplete="new-password">
+                            <span class="field-icon">🔒</span>
+                            <button type="button" class="btn-toggle-pwd" data-target="setting-confirm-password" title="Toggle visibility">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                          </div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Must match the new password exactly.</div>
+                        </div>
+
+                      </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: var(--space-2); max-width: 480px;">
-                      <label class="form-label" for="setting-confirm-password">Confirm New Password</label>
-                      <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter new password to confirm" required autocomplete="new-password">
-                    </div>
                   </div>
 
-                  <div class="profile-action-row" style="display: flex; justify-content: flex-end;">
-                    <button type="submit" class="btn btn-primary" style="height: 44px; padding: 0 28px; font-size: 14px; font-weight: 700;">
+                  <div class="profile-form-footer">
+                    <div class="form-sync-indicator">
+                      <span class="sync-dot"></span>
+                      <span>Password updates are encrypted with PBKDF2 / SHA-256</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btn-save-security" style="height: 46px; padding: 0 32px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 14px rgba(168, 240, 75, 0.3);">
                       🔒 Update Password Securely
                     </button>
                   </div>
@@ -236,26 +367,38 @@
 
               <!-- TAB 3: Danger Zone -->
               <div class="profile-tab-content" id="tab-profile-danger" style="display: none;">
-                <div class="danger-zone-card" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-card); padding: var(--space-6);">
-                  <div class="danger-zone-header" style="display: flex; gap: 14px; align-items: flex-start; margin-bottom: var(--space-4);">
-                    <span class="danger-icon" style="font-size: 28px;">⚠️</span>
+                <div class="danger-zone-hero">
+                  <div class="danger-zone-top">
+                    <div class="danger-hazard-icon">⚠️</div>
                     <div>
-                      <div class="danger-title" style="font-size: 16px; font-weight: 700; color: var(--color-red); margin-bottom: 4px;">
-                        Permanent Account & Data Deletion
+                      <div style="font-family: var(--font-family-display); font-size: 20px; font-weight: 800; color: #f87171; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 4px;">
+                        Permanent Account & Academic Data Erasure
                       </div>
-                      <div class="danger-desc" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
-                        Permanently deletes your account authentication profile, stored student grades, custom ML history forecasts, and saved preferences.
+                      <div style="font-size: 13.5px; color: #d1d5db; line-height: 1.5;">
+                        Deleting your account will permanently wipe all personal records, machine learning forecasts, diagnostic test histories, and customized model settings.
                       </div>
                     </div>
                   </div>
 
-                  <div class="danger-warning-note" style="font-size: 12px; color: #fca5a5; background: rgba(239, 68, 68, 0.1); padding: 10px 14px; border-radius: 6px; margin-bottom: var(--space-5);">
-                    This action cannot be undone. All your academic diagnostic records and profile details will be permanently wiped from the database.
+                  <div class="danger-impact-list">
+                    <div style="font-size: 12px; font-weight: 700; color: #f87171; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.04em;">
+                      The following data will be permanently wiped:
+                    </div>
+                    <ul>
+                      <li>All enrolled semesters, coursework credits, grades, and attendance metrics.</li>
+                      <li>Historical ML prediction diagnostic records and longitudinal charts.</li>
+                      <li>Authentication profile, personal metadata, and secure sessions.</li>
+                    </ul>
                   </div>
 
-                  <button type="button" class="btn btn-danger" id="btn-delete-account-confirm" style="height: 44px; font-size: 14px; font-weight: 700;">
-                    🗑️ Permanently Delete My Account
-                  </button>
+                  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                    <div style="font-size: 12px; color: #fca5a5;">
+                      ⚠️ Warning: This action is irreversible.
+                    </div>
+                    <button type="button" class="btn btn-danger" id="btn-delete-account-confirm" style="height: 44px; padding: 0 24px; font-size: 13.5px; font-weight: 700;">
+                      🗑️ Permanently Delete My Account
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -270,10 +413,10 @@
 
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Scripts -->
-  <script src="js/supabase-client.js?v=3.0.0"></script>
-  <script src="js/api.js?v=3.0.0"></script>
-  <script src="js/profile.js?v=3.0.0"></script>
-  <script src="js/tour.js?v=3.1.0"></script>
+  <!-- Scripts (v3.2.0 cache-buster) -->
+  <script src="js/supabase-client.js?v=3.2.0"></script>
+  <script src="js/api.js?v=3.2.0"></script>
+  <script src="js/profile.js?v=3.2.0"></script>
+  <script src="js/tour.js?v=3.2.0"></script>
 </body>
 </html>

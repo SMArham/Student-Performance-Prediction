@@ -1,0 +1,503 @@
+/* ==============================================================================
+   STUDENT PROFILE & SETTINGS — PREMIUM MODERN UI (profile.css)
+   ============================================================================== */
+
+/* ------------------------------------------------------------------------------
+   1. Profile Hero Identity Banner
+   ------------------------------------------------------------------------------ */
+.profile-hero-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(24, 25, 29, 0.95) 0%, rgba(15, 16, 20, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-card);
+  padding: var(--space-6) var(--space-8);
+  margin-bottom: var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.profile-hero-card::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(168, 240, 75, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.profile-hero-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  position: relative;
+  z-index: 1;
+}
+
+.hero-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.hero-avatar-circle {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #1f232b, #121419);
+  border: 2px solid var(--color-lime);
+  color: var(--color-lime);
+  font-family: var(--font-family-display);
+  font-size: 28px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(168, 240, 75, 0.22);
+  letter-spacing: 0.02em;
+}
+
+.hero-status-pulse {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #52c41a;
+  border: 3px solid #0c0d10;
+  box-shadow: 0 0 8px #52c41a;
+}
+
+.profile-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hero-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hero-display-name {
+  font-family: var(--font-family-display);
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.hero-id-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: rgba(168, 240, 75, 0.12);
+  border: 1px solid rgba(168, 240, 75, 0.3);
+  border-radius: var(--radius-pill);
+  color: var(--color-lime);
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.hero-meta-chips {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.hero-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.hero-meta-chip svg {
+  color: var(--color-lime);
+  opacity: 0.9;
+}
+
+.hero-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  position: relative;
+  z-index: 1;
+}
+
+/* ------------------------------------------------------------------------------
+   2. Modern Segmented Tab Controller
+   ------------------------------------------------------------------------------ */
+.profile-tabs-container {
+  background: #0f1014;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 10px 18px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.profile-tabs-container .modal-tab-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-secondary) !important;
+  padding: 8px 16px !important;
+  border-radius: 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  outline: none !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.profile-tabs-container .modal-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.profile-tabs-container .modal-tab-btn.active {
+  background: rgba(168, 240, 75, 0.12) !important;
+  color: var(--color-lime) !important;
+  border-color: var(--color-lime) !important;
+  box-shadow: 0 0 14px rgba(168, 240, 75, 0.2) !important;
+  font-weight: 700 !important;
+}
+
+.profile-tabs-container .modal-tab-btn.danger-tab {
+  margin-left: auto;
+  color: #f87171 !important;
+  border-color: rgba(248, 113, 113, 0.2) !important;
+  background: rgba(248, 113, 113, 0.04) !important;
+}
+
+.profile-tabs-container .modal-tab-btn.danger-tab:hover {
+  background: rgba(248, 113, 113, 0.12) !important;
+  border-color: rgba(248, 113, 113, 0.4) !important;
+  color: #fca5a5 !important;
+}
+
+.profile-tabs-container .modal-tab-btn.danger-tab.active {
+  background: rgba(248, 113, 113, 0.18) !important;
+  border-color: #f87171 !important;
+  color: #f87171 !important;
+  box-shadow: 0 0 14px rgba(248, 113, 113, 0.2) !important;
+}
+
+/* ------------------------------------------------------------------------------
+   3. Enhanced Form Sections & Bento Cards
+   ------------------------------------------------------------------------------ */
+.profile-content-area {
+  padding: var(--space-6);
+}
+
+.profile-card-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.profile-bento-section {
+  background: linear-gradient(145deg, rgba(25, 26, 32, 0.7), rgba(18, 19, 24, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+  position: relative;
+  transition: border-color 0.2s ease;
+}
+
+.profile-bento-section:hover {
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.section-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.section-title-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(168, 240, 75, 0.1);
+  border: 1px solid rgba(168, 240, 75, 0.25);
+  color: var(--color-lime);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.section-title-text {
+  font-family: var(--font-family-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.section-title-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------------------------
+   4. Field Group Styling with Left Icons & Badges
+   ------------------------------------------------------------------------------ */
+.field-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  z-index: 2;
+}
+
+.field-icon-wrapper input,
+.field-icon-wrapper select {
+  padding-left: 42px !important;
+}
+
+.field-icon-wrapper input:focus ~ .field-icon,
+.field-icon-wrapper select:focus ~ .field-icon {
+  color: var(--color-lime);
+}
+
+.input-badge-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-locked {
+  background: rgba(255, 156, 39, 0.12);
+  color: var(--color-orange);
+  border: 1px solid rgba(255, 156, 39, 0.3);
+}
+
+.badge-verified {
+  background: rgba(82, 196, 26, 0.12);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.3);
+}
+
+.readonly-highlight {
+  background-color: #0b0c0f !important;
+  color: #f7ba63 !important;
+  font-family: var(--font-family-mono) !important;
+  font-weight: 600 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  cursor: not-allowed !important;
+}
+
+/* Password Visibility Toggle */
+.btn-toggle-pwd {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  z-index: 2;
+}
+
+.btn-toggle-pwd:hover {
+  color: #ffffff;
+}
+
+/* ------------------------------------------------------------------------------
+   5. Password Strength Meter
+   ------------------------------------------------------------------------------ */
+.pwd-strength-container {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pwd-strength-bar-bg {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.pwd-strength-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #f87171;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.pwd-strength-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------------------------
+   6. Danger Zone Alert Card
+   ------------------------------------------------------------------------------ */
+.danger-zone-hero {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.07), rgba(30, 10, 10, 0.6));
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+  position: relative;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.08);
+}
+
+.danger-zone-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.danger-hazard-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  color: #f87171;
+}
+
+.danger-impact-list {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: var(--space-5);
+}
+
+.danger-impact-list ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: #fca5a5;
+  line-height: 1.6;
+}
+
+/* ------------------------------------------------------------------------------
+   7. Form Action Bottom Bar
+   ------------------------------------------------------------------------------ */
+.profile-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.form-sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-lime);
+}
+
+/* ------------------------------------------------------------------------------
+   8. Responsive Media Queries
+   ------------------------------------------------------------------------------ */
+@media (max-width: 860px) {
+  .profile-hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-5);
+  }
+  
+  .profile-hero-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+  
+  .hero-quick-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .form-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .profile-tabs-container .modal-tab-btn.danger-tab {
+    margin-left: 0;
+  }
+}
