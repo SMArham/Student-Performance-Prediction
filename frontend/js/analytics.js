@@ -392,13 +392,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         kpiGrowthDelta.innerText = delta >= 0 ? `+${delta}` : `${delta}`;
         kpiGrowthDelta.style.color = delta >= 0 ? "var(--accent-emerald)" : "var(--accent-rose)";
       }
-
-      if (kpiRiskSummary) {
-        const badgeStr = (latest.status_badge || "").toLowerCase();
-        const isAtRisk = badgeStr.includes("risk") || badgeStr.includes("attention");
-        kpiRiskSummary.innerText = isAtRisk ? "Intervention Needed" : "Low Risk / On Track";
-        kpiRiskSummary.style.color = isAtRisk ? "var(--accent-rose)" : "var(--accent-emerald)";
-      }
     } else {
       if (kpiLatestScore) kpiLatestScore.innerText = "--";
       if (kpiLatestBadge) {
@@ -408,10 +401,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (kpiGrowthDelta) {
         kpiGrowthDelta.innerText = "--";
         kpiGrowthDelta.style.color = "var(--text-muted)";
-      }
-      if (kpiRiskSummary) {
-        kpiRiskSummary.innerText = "Awaiting Evaluation";
-        kpiRiskSummary.style.color = "var(--text-muted)";
       }
     }
   }
@@ -639,6 +628,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let minScore = Math.min(currentStandingVal, aiForecastVal);
     let yMin = isUni ? Math.max(0.0, Math.floor((minScore - 0.5) * 2) / 2) : Math.max(0, Math.floor((minScore - 15) / 10) * 10);
     let yMax = isUni ? 4.0 : 100;
+    if (yMin >= yMax) yMin = Math.max(0, yMax - 1.0);
 
     const greenGradient = ctx.createLinearGradient(0, 0, 0, 340);
     greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.32)");
@@ -837,7 +827,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       "rgba(163, 230, 53, 0.85)",
       "rgba(56, 189, 248, 0.90)"
     ];
-    borderColors = ["#A3E635", "#38BDF8"];
+    const diff = +(aiForecastVal - currentStandingVal).toFixed(2);
+    let liftDelta = isUni ? `${diff >= 0 ? '+' : ''}${diff}` : `${diff >= 0 ? '+' : ''}${diff}%`;
+
+    const trajActualEl = document.getElementById("trajectory-actual-val");
+    const trajAiLiftEl = document.getElementById("trajectory-ai-lift");
+    const trajBadgeEl = document.getElementById("trajectory-status-badge");
+    if (trajActualEl) trajActualEl.innerText = `${currentStandingVal.toFixed ? currentStandingVal.toFixed(2) : currentStandingVal}${unitLabel}`;
+    if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal.toFixed ? aiForecastVal.toFixed(2) : aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
+    if (trajBadgeEl) {
+      const isPositive = diff >= 0;
+      trajBadgeEl.innerText = isPositive ? "Ascending Growth 🚀" : "Attention Needed ⚠️";
+      trajBadgeEl.className = `badge ${isPositive ? "badge-success" : "badge-warning"}`;
+    }
 
     if (insightEl) {
       insightEl.innerHTML = "";
@@ -846,6 +848,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let minScore = Math.min(currentStandingVal, aiForecastVal);
     let yMin = isUni ? Math.max(0.0, Math.floor((minScore - 0.5) * 2) / 2) : Math.max(0, Math.floor((minScore - 15) / 10) * 10);
     let yMax = isUni ? 4.0 : 100;
+    if (yMin >= yMax) yMin = Math.max(0, yMax - 1.0);
 
     progressionChart = new Chart(ctx, {
       type: "bar",
