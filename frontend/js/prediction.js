@@ -2344,11 +2344,28 @@ document.addEventListener("DOMContentLoaded", () => {
     let totMax = 0;
     let sumGpa = 0;
     let countSubs = 0;
+    let hasInvalidMarks = false;
 
     rows.forEach(r => {
-      const obt = parseFloat(r.querySelector(".m-sub-obt")?.value);
-      const max = parseFloat(r.querySelector(".m-sub-max")?.value);
+      const obtEl = r.querySelector(".m-sub-obt");
+      const maxEl = r.querySelector(".m-sub-max");
+      const obt = parseFloat(obtEl?.value);
+      const max = parseFloat(maxEl?.value);
       if (!isNaN(obt) && !isNaN(max) && max > 0) {
+        if (obt > max || obt < 0) {
+          hasInvalidMarks = true;
+          if (obtEl) {
+            obtEl.style.borderColor = "#ef4444";
+            obtEl.style.boxShadow = "0 0 0 2px rgba(239, 68, 68, 0.35)";
+            obtEl.title = `Obtained marks (${obt}) cannot exceed Total marks (${max})!`;
+          }
+          return;
+        }
+        if (obtEl) {
+          obtEl.style.borderColor = "";
+          obtEl.style.boxShadow = "";
+          obtEl.title = "";
+        }
         totObt += obt;
         totMax += max;
         const pct = (obt / max) * 100;
@@ -2357,15 +2374,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    if (hasInvalidMarks) return;
+
     if (totMax > 0) {
       if (currentStage === "university") {
         const gpa = countSubs > 0 ? (sumGpa / countSubs) : 4.00;
-        termGpaInput.value = gpa.toFixed(2);
+        const boundedGpa = Math.min(4.00, Math.max(0.0, gpa));
+        termGpaInput.value = boundedGpa.toFixed(2);
         if (termCgpaInput && (!termCgpaInput.value || termCgpaInput.value === "0" || termCgpaInput.value === "0.00" || parseFloat(termCgpaInput.value) === 0)) {
-          termCgpaInput.value = gpa.toFixed(2);
+          termCgpaInput.value = boundedGpa.toFixed(2);
         }
       } else {
-        const pct = (totObt / totMax) * 100.0;
+        const pct = Math.min(100.0, Math.max(0.0, (totObt / totMax) * 100.0));
         termGpaInput.value = pct.toFixed(1);
         if (termCgpaInput && (!termCgpaInput.value || termCgpaInput.value === "0" || parseFloat(termCgpaInput.value) === 0)) {
           termCgpaInput.value = pct.toFixed(1);
@@ -2427,20 +2447,42 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     }
 
+    const safeMax = (max && max > 0 && max <= 550) ? max : 100;
     row.innerHTML = `
       <input type="text" class="form-input m-sub-name" placeholder="Subject Name (e.g. ${defaultName})" value="${name}" required style="padding:6px 10px;font-size:13px;">
       <select class="form-select m-sub-cat" style="padding:6px 10px;font-size:13px;">
         ${catOptions}
       </select>
-      <input type="number" step="0.5" class="form-input m-sub-obt" placeholder="Marks" value="${obt !== undefined && obt !== null ? obt : ""}" min="0" required style="padding:6px 10px;font-size:13px;">
-      <input type="number" step="0.5" class="form-input m-sub-max" placeholder="Max" value="${max || 100}" min="1" required style="padding:6px 10px;font-size:13px;">
+      <input type="number" step="0.5" class="form-input m-sub-obt" placeholder="Marks" value="${obt !== undefined && obt !== null ? obt : ""}" min="0" max="${safeMax}" required style="padding:6px 10px;font-size:13px;">
+      <input type="number" step="0.5" class="form-input m-sub-max" placeholder="Max" value="${safeMax}" min="1" max="550" required style="padding:6px 10px;font-size:13px;">
       <button type="button" class="btn btn-secondary btn-sm" onclick="this.parentElement.remove(); window.calculateModalGpaFromRows && window.calculateModalGpaFromRows();" style="padding:4px 8px;font-size:12px;color:var(--color-red);" title="Remove Row">✕</button>
     `;
 
     const obtInput = row.querySelector(".m-sub-obt");
     const maxInput = row.querySelector(".m-sub-max");
-    if (obtInput) obtInput.addEventListener("input", calculateModalGpaFromRows);
-    if (maxInput) maxInput.addEventListener("input", calculateModalGpaFromRows);
+
+    if (maxInput && obtInput) {
+      maxInput.addEventListener("input", () => {
+        const mVal = parseFloat(maxInput.value);
+        if (!isNaN(mVal) && mVal > 0) {
+          obtInput.max = mVal;
+        }
+        calculateModalGpaFromRows();
+      });
+      obtInput.addEventListener("input", () => {
+        const oVal = parseFloat(obtInput.value);
+        const mVal = parseFloat(maxInput.value);
+        if (!isNaN(oVal) && !isNaN(mVal) && oVal > mVal) {
+          obtInput.style.borderColor = "#ef4444";
+          obtInput.style.boxShadow = "0 0 0 2px rgba(239, 68, 68, 0.4)";
+          if (window.showToast) window.showToast(`⚠️ Obtained marks cannot exceed total marks (${mVal})`, "warning");
+        } else {
+          obtInput.style.borderColor = "";
+          obtInput.style.boxShadow = "";
+        }
+        calculateModalGpaFromRows();
+      });
+    }
 
     modalTermSubjectsContainer.appendChild(row);
   }
@@ -2990,11 +3032,28 @@ document.addEventListener("DOMContentLoaded", () => {
     let totMax = 0;
     let sumGpa = 0;
     let countSubs = 0;
+    let hasInvalidMarks = false;
 
     rows.forEach(r => {
-      const obt = parseFloat(r.querySelector(".m-sub-obt")?.value);
-      const max = parseFloat(r.querySelector(".m-sub-max")?.value);
+      const obtEl = r.querySelector(".m-sub-obt");
+      const maxEl = r.querySelector(".m-sub-max");
+      const obt = parseFloat(obtEl?.value);
+      const max = parseFloat(maxEl?.value);
       if (!isNaN(obt) && !isNaN(max) && max > 0) {
+        if (obt > max || obt < 0) {
+          hasInvalidMarks = true;
+          if (obtEl) {
+            obtEl.style.borderColor = "#ef4444";
+            obtEl.style.boxShadow = "0 0 0 2px rgba(239, 68, 68, 0.35)";
+            obtEl.title = `Obtained marks (${obt}) cannot exceed Total marks (${max})!`;
+          }
+          return;
+        }
+        if (obtEl) {
+          obtEl.style.borderColor = "";
+          obtEl.style.boxShadow = "";
+          obtEl.title = "";
+        }
         totObt += obt;
         totMax += max;
         const pct = (obt / max) * 100;
@@ -3003,15 +3062,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    if (hasInvalidMarks) return;
+
     if (totMax > 0) {
       if (currentStage === "university") {
         const gpa = countSubs > 0 ? (sumGpa / countSubs) : 4.00;
-        gpaInput.value = gpa.toFixed(2);
+        const boundedGpa = Math.min(4.00, Math.max(0.0, gpa));
+        gpaInput.value = boundedGpa.toFixed(2);
         if (cgpaInput && (!cgpaInput.value || cgpaInput.value === "0" || cgpaInput.value === "0.00" || parseFloat(cgpaInput.value) === 0)) {
-          cgpaInput.value = gpa.toFixed(2);
+          cgpaInput.value = boundedGpa.toFixed(2);
         }
       } else {
-        const pct = (totObt / totMax) * 100.0;
+        const pct = Math.min(100.0, Math.max(0.0, (totObt / totMax) * 100.0));
         gpaInput.value = pct.toFixed(1);
         if (cgpaInput && (!cgpaInput.value || cgpaInput.value === "0" || parseFloat(cgpaInput.value) === 0)) {
           cgpaInput.value = pct.toFixed(1);
@@ -3079,15 +3141,29 @@ document.addEventListener("DOMContentLoaded", () => {
       <select class="form-select m-sub-cat" style="padding:6px 10px;font-size:13px;">
         ${catOptions}
       </select>
-      <input type="number" step="0.5" class="form-input m-sub-obt" placeholder="Marks" value="${obt !== undefined && obt !== null ? obt : ""}" min="0" required style="padding:6px 10px;font-size:13px;">
-      <input type="number" step="0.5" class="form-input m-sub-max" placeholder="Max" value="${max || 100}" min="1" required style="padding:6px 10px;font-size:13px;">
+      <input type="number" step="0.5" class="form-input m-sub-obt" placeholder="Marks" value="${obt !== undefined && obt !== null ? obt : ""}" min="0" max="${max || 100}" required style="padding:6px 10px;font-size:13px;">
+      <input type="number" step="0.5" class="form-input m-sub-max" placeholder="Max" value="${max || 100}" min="1" max="550" required style="padding:6px 10px;font-size:13px;">
       <button type="button" class="btn btn-secondary btn-sm" onclick="this.parentElement.remove(); window.calculateInlineGpaFromRows && window.calculateInlineGpaFromRows();" style="padding:4px 8px;font-size:12px;color:var(--color-red);" title="Remove Row">✕</button>
     `;
 
     const obtInput = row.querySelector(".m-sub-obt");
     const maxInput = row.querySelector(".m-sub-max");
-    if (obtInput) obtInput.addEventListener("input", calculateInlineGpaFromRows);
-    if (maxInput) maxInput.addEventListener("input", calculateInlineGpaFromRows);
+    const validateLiveMarks = () => {
+      const o = parseFloat(obtInput.value);
+      const m = parseFloat(maxInput.value);
+      if (!isNaN(o) && !isNaN(m) && o > m) {
+        obtInput.style.borderColor = "#ef4444";
+        obtInput.style.boxShadow = "0 0 0 2px rgba(239, 68, 68, 0.35)";
+        obtInput.title = `Obtained (${o}) cannot exceed Total (${m})!`;
+      } else {
+        obtInput.style.borderColor = "";
+        obtInput.style.boxShadow = "";
+        obtInput.title = "";
+      }
+      calculateInlineGpaFromRows();
+    };
+    if (obtInput) obtInput.addEventListener("input", validateLiveMarks);
+    if (maxInput) maxInput.addEventListener("input", validateLiveMarks);
 
     inlineTermSubjectsContainer.appendChild(row);
   }
@@ -3529,6 +3605,100 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // --------------------------------------------------------------------------
+  // STRICT FORM VALIDATION & BOUNDARY INTEGRITY HELPER
+  // --------------------------------------------------------------------------
+  function validateAcademicTermInput({ stage, gpaVal, cgpaVal, attVal, midtermVal, subjectsContainer, formType = "inline" }) {
+    // 1. Stage-specific GPA / Marks validation
+    if (stage === "university") {
+      if (isNaN(gpaVal) || gpaVal < 0 || gpaVal > 4.0) {
+        showToast("⚠️ Invalid GPA: University Semester GPA must be between 0.00 and 4.00.", "warning");
+        const el = document.getElementById(formType === "inline" ? "inline-term-gpa-input" : "term-gpa-input");
+        if (el) { el.focus(); el.style.borderColor = "#ef4444"; }
+        return false;
+      }
+      if (!isNaN(cgpaVal) && (cgpaVal < 0 || cgpaVal > 4.0)) {
+        showToast("⚠️ Invalid CGPA: University Cumulative CGPA must be between 0.00 and 4.00.", "warning");
+        const el = document.getElementById(formType === "inline" ? "inline-term-cgpa-input" : "term-cgpa-input");
+        if (el) { el.focus(); el.style.borderColor = "#ef4444"; }
+        return false;
+      }
+    } else {
+      // Non-University: Intermediate, Matric, Secondary, Primary
+      if (isNaN(gpaVal) || gpaVal < 0) {
+        showToast("⚠️ Invalid Score: Term score/percentage cannot be negative.", "warning");
+        return false;
+      }
+      if (gpaVal > 550) {
+        showToast("⚠️ Invalid Score: A single term/year score cannot exceed 550 marks (or 100% for percentage).", "warning");
+        const el = document.getElementById(formType === "inline" ? "inline-term-gpa-input" : "term-gpa-input");
+        if (el) { el.focus(); el.style.borderColor = "#ef4444"; }
+        return false;
+      }
+    }
+
+    // 2. Attendance & Midterm percentage boundaries
+    if (isNaN(attVal) || attVal < 0 || attVal > 100) {
+      showToast("⚠️ Invalid Attendance: Attendance rate must be between 0% and 100%.", "warning");
+      const el = document.getElementById(formType === "inline" ? "inline-term-attendance-input" : "term-attendance-input");
+      if (el) { el.focus(); el.style.borderColor = "#ef4444"; }
+      return false;
+    }
+    if (!isNaN(midtermVal) && (midtermVal < 0 || midtermVal > 100)) {
+      showToast("⚠️ Invalid Midterm: Midterm exam score must be between 0% and 100%.", "warning");
+      const el = document.getElementById(formType === "inline" ? "inline-term-midterm-input" : "term-midterm-input");
+      if (el) { el.focus(); el.style.borderColor = "#ef4444"; }
+      return false;
+    }
+
+    // 3. Subject Rows Validation: Obtained <= Max and Max <= 100 (or 550)
+    if (subjectsContainer) {
+      const rowSelector = formType === "inline" ? ".inline-subject-row" : ".modal-subject-row";
+      const rows = Array.from(subjectsContainer.querySelectorAll(rowSelector));
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const nameInput = r.querySelector(".m-sub-name");
+        const obtInput = r.querySelector(".m-sub-obt");
+        const maxInput = r.querySelector(".m-sub-max");
+        const subName = nameInput?.value.trim() || `Subject ${i + 1}`;
+        const obt = parseFloat(obtInput?.value);
+        const maxM = parseFloat(maxInput?.value);
+
+        if (!nameInput?.value.trim()) {
+          showToast(`⚠️ Missing Name: Please enter a name for Subject ${i + 1}.`, "warning");
+          if (nameInput) { nameInput.focus(); nameInput.style.borderColor = "#ef4444"; }
+          return false;
+        }
+        if (isNaN(maxM) || maxM <= 0) {
+          showToast(`⚠️ Invalid Total Marks: Total marks for '${subName}' must be greater than 0.`, "warning");
+          if (maxInput) { maxInput.focus(); maxInput.style.borderColor = "#ef4444"; }
+          return false;
+        }
+        if (maxM > 550) {
+          showToast(`⚠️ Total Marks Exceeded: Total marks for '${subName}' cannot exceed 550 (standard is 100).`, "warning");
+          if (maxInput) { maxInput.focus(); maxInput.style.borderColor = "#ef4444"; }
+          return false;
+        }
+        if (isNaN(obt) || obt < 0) {
+          showToast(`⚠️ Invalid Obtained Marks: Obtained marks for '${subName}' cannot be negative.`, "warning");
+          if (obtInput) { obtInput.focus(); obtInput.style.borderColor = "#ef4444"; }
+          return false;
+        }
+        if (obt > maxM) {
+          showToast(`⚠️ Marks Limit Exceeded: In '${subName}', obtained marks (${obt}) cannot be greater than total marks (${maxM}).`, "warning");
+          if (obtInput) {
+            obtInput.focus();
+            obtInput.style.borderColor = "#ef4444";
+            obtInput.style.boxShadow = "0 0 0 2px rgba(239, 68, 68, 0.4)";
+          }
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
   // Handle Inline Term Form Submission
   if (inlineTermForm) {
     inlineTermForm.addEventListener("submit", async (e) => {
@@ -3554,6 +3724,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const creditsVal = parseFloat(document.getElementById("inline-term-credits-input")?.value || 18);
       const midtermVal = parseFloat(document.getElementById("inline-term-midterm-input")?.value || 80);
       const backlogsVal = parseInt(document.getElementById("inline-term-backlogs-input")?.value || 0);
+
+      // Strict Validation Check
+      const isValid = validateAcademicTermInput({
+        stage: currentStage,
+        gpaVal,
+        cgpaVal,
+        attVal: att,
+        midtermVal,
+        subjectsContainer: inlineTermSubjectsContainer,
+        formType: "inline"
+      });
+      if (!isValid) return;
 
       const rows = inlineTermSubjectsContainer ? Array.from(inlineTermSubjectsContainer.querySelectorAll(".inline-subject-row")) : [];
       const subjects = rows.map(r => {
@@ -3595,7 +3777,7 @@ document.addEventListener("DOMContentLoaded", () => {
         stage: currentStage,
         term_name: termName,
         gpa: currentStage === "university" ? gpaVal : +(gpaVal / 25.0).toFixed(2),
-        percentage: currentStage === "university" ? +(gpaVal / 4.0 * 100).toFixed(1) : gpaVal,
+        percentage: currentStage === "university" ? +(gpaVal / 4.0 * 100).toFixed(1) : (gpaVal > 100 ? (gpaVal / 550 * 100) : gpaVal),
         cgpa: cgpaVal,
         attendance_pct: att,
         credit_hours: isHoursStage ? 0 : creditsVal,
@@ -3625,8 +3807,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const termNameSelect = document.getElementById("term-name-select");
       const termNameInput = document.getElementById("term-name-input");
       let termName = termNameInput?.value.trim();
-      if (!termName && termNameSelect && termNameSelect.value !== "custom") {
-        termName = termNameSelect.value;
+      if (!termName && nameSelect && nameSelect.value !== "custom") {
+        termName = nameSelect.value;
       }
       if (!termName) {
         termName = currentStage === "university" ? `Semester ${loggedTerms.length + 1}` : `Class ${loggedTerms.length + 1}`;
@@ -3643,6 +3825,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const creditsVal = parseFloat(document.getElementById("term-credits-input")?.value || 18);
       const midtermVal = parseFloat(document.getElementById("term-midterm-input")?.value || 80);
       const backlogsVal = parseInt(document.getElementById("term-backlogs-input")?.value || 0);
+
+      // Strict Validation Check
+      const isValid = validateAcademicTermInput({
+        stage: currentStage,
+        gpaVal,
+        cgpaVal,
+        attVal: att,
+        midtermVal,
+        subjectsContainer: modalTermSubjectsContainer,
+        formType: "modal"
+      });
+      if (!isValid) return;
 
       const rows = modalTermSubjectsContainer ? Array.from(modalTermSubjectsContainer.querySelectorAll(".modal-subject-row")) : [];
       const subjects = rows.map(r => {
@@ -3684,7 +3878,7 @@ document.addEventListener("DOMContentLoaded", () => {
         stage: currentStage,
         term_name: termName,
         gpa: currentStage === "university" ? gpaVal : +(gpaVal / 25.0).toFixed(2),
-        percentage: currentStage === "university" ? +(gpaVal / 4.0 * 100).toFixed(1) : gpaVal,
+        percentage: currentStage === "university" ? +(gpaVal / 4.0 * 100).toFixed(1) : (gpaVal > 100 ? (gpaVal / 550 * 100) : gpaVal),
         cgpa: cgpaVal,
         attendance_pct: att,
         credit_hours: isHoursStage ? 0 : creditsVal,
