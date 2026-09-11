@@ -868,6 +868,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // Pro Card Notifications (Never freeze scrolling)
+  function triggerTeacherProNotice() {
+    showToast("🔒 Upgrade to Pro: Multi-Dimensional Cohort Clustering & Longitudinal Risk Matrix is reserved for PRO accounts.", "warning");
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
+  }
+
+  if (proChartCard) {
+    proChartCard.addEventListener("click", () => triggerTeacherProNotice());
+  }
+
+  if (btnUnlockTeacherPro) {
+    btnUnlockTeacherPro.addEventListener("click", (e) => {
+      e.stopPropagation();
+      triggerTeacherProNotice();
+    });
+  }
+
   // Filter Listeners
   if (filterStage) filterStage.addEventListener("change", updateAnalyticsView);
   if (filterRisk) filterRisk.addEventListener("change", updateAnalyticsView);

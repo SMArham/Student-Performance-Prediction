@@ -862,6 +862,8 @@ select.form-select option {
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 16px;
   box-sizing: border-box;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 .modal-backdrop:not(.active) {

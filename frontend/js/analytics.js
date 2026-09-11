@@ -19,7 +19,9 @@ window.showAnalyticsModal = function(modalEl) {
   modalEl.style.setProperty("visibility", "visible", "important");
   modalEl.style.setProperty("pointer-events", "auto", "important");
   modalEl.setAttribute("aria-hidden", "false");
-  document.body.style.overflow = "hidden";
+  // Safeguard: NEVER freeze document body or html scrolling
+  document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
 };
 
 // Modal helper: close
@@ -33,11 +35,14 @@ window.hideAnalyticsModal = function(modalEl) {
   modalEl.style.setProperty("pointer-events", "none", "important");
   modalEl.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
 };
 
 // Close all open modals
 window.closeAllAnalyticsModals = function() {
   document.querySelectorAll(".modal-backdrop").forEach(m => window.hideAnalyticsModal(m));
+  document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
 };
 
 // Universal helper to find a history record by ID strictly for current user
@@ -1027,15 +1032,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 13. PRO UPGRADE NOTIFICATION & MODAL EVENT LISTENERS
   // --------------------------------------------------------------------------
   function triggerProUpgradeNotice() {
-    showToast("🔒 Upgrade to Pro Required: 6-Axis Cognitive Diagnostic & Longitudinal Risk Matrix is an exclusive EduMetrics PRO feature. Please upgrade to unlock.", "warning");
-    if (proUpgradeModal) {
-      window.showAnalyticsModal(proUpgradeModal);
-    }
+    showToast("🔒 Upgrade to Pro Required: 6-Axis Cognitive Diagnostic & Longitudinal Risk Matrix is an exclusive EduMetrics PRO feature.", "warning");
+    // Ensure scrolling is ALWAYS preserved and never stuck
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
   }
 
   if (proCard) {
-    proCard.addEventListener("click", (e) => {
-      e.preventDefault();
+    proCard.addEventListener("click", () => {
       triggerProUpgradeNotice();
     });
   }
@@ -1044,6 +1048,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     btnUnlockProOverlay.addEventListener("click", (e) => {
       e.stopPropagation();
       triggerProUpgradeNotice();
+    });
+  }
+
+  // Footer link if user explicitly wants to inspect Pro Tier modal
+  const btnOpenProPlan = document.getElementById("btn-open-pro-plan-modal");
+  if (btnOpenProPlan) {
+    btnOpenProPlan.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (proUpgradeModal) {
+        window.showAnalyticsModal(proUpgradeModal);
+      }
     });
   }
 
@@ -1076,6 +1091,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
+
+  // Escape key safeguard to dismiss any open modal and restore scrolling
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      window.closeAllAnalyticsModals();
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+  });
 
 
 
