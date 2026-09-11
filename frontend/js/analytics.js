@@ -632,11 +632,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       labels = loggedTerms.map((t, idx) => `${t.term_name || 'Semester ' + (idx + 1)} (${termScores[idx]}${unitLabel})`);
       labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
-      labels.push(`🎯 Target Goal (${targetGoalVal}${unitLabel} ⭐)`);
 
-      pastScores = [...termScores, null, null];
+      pastScores = [...termScores, null];
       predScores = termScores.map((v, idx) => (idx === termScores.length - 1 ? v : null));
-      predScores.push(aiForecastVal, targetGoalVal);
+      predScores.push(aiForecastVal);
     } else if (activeList.length === 1) {
       const baseline = isUni ? Math.max(1.0, +(currentStandingVal - 0.30).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 14));
       const midExam = isUni ? Math.max(1.0, +(currentStandingVal - 0.15).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 7));
@@ -645,32 +644,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         `1. Baseline (${baseline}${unitLabel})`,
         `2. Term Exam (${midExam}${unitLabel})`,
         `3. Current Standing (${currentStandingVal}${unitLabel})`,
-        `4. ⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`,
-        `5. 🎯 Target Milestone (${targetGoalVal}${unitLabel} ⭐)`
+        `4. ⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`
       ];
-      pastScores = [baseline, midExam, currentStandingVal, null, null];
-      predScores = [null, null, currentStandingVal, aiForecastVal, targetGoalVal];
+      pastScores = [baseline, midExam, currentStandingVal, null];
+      predScores = [null, null, currentStandingVal, aiForecastVal];
     } else {
       const rawPast = activeList.map((r) => parseVal(r));
       labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${rawPast[i]}${unitLabel})` : `Test #${i + 1}`));
       labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
-      labels.push(`🎯 Target Milestone (${targetGoalVal}${unitLabel} ⭐)`);
 
-      pastScores = [...rawPast, null, null];
+      pastScores = [...rawPast, null];
       predScores = rawPast.map((v, idx) => (idx === rawPast.length - 1 ? v : null));
-      predScores.push(aiForecastVal, targetGoalVal);
+      predScores.push(aiForecastVal);
     }
 
     if (trajActualEl) trajActualEl.innerText = `${currentStandingVal.toFixed ? currentStandingVal.toFixed(2) : currentStandingVal}${unitLabel}`;
     if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal.toFixed ? aiForecastVal.toFixed(2) : aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
-    if (trajProjEl) trajProjEl.innerText = `${targetGoalVal.toFixed ? targetGoalVal.toFixed(2) : targetGoalVal}${unitLabel} (${totalGoalDelta} ⭐)`;
+    if (trajProjEl) trajProjEl.innerText = "";
     if (trajBadgeEl) {
       trajBadgeEl.innerText = "Ascending Growth 🚀";
       trajBadgeEl.className = `badge ${latestRun.status_color || "badge-success"}`;
     }
 
     if (insightEl) {
-      insightEl.innerHTML = `🚀 <strong>Verified Evaluation Trajectory:</strong> Based on your academic standing of <strong>${currentStandingVal}${unitLabel}</strong>, the AI models a growth trajectory to <strong>${aiForecastVal}${unitLabel}</strong>, leading toward your target of <strong>${targetGoalVal}${unitLabel}</strong>!`;
+      insightEl.innerHTML = "";
     }
 
     // Dynamic clean Y-Axis bounds
@@ -707,7 +704,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             pointHoverRadius: 10
           },
           {
-            label: "⚡ AI Prediction & Target (Upward Surge)",
+            label: "⚡ AI Projected Lift (Forecast)",
             data: predScores,
             borderColor: "#38BDF8",
             borderDash: [6, 4],
@@ -880,10 +877,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       labels = loggedTerms.map((t, idx) => `${t.term_name || 'Semester ' + (idx + 1)} (${termScores[idx]}${unitLabel})`);
       labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
-      labels.push(`🎯 Target Goal (${targetGoalVal}${unitLabel} ⭐)`);
-      barValues = [...termScores, aiForecastVal, targetGoalVal];
-      bgColors = termScores.map(() => "rgba(163, 230, 53, 0.75)").concat(["rgba(56, 189, 248, 0.90)", "rgba(245, 158, 11, 0.90)"]);
-      borderColors = termScores.map(() => "#A3E635").concat(["#38BDF8", "#F59E0B"]);
+      barValues = [...termScores, aiForecastVal];
+      bgColors = termScores.map(() => "rgba(163, 230, 53, 0.75)").concat(["rgba(56, 189, 248, 0.90)"]);
+      borderColors = termScores.map(() => "#A3E635").concat(["#38BDF8"]);
     } else if (activeList.length === 1) {
       const baseline = isUni ? Math.max(1.0, +(currentStandingVal - 0.30).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 14));
       const midExam = isUni ? Math.max(1.0, +(currentStandingVal - 0.15).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 7));
@@ -892,36 +888,31 @@ document.addEventListener("DOMContentLoaded", async () => {
         `1. Baseline (${baseline}${unitLabel})`,
         `2. Term Exam (${midExam}${unitLabel})`,
         `3. Current (${currentStandingVal}${unitLabel})`,
-        `4. ⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`,
-        `5. 🎯 Target (${targetGoalVal}${unitLabel} ⭐)`
+        `4. ⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`
       ];
-      barValues = [baseline, midExam, currentStandingVal, aiForecastVal, targetGoalVal];
+      barValues = [baseline, midExam, currentStandingVal, aiForecastVal];
       bgColors = [
         "rgba(163, 230, 53, 0.65)",
         "rgba(163, 230, 53, 0.80)",
         "rgba(163, 230, 53, 0.95)",
-        "rgba(56, 189, 248, 0.90)",
-        "rgba(245, 158, 11, 0.90)"
+        "rgba(56, 189, 248, 0.90)"
       ];
-      borderColors = ["#A3E635", "#A3E635", "#A3E635", "#38BDF8", "#F59E0B"];
+      borderColors = ["#A3E635", "#A3E635", "#A3E635", "#38BDF8"];
     } else {
       const values = activeList.map((r) => parseVal(r));
       labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${values[i]}${unitLabel})` : `Test #${i + 1}`));
       labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
-      labels.push(`🎯 Target Goal (${targetGoalVal}${unitLabel} ⭐)`);
 
-      barValues = [...values, aiForecastVal, targetGoalVal];
+      barValues = [...values, aiForecastVal];
       bgColors = values.map(() => "rgba(163, 230, 53, 0.80)");
       bgColors.push("rgba(56, 189, 248, 0.90)");
-      bgColors.push("rgba(245, 158, 11, 0.90)");
 
       borderColors = values.map(() => "#A3E635");
       borderColors.push("#38BDF8");
-      borderColors.push("#F59E0B");
     }
 
     if (insightEl) {
-      insightEl.innerHTML = `📊 <strong>Bar Chart Overview:</strong> Clear ascending bar comparison demonstrating the projected <strong>${liftDelta} growth lift</strong> over your current standing.`;
+      insightEl.innerHTML = "";
     }
 
     let allNonZero = barValues.filter((v) => typeof v === "number" && !isNaN(v));
@@ -1502,27 +1493,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.deleteDiagnostic(deleteBtn.getAttribute("data-id"));
     }
   });
-
-  // --------------------------------------------------------------------------
-  // 17. CHART PNG EXPORT UTILITIES
-  // --------------------------------------------------------------------------
-  function saveChartAsPng(canvasId, fileNamePrefix) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || canvas.style.display === "none") {
-      showToast("No evaluation chart data recorded yet to export.", "info");
-      return;
-    }
-    const imgURI = canvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.download = `${fileNamePrefix}_${Date.now()}.png`;
-    link.href = imgURI;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    showToast("Chart saved as PNG image!", "success");
-  }
-
-  document.getElementById("btn-save-progression-png")?.addEventListener("click", () => saveChartAsPng("analyticsProgressionChart", "edumetrics_progression_trajectory"));
 
   // ESC Key Global Dismissal
   document.addEventListener("keydown", (e) => {

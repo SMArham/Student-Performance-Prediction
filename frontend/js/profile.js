@@ -117,6 +117,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const settingStage = document.getElementById("setting-stage");
     const settingProgram = document.getElementById("setting-program");
     const settingInstitution = document.getElementById("setting-institution");
+    const settingActivity = document.getElementById("setting-activity");
 
     if (settingNameInput) settingNameInput.value = displayName;
     if (settingEmailInput) settingEmailInput.value = email;
@@ -124,68 +125,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (settingStage) settingStage.value = stage;
     if (settingProgram) settingProgram.value = program;
     if (settingInstitution) settingInstitution.value = institution;
+    if (settingActivity) settingActivity.value = meta.academic_activity || meta.activity || "";
   }
 
-  // 8. Password Visibility Toggles
-  document.querySelectorAll(".btn-toggle-pwd").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const targetId = btn.getAttribute("data-target");
-      const input = document.getElementById(targetId);
-      if (!input) return;
-      if (input.type === "password") {
-        input.type = "text";
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-      } else {
-        input.type = "password";
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-      }
-    });
-  });
-
-  // 9. Password Strength Live Evaluation
-  const newPwdInput = document.getElementById("setting-new-password");
-  const pwdFill = document.getElementById("pwd-meter-fill");
-  const pwdLabel = document.getElementById("pwd-meter-text");
-
-  if (newPwdInput && pwdFill && pwdLabel) {
-    newPwdInput.addEventListener("input", () => {
-      const val = newPwdInput.value;
-      if (!val) {
-        pwdFill.style.width = "0%";
-        pwdFill.style.background = "#f87171";
-        pwdLabel.innerText = "Strength: Enter password";
-        pwdLabel.style.color = "var(--text-muted)";
-        return;
-      }
-
-      let score = 0;
-      if (val.length >= 6) score += 25;
-      if (val.length >= 10) score += 25;
-      if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score += 25;
-      if (/[0-9]/.test(val) || /[^A-Za-z0-9]/.test(val)) score += 25;
-
-      pwdFill.style.width = `${score}%`;
-      if (score <= 25) {
-        pwdFill.style.background = "#f87171";
-        pwdLabel.innerText = "Strength: Weak (min. 6 characters)";
-        pwdLabel.style.color = "#f87171";
-      } else if (score <= 50) {
-        pwdFill.style.background = "#ff9c27";
-        pwdLabel.innerText = "Strength: Moderate (add letters & numbers)";
-        pwdLabel.style.color = "#ff9c27";
-      } else if (score <= 75) {
-        pwdFill.style.background = "#38bdf8";
-        pwdLabel.innerText = "Strength: Good";
-        pwdLabel.style.color = "#38bdf8";
-      } else {
-        pwdFill.style.background = "#a8f04b";
-        pwdLabel.innerText = "Strength: Excellent & Secure 🛡️";
-        pwdLabel.style.color = "#a8f04b";
-      }
-    });
-  }
-
-  // 10. Profile Details Form Save Handler
+  // 8. Profile Details Form Save Handler (Only 3 fields editable: Major, Institution, Activity)
   const profileForm = document.getElementById("profile-details-form");
   if (profileForm) {
     profileForm.addEventListener("submit", async (e) => {
@@ -198,20 +141,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         saveBtn.innerHTML = `⏳ Saving...`;
       }
 
-      const name = document.getElementById("setting-fullname")?.value.trim() || "User";
+      // Strictly the 3 user-permitted parameters
       const program = document.getElementById("setting-program")?.value.trim() || "";
       const inst = document.getElementById("setting-institution")?.value.trim() || "";
-      const stage = document.getElementById("setting-stage")?.value || "university";
+      const activity = document.getElementById("setting-activity")?.value.trim() || "";
 
       try {
         if (window.authClient) {
           await window.authClient.updateUser({
-            full_name: name,
             program: program,
             major: program,
             institution_name: inst,
             institution: inst,
-            stage: stage
+            academic_activity: activity,
+            activity: activity
           });
         }
         renderProfile();
@@ -222,49 +165,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (saveBtn) {
           saveBtn.disabled = false;
           saveBtn.innerHTML = originalBtnText;
-        }
-      }
-    });
-  }
-
-  // 11. Password Security Form Save Handler
-  const secForm = document.getElementById("profile-security-form");
-  if (secForm) {
-    secForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const saveSecBtn = document.getElementById("btn-save-security");
-      const origSecText = saveSecBtn ? saveSecBtn.innerHTML : "Update";
-
-      const newPass = document.getElementById("setting-new-password")?.value;
-      const confPass = document.getElementById("setting-confirm-password")?.value;
-
-      if (!newPass || newPass.length < 6) {
-        return showToast("Password must be at least 6 characters long.", "error");
-      }
-      if (newPass !== confPass) {
-        return showToast("Passwords do not match.", "error");
-      }
-
-      if (saveSecBtn) {
-        saveSecBtn.disabled = true;
-        saveSecBtn.innerHTML = `⏳ Updating Password...`;
-      }
-
-      try {
-        if (window.authClient) await window.authClient.updatePassword(newPass);
-        secForm.reset();
-        if (pwdFill) pwdFill.style.width = "0%";
-        if (pwdLabel) {
-          pwdLabel.innerText = "Strength: Enter password";
-          pwdLabel.style.color = "var(--text-muted)";
-        }
-        showToast("Password updated securely!", "success");
-      } catch (err) {
-        showToast(err.message || "Failed to update password.", "error");
-      } finally {
-        if (saveSecBtn) {
-          saveSecBtn.disabled = false;
-          saveSecBtn.innerHTML = origSecText;
         }
       }
     });

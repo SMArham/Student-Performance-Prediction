@@ -156,10 +156,6 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 <span>Academic & Personal Profile</span>
               </button>
-              <button type="button" class="modal-tab-btn" data-tab="tab-profile-security">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>Security & Password</span>
-              </button>
               <button type="button" class="modal-tab-btn danger-tab" data-tab="tab-profile-danger">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 <span>Danger Zone</span>
@@ -174,14 +170,14 @@
                 <form id="profile-details-form">
                   <div class="profile-card-group">
                     
-                    <!-- Section A: Personal & Account Identity -->
+                    <!-- Section A: Personal & Account Identity (Immutable System Records) -->
                     <div class="profile-bento-section">
                       <div class="section-title-bar">
                         <div class="section-title-left">
                           <div class="section-icon-badge">👤</div>
                           <div>
                             <div class="section-title-text">Personal & Student Identity</div>
-                            <div class="section-title-sub">Basic identification and registered credentials</div>
+                            <div class="section-title-sub">Official registration credentials (Immutable system records)</div>
                           </div>
                         </div>
                       </div>
@@ -189,13 +185,13 @@
                       <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); margin-bottom: var(--space-4);">
                         <div class="form-group">
                           <label class="form-label" for="setting-fullname">
-                            Full Name <span style="color: var(--color-lime);">*</span>
+                            Full Name <span class="input-badge-pill badge-locked">🔒 Immutable System Record</span>
                           </label>
                           <div class="field-icon-wrapper">
-                            <input type="text" id="setting-fullname" class="form-input" placeholder="e.g. Syed Muhammad Arham" required>
+                            <input type="text" id="setting-fullname" class="form-input readonly-highlight" placeholder="e.g. Syed Muhammad Arham" readonly>
                             <span class="field-icon">👤</span>
                           </div>
-                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Displayed across student reports and certificates.</div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Official registered student name (Locked).</div>
                         </div>
 
                         <div class="form-group">
@@ -224,10 +220,10 @@
 
                         <div class="form-group">
                           <label class="form-label" for="setting-stage">
-                            Active Academic Stage <span style="color: var(--color-lime);">*</span>
+                            Active Academic Stage <span class="input-badge-pill badge-locked">🔒 Locked System Tier</span>
                           </label>
                           <div class="field-icon-wrapper">
-                            <select id="setting-stage" class="form-select">
+                            <select id="setting-stage" class="form-select readonly-highlight" disabled>
                               <option value="university">🎓 University (0.00 – 4.00 CGPA & Semesters)</option>
                               <option value="intermediate">🏛️ Intermediate (HSSC / FSC / 11th-12th)</option>
                               <option value="matric">🏫 Matriculation (SSC / 9th-10th)</option>
@@ -236,26 +232,28 @@
                             </select>
                             <span class="field-icon">🎓</span>
                           </div>
-                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Routes ML prediction engine to the appropriate stage model.</div>
+                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Registered academic tier calibrated to AI model (Locked).</div>
                         </div>
                       </div>
                     </div>
 
-                    <!-- Section B: Academic Stream & Institution Details -->
+                    <!-- Section B: Academic Stream & Institution Details (Editable Parameters) -->
                     <div class="profile-bento-section">
                       <div class="section-title-bar">
                         <div class="section-title-left">
                           <div class="section-icon-badge">🏛️</div>
                           <div>
-                            <div class="section-title-text">Enrolled Stream & Institution</div>
-                            <div class="section-title-sub">Academic department, field of study, and school/college</div>
+                            <div class="section-title-text">Enrolled Stream, Institution & Activities</div>
+                            <div class="section-title-sub">Editable parameters: Degree Major, University/College Name & Academic Activities</div>
                           </div>
                         </div>
                       </div>
                       
                       <div class="form-grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5);">
                         <div class="form-group">
-                          <label class="form-label" for="setting-program">Enrolled Major / Degree Program</label>
+                          <label class="form-label" for="setting-program">
+                            Enrolled Major / Degree Program <span class="input-badge-pill badge-verified" style="background: rgba(168,240,75,0.15); color: var(--color-lime); border-color: rgba(168,240,75,0.3);">✏️ Editable</span>
+                          </label>
                           <div class="field-icon-wrapper">
                             <input type="text" id="setting-program" class="form-input" placeholder="e.g. BS Software Engineering / Computer Science">
                             <span class="field-icon">📚</span>
@@ -264,13 +262,26 @@
                         </div>
 
                         <div class="form-group">
-                          <label class="form-label" for="setting-institution">University / College / School Name</label>
+                          <label class="form-label" for="setting-institution">
+                            University / College / School Name <span class="input-badge-pill badge-verified" style="background: rgba(168,240,75,0.15); color: var(--color-lime); border-color: rgba(168,240,75,0.3);">✏️ Editable</span>
+                          </label>
                           <div class="field-icon-wrapper">
                             <input type="text" id="setting-institution" class="form-input" placeholder="e.g. FAST-NUCES / National University">
                             <span class="field-icon">🏛️</span>
                           </div>
                           <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Your registered educational institution.</div>
                         </div>
+                      </div>
+
+                      <div class="form-group" style="margin-top: var(--space-4);">
+                        <label class="form-label" for="setting-activity">
+                          Academic & Extracurricular Activity <span class="input-badge-pill badge-verified" style="background: rgba(168,240,75,0.15); color: var(--color-lime); border-color: rgba(168,240,75,0.3);">✏️ Editable</span>
+                        </label>
+                        <div class="field-icon-wrapper">
+                          <input type="text" id="setting-activity" class="form-input" placeholder="e.g. AI & Robotics Club, Competitive Programming, Student Council, Sports">
+                          <span class="field-icon">🏆</span>
+                        </div>
+                        <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Registered academic societies, technical clubs, and extracurricular activities.</div>
                       </div>
                     </div>
 
@@ -284,74 +295,6 @@
                     </div>
                     <button type="submit" class="btn btn-primary" id="btn-save-profile" style="height: 46px; padding: 0 32px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 14px rgba(168, 240, 75, 0.3);">
                       💾 Save Profile Changes
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              <!-- TAB 2: Security & Password -->
-              <div class="profile-tab-content" id="tab-profile-security" style="display: none;">
-                <form id="profile-security-form">
-                  <div class="profile-card-group">
-                    
-                    <div class="profile-bento-section">
-                      <div class="section-title-bar">
-                        <div class="section-title-left">
-                          <div class="section-icon-badge">🔐</div>
-                          <div>
-                            <div class="section-title-text">Password & Authentication</div>
-                            <div class="section-title-sub">Ensure your account is protected with a robust password</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style="display: flex; flex-direction: column; gap: var(--space-4); max-width: 540px;">
-                        
-                        <div class="form-group">
-                          <label class="form-label" for="setting-new-password">
-                            New Password <span style="color: var(--color-lime);">*</span>
-                          </label>
-                          <div class="field-icon-wrapper">
-                            <input type="password" id="setting-new-password" class="form-input" placeholder="Enter new password (min. 6 characters)" required autocomplete="new-password">
-                            <span class="field-icon">🔑</span>
-                            <button type="button" class="btn-toggle-pwd" data-target="setting-new-password" title="Toggle visibility">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            </button>
-                          </div>
-                          <div class="pwd-strength-container">
-                            <div class="pwd-strength-bar-bg">
-                              <div class="pwd-strength-bar-fill" id="pwd-meter-fill"></div>
-                            </div>
-                            <div class="pwd-strength-label" id="pwd-meter-text">Strength: Enter password</div>
-                          </div>
-                        </div>
-
-                        <div class="form-group">
-                          <label class="form-label" for="setting-confirm-password">
-                            Confirm New Password <span style="color: var(--color-lime);">*</span>
-                          </label>
-                          <div class="field-icon-wrapper">
-                            <input type="password" id="setting-confirm-password" class="form-input" placeholder="Re-enter new password to verify" required autocomplete="new-password">
-                            <span class="field-icon">🔒</span>
-                            <button type="button" class="btn-toggle-pwd" data-target="setting-confirm-password" title="Toggle visibility">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            </button>
-                          </div>
-                          <div class="field-hint-text" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Must match the new password exactly.</div>
-                        </div>
-
-                      </div>
-                    </div>
-
-                  </div>
-
-                  <div class="profile-form-footer">
-                    <div class="form-sync-indicator">
-                      <span class="sync-dot"></span>
-                      <span>Password updates are encrypted with PBKDF2 / SHA-256</span>
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="btn-save-security" style="height: 46px; padding: 0 32px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 14px rgba(168, 240, 75, 0.3);">
-                      🔒 Update Password Securely
                     </button>
                   </div>
                 </form>

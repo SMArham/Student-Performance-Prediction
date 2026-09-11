@@ -1845,17 +1845,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (dualProjectionContainer) {
       if (currentStage === "university") {
         const nextGpa = res.forecasted_semester_gpa || res.score || (res.predicted_score ? parseFloat(res.predicted_score) : 3.65);
-        const projCgpa = res.projected_cumulative_cgpa || +(Math.min(4.0, (typeof nextGpa === 'number' ? nextGpa : parseFloat(nextGpa)) * 0.98)).toFixed(2);
+        const formattedGpa = typeof nextGpa === 'number' ? nextGpa.toFixed(2) : nextGpa;
         dualProjectionContainer.innerHTML = `
           <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 Next Semester Forecast</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${typeof nextGpa === 'number' ? nextGpa.toFixed(2) : nextGpa} GPA</div>
-          </div>
-          <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
-            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎓 Projected Cumulative</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${typeof projCgpa === 'number' ? projCgpa.toFixed(2) : projCgpa} CGPA</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${formattedGpa} GPA</div>
           </div>
         `;
+        if (resultPredictedVal) {
+          resultPredictedVal.innerText = `${formattedGpa} GPA`;
+        }
       } else if (currentStage === "intermediate") {
         if (res.target_level === "hssc1") {
           dualProjectionContainer.innerHTML = `
