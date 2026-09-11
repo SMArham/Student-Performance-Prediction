@@ -9,12 +9,12 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- Design System CSS -->
-  <link rel="stylesheet" href="css/variables.css?v=3.6.0">
-  <link rel="stylesheet" href="css/layout.css?v=3.6.0">
-  <link rel="stylesheet" href="css/components.css?v=3.6.0">
-  <link rel="stylesheet" href="css/dashboard.css?v=3.6.0">
-  <link rel="stylesheet" href="css/prediction.css?v=3.6.0">
-  <link rel="stylesheet" href="css/tour.css?v=3.6.0">
+  <link rel="stylesheet" href="css/variables.css?v=3.7.0">
+  <link rel="stylesheet" href="css/layout.css?v=3.7.0">
+  <link rel="stylesheet" href="css/components.css?v=3.7.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=3.7.0">
+  <link rel="stylesheet" href="css/prediction.css?v=3.7.0">
+  <link rel="stylesheet" href="css/tour.css?v=3.7.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -348,192 +348,13 @@
   </div>
 </div>
 
-  <!-- ======================================================================
-       DIAGNOSTIC DETAIL SNAPSHOT MODAL
-       ====================================================================== -->
-  <div class="modal-backdrop" id="analytics-detail-modal">
-    <div class="modal-dialog" style="max-width: 600px;">
-      <div class="modal-header">
-        <div>
-          <h2 class="modal-title">🔍 Historical Diagnostic Snapshot</h2>
-          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
-            Complete audit trail of ML feature inputs, confidence score, and recommendations.
-          </div>
-        </div>
-        <button class="btn-icon" id="btn-close-detail-modal" style="font-size: 20px;">&times;</button>
-      </div>
-
-      <div style="padding: var(--space-6);">
-        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-5);">
-          <div>
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Evaluated Metric</div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--text-primary);" id="modal-detail-score">3.65 CGPA</div>
-          </div>
-          <div style="text-align: right;">
-            <span class="badge badge-success" id="modal-detail-badge">Exemplary</span>
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="modal-detail-stage">Stage: UNIVERSITY</div>
-          </div>
-        </div>
-
-        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
-          📋 Registered Parameters:
-        </div>
-        <div id="modal-detail-inputs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: var(--text-secondary); background: var(--bg-input); padding: var(--space-4); border-radius: var(--radius-lg); margin-bottom: var(--space-5);"></div>
-
-        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
-          💡 Recommendations:
-        </div>
-        <div id="modal-detail-recs" style="font-size: 13px; color: var(--text-secondary); background: rgba(99, 102, 241, 0.08); border-left: 3px solid var(--primary-500); padding: var(--space-3) var(--space-4); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin-bottom: var(--space-6);"></div>
-
-        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
-          <button type="button" class="btn btn-secondary" id="btn-close-detail-modal-btn">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ======================================================================
-       DEDICATED RUN TRAJECTORY GRAPH MODAL
-       ====================================================================== -->
-  <div class="modal-backdrop" id="analytics-trajectory-modal">
-    <div class="modal-dialog" style="max-width: 680px;">
-      <div class="modal-header">
-        <div>
-          <h2 class="modal-title" id="traj-modal-title">📈 Prediction Trajectory & Target Projection</h2>
-          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;" id="traj-modal-subtitle">
-            Current Standing ➔ Evaluated Forecast ➔ AI Target Milestone
-          </div>
-        </div>
-        <button class="btn-icon" id="btn-close-traj-modal" style="font-size: 20px;">&times;</button>
-      </div>
-
-      <div style="padding: var(--space-6);">
-        <!-- Trajectory Key Metric Points -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4); text-align: center; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-5);">
-          <div>
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">1. Initial Baseline</div>
-            <div style="font-size: 18px; font-weight: 800; color: #6366F1;" id="traj-val-baseline">--</div>
-            <div style="font-size: 10px; color: var(--text-muted);">Starting Standing</div>
-          </div>
-          <div>
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">2. Evaluated Score</div>
-            <div style="font-size: 18px; font-weight: 800; color: #F59E0B;" id="traj-val-current">--</div>
-            <div style="font-size: 10px; color: var(--text-muted);">Model Output</div>
-          </div>
-          <div>
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">3. AI Target Goal</div>
-            <div style="font-size: 18px; font-weight: 800; color: #10B981;" id="traj-val-target">--</div>
-            <div style="font-size: 10px; color: var(--text-muted);">Achievable Milestone</div>
-          </div>
-        </div>
-
-        <!-- Trajectory Chart Canvas -->
-        <div style="height: 280px; position: relative; margin-bottom: var(--space-5);">
-          <canvas id="modalTrajectoryChart"></canvas>
-        </div>
-
-        <div id="traj-modal-explanation" style="font-size: 13px; color: var(--text-secondary); background: var(--bg-input); padding: var(--space-4); border-radius: var(--radius-md); margin-bottom: var(--space-5); line-height: 1.5;">
-          <!-- Populated dynamically -->
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
-          <button type="button" class="btn btn-secondary" id="btn-close-traj-modal-btn">Close Trajectory</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ======================================================================
-       DEDICATED FULLSCREEN HIGH-RESOLUTION THEATER CHART MODAL
-       ====================================================================== -->
-  <div class="modal-backdrop" id="analytics-fullscreen-modal">
-    <div class="modal-dialog" style="max-width: 1200px; width: 95vw; height: 90vh; max-height: 90vh; display: flex; flex-direction: column; padding: 0;">
-      <div class="modal-header" style="padding: var(--space-5) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--border-subtle); background: var(--bg-card);">
-        <div>
-          <h2 class="modal-title" id="fs-modal-title" style="font-size: 18px; display: flex; align-items: center; gap: 8px;">
-            <span>📈 Full Screen Visualization</span>
-          </h2>
-          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;" id="fs-modal-subtitle">
-            High-definition interactive analytics view
-          </div>
-        </div>
-        <div style="display: flex; gap: var(--space-3); align-items: center;">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-fs-download-png">
-            <span>🖼️ Download High-Res PNG</span>
-          </button>
-          <button class="btn-icon" id="btn-close-fs-modal" style="font-size: 20px;">&times;</button>
-        </div>
-      </div>
-
-      <div style="flex: 1; padding: var(--space-6); position: relative; min-height: 0; display: flex; flex-direction: column; background: radial-gradient(circle at center, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);">
-        <div style="flex: 1; width: 100%; position: relative; min-height: 380px;">
-          <canvas id="fullscreenChartCanvas"></canvas>
-        </div>
-      </div>
-
-      <div style="padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--bg-card); display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 12px; color: var(--text-secondary);" id="fs-modal-note">
-          💡 Tip: You can hover or tap on individual data points for exact academic metrics and confidence weights.
-        </div>
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-close-fs-modal-btn">Exit Full Screen</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ======================================================================
-       EDIT RECORD MODAL
-       ====================================================================== -->
-  <div class="modal-backdrop" id="analytics-edit-modal">
-    <div class="modal-dialog" style="max-width: 540px;">
-      <div class="modal-header">
-        <div>
-          <h2 class="modal-title">✏️ Edit Prediction Record</h2>
-          <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
-            Update observed grade, target milestone, or instructor notes
-          </div>
-        </div>
-        <button class="btn-icon" id="btn-close-edit-modal" style="font-size: 20px;">&times;</button>
-      </div>
-
-      <form id="analytics-edit-form" style="padding: var(--space-6);">
-        <input type="hidden" id="edit-record-id" value="">
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-          <div class="form-group">
-            <label class="form-label" for="edit-record-score">Score / Grade Metric <span style="color:var(--accent-rose)">*</span></label>
-            <input type="text" id="edit-record-score" class="form-input" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-record-status">Status Tier</label>
-            <select id="edit-record-status" class="form-select">
-              <option value="Exemplary">Exemplary / Distinction</option>
-              <option value="Proficient">Proficient / On Track</option>
-              <option value="Standard">Standard / Capable</option>
-              <option value="Attention Needed">Attention Needed / At Risk</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom: var(--space-6);">
-          <label class="form-label" for="edit-record-notes">Actionable Remarks / Feedback</label>
-          <textarea id="edit-record-notes" class="form-input" rows="3"></textarea>
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
-          <button type="button" class="btn btn-secondary" id="btn-cancel-edit-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Changes</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/supabase-client.js?v=3.6.0"></script>
-  <script src="js/auth.js?v=3.6.0"></script>
-  <script src="js/api.js?v=3.6.0"></script>
-  <script src="js/analytics.js?v=3.6.0"></script>
-  <script src="js/tour.js?v=3.6.0"></script>
+  <script src="js/supabase-client.js?v=3.7.0"></script>
+  <script src="js/auth.js?v=3.7.0"></script>
+  <script src="js/api.js?v=3.7.0"></script>
+  <script src="js/analytics.js?v=3.7.0"></script>
+  <script src="js/tour.js?v=3.7.0"></script>
 </body>
 </html>
