@@ -441,12 +441,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       let pct = +((raw / 4.0) * 100.0).toFixed(1);
       return { raw: +raw.toFixed(2), pct, formatted: `${raw.toFixed(2)} CGPA` };
     } else if (s === "intermediate" || s === "matric") {
-      const pctMatch = String(item.score || "").match(/(\d+(?:\.\d+)?)\s*%/);
+      const scoreRaw = item.score !== undefined ? item.score : (item.predicted_score !== undefined ? item.predicted_score : "");
+      const pctMatch = String(scoreRaw || "").match(/(\d+(?:\.\d+)?)\s*%/);
       if (pctMatch) {
         const pctVal = parseFloat(pctMatch[1]);
         return { raw: pctVal, pct: pctVal, formatted: `${pctVal.toFixed(1)}%` };
       }
-      raw = parseFloat(item.score) || 0;
+      raw = parseFloat(scoreRaw) || 0;
       let pct = raw;
       if (raw > 100) {
         pct = raw <= 550 ? (raw / 550.0) * 100.0 : (raw / 1100.0) * 100.0;
@@ -454,12 +455,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       pct = +Math.min(100, Math.max(0, pct)).toFixed(1);
       return { raw, pct, formatted: raw > 100 ? `${raw} Marks (${pct}%)` : `${pct}%` };
     } else {
-      const pctMatch = String(item.score || "").match(/(\d+(?:\.\d+)?)\s*%/);
+      const scoreRaw = item.score !== undefined ? item.score : (item.predicted_score !== undefined ? item.predicted_score : "");
+      const pctMatch = String(scoreRaw || "").match(/(\d+(?:\.\d+)?)\s*%/);
       if (pctMatch) {
         const pctVal = parseFloat(pctMatch[1]);
         return { raw: pctVal, pct: pctVal, formatted: `${pctVal.toFixed(1)}%` };
       }
-      raw = parseFloat(item.score) || 0;
+      raw = parseFloat(scoreRaw) || 0;
       let pct = raw > 100 ? (raw <= 500 ? (raw / 500.0) * 100.0 : (raw / 1000.0) * 100.0) : raw;
       pct = +Math.min(100, Math.max(0, pct)).toFixed(1);
       return { raw, pct, formatted: `${pct.toFixed(1)}%` };
@@ -598,17 +600,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      // 2. Fallback to stage-specific features if needed
+      // 2. Stage-Specific Fallback (Strict Separation: Never read HSSC for Matric!)
       if (verifiedPct === null || isNaN(verifiedPct) || verifiedPct <= 0) {
-        if (latestP.past_annual_pct !== undefined && !isNaN(parseFloat(latestP.past_annual_pct))) {
-          verifiedPct = parseFloat(latestP.past_annual_pct);
-        } else if (latestP.HSSC_I_Marks !== undefined && !isNaN(parseFloat(latestP.HSSC_I_Marks))) {
-          const rawM = parseFloat(latestP.HSSC_I_Marks);
-          verifiedPct = rawM > 100 ? +((rawM / 550.0) * 100.0).toFixed(1) : rawM;
-        } else if (latestP.SSC_Total_Marks !== undefined && !isNaN(parseFloat(latestP.SSC_Total_Marks))) {
-          const rawM = parseFloat(latestP.SSC_Total_Marks);
-          verifiedPct = rawM > 100 ? +((rawM / 1100.0) * 100.0).toFixed(1) : rawM;
-        } else {
+        if (s === "matric") {
+          if (latestP.SSC_I_Marks !== undefined && !isNaN(parseFloat(latestP.SSC_I_Marks))) {
+            const rawM = parseFloat(latestP.SSC_I_Marks);
+            verifiedPct = rawM > 100 ? +((rawM / 550.0) * 100.0).toFixed(1) : rawM;
+          } else if (latestP.SSC_Total_Marks !== undefined && !isNaN(parseFloat(latestP.SSC_Total_Marks))) {
+            const rawM = parseFloat(latestP.SSC_Total_Marks);
+            verifiedPct = rawM > 100 ? +((rawM / 1100.0) * 100.0).toFixed(1) : rawM;
+          } else if (latestRun.current_standing_pct !== undefined && !isNaN(parseFloat(latestRun.current_standing_pct))) {
+            verifiedPct = parseFloat(latestRun.current_standing_pct);
+          }
+        } else if (s === "intermediate") {
+          if (latestP.HSSC_I_Marks !== undefined && !isNaN(parseFloat(latestP.HSSC_I_Marks))) {
+            const rawM = parseFloat(latestP.HSSC_I_Marks);
+            verifiedPct = rawM > 100 ? +((rawM / 550.0) * 100.0).toFixed(1) : rawM;
+          } else if (latestP.SSC_Total_Marks !== undefined && !isNaN(parseFloat(latestP.SSC_Total_Marks))) {
+            const rawM = parseFloat(latestP.SSC_Total_Marks);
+            verifiedPct = rawM > 100 ? +((rawM / 1100.0) * 100.0).toFixed(1) : rawM;
+          }
+        } else if (s === "secondary") {
+          if (latestP.past_annual_pct !== undefined && !isNaN(parseFloat(latestP.past_annual_pct))) {
+            verifiedPct = parseFloat(latestP.past_annual_pct);
+          }
+        }
+
+        if (verifiedPct === null || isNaN(verifiedPct) || verifiedPct <= 0) {
           const parsed = parseNormalizedScore(latestRun);
           verifiedPct = parsed.pct;
         }
@@ -620,7 +638,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // 3. AI Forecasted Target percentage
       let forecastedPct = null;
-      if (latestRun.score) {
+      if (latestP.forecasted_percentage !== undefined && !isNaN(parseFloat(latestP.forecasted_percentage))) {
+        forecastedPct = parseFloat(latestP.forecasted_percentage);
+      } else if (latestRun.forecasted_percentage !== undefined && !isNaN(parseFloat(latestRun.forecasted_percentage))) {
+        forecastedPct = parseFloat(latestRun.forecasted_percentage);
+      } else if (s === "matric" && latestP.forecasted_10th_marks) {
+        const m10 = String(latestP.forecasted_10th_marks).match(/(\d+(?:\.\d+)?)\s*%/);
+        if (m10) forecastedPct = parseFloat(m10[1]);
+      } else if (latestRun.score) {
         const strScore = String(latestRun.score);
         const match = strScore.match(/(\d+(?:\.\d+)?)\s*%/);
         if (match) forecastedPct = parseFloat(match[1]);
@@ -642,7 +667,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Guarantee realistic, ascending AI growth trajectory
       if (!forecastedPct || isNaN(forecastedPct) || forecastedPct <= currentStandingVal) {
         const headroom = 100.0 - currentStandingVal;
-        const liftBonus = Math.max(8.0, Math.min(22.0, +(headroom * 0.35).toFixed(1)));
+        const liftBonus = Math.max(6.0, Math.min(18.0, +(headroom * 0.35).toFixed(1)));
         forecastedPct = Math.min(98.0, +(currentStandingVal + liftBonus).toFixed(1));
       }
 

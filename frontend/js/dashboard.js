@@ -92,8 +92,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? user.id
       : (meta.student_id || meta.id_code || (meta.role === "teacher" ? "TCH-01" : "STU-01"));
     const program = meta.program || meta.major || "Software Engineering";
-    const institution = meta.institution_name || meta.institution || "Faculty of Engineering";
-    const stageDisplay = currentStage.charAt(0).toUpperCase() + currentStage.slice(1);
+    const stageDisplayMap = {
+      university: "University",
+      intermediate: "Intermediate (HSSC)",
+      matric: "Matriculation (SSC)",
+      secondary: "Secondary School",
+      primary: "Primary School"
+    };
+    const stageDisplay = stageDisplayMap[currentStage.toLowerCase()] || (currentStage.charAt(0).toUpperCase() + currentStage.slice(1));
 
     if (studentNameEl) studentNameEl.innerText = displayName;
     if (studentIdCodeEl) studentIdCodeEl.innerText = idCode;
@@ -218,13 +224,60 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
+    if (predictionHistory.length > 0 && predictionHistory[0].stage) {
+      currentStage = predictionHistory[0].stage;
+    }
+
     renderUserProfile();
-    renderStudentKPIs(stage);
+    renderStudentKPIs(currentStage);
     renderStudentHistoryTable();
   }
 
   function renderStudentKPIs(stage) {
-    const isUni = stage === "university";
+    const activeStage = (predictionHistory.length > 0 && predictionHistory[0].stage) ? predictionHistory[0].stage : (stage || "university");
+    const isUni = activeStage === "university";
+    const isMatric = activeStage === "matric";
+    const isInter = activeStage === "intermediate";
+    const isSec = activeStage === "secondary";
+    const isPrim = activeStage === "primary";
+
+    const standingTitleEl = document.getElementById("kpi-standing-title");
+    const standingSublabelEl = document.getElementById("kpi-standing-sublabel");
+    const termSublabelEl = document.getElementById("kpi-term-sublabel");
+    const forecastTitleEl = document.getElementById("kpi-forecast-title");
+    const forecastSublabelEl = document.getElementById("kpi-forecast-sublabel");
+
+    if (standingTitleEl) {
+      if (isUni) standingTitleEl.innerText = "CUMULATIVE CGPA / STANDING";
+      else if (isMatric) standingTitleEl.innerText = "MATRICULATION (SSC) STANDING";
+      else if (isInter) standingTitleEl.innerText = "INTERMEDIATE (HSSC) STANDING";
+      else if (isSec) standingTitleEl.innerText = "SECONDARY ACADEMIC STANDING";
+      else standingTitleEl.innerText = "FOUNDATIONAL MASTERY STANDING";
+    }
+
+    if (standingSublabelEl) {
+      if (isUni) standingSublabelEl.innerText = "Cumulative CGPA";
+      else if (isMatric) standingSublabelEl.innerText = "Final Matric Total";
+      else if (isInter) standingSublabelEl.innerText = "1st Year Score";
+      else if (isSec) standingSublabelEl.innerText = "Overall Performance";
+      else standingSublabelEl.innerText = "Overall Mastery";
+    }
+
+    if (termSublabelEl) {
+      if (isUni) termSublabelEl.innerText = "Semester GPA";
+      else if (isMatric) termSublabelEl.innerText = "9th Class Baseline";
+      else if (isInter) termSublabelEl.innerText = "Projected 2-Year Total";
+      else if (isSec) termSublabelEl.innerText = "Previous Class Final";
+      else termSublabelEl.innerText = "Numeracy & Literacy";
+    }
+
+    if (forecastSublabelEl) {
+      if (isUni) forecastSublabelEl.innerText = "Forecasted GPA";
+      else if (isMatric) forecastSublabelEl.innerText = "10th Class Forecast";
+      else if (isInter) forecastSublabelEl.innerText = "2nd Year Forecast";
+      else if (isSec) forecastSublabelEl.innerText = "Target Class Forecast";
+      else forecastSublabelEl.innerText = "Target Mastery";
+    }
 
     if (predictionHistory.length > 0) {
       const latest = predictionHistory[0];
@@ -232,7 +285,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // 1. Cumulative & Term Standing
       if (kpiCgpa) {
-        if (latest.stage === "university" || isUni) {
+        if (isUni) {
           let cgpaNum = null;
           if (p.Previous_CGPA !== undefined && p.Previous_CGPA !== null && !isNaN(parseFloat(p.Previous_CGPA))) {
             cgpaNum = parseFloat(p.Previous_CGPA);
@@ -246,16 +299,40 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (cgpaNum === null || isNaN(cgpaNum)) cgpaNum = 2.70;
           if (cgpaNum > 4.0) cgpaNum = +(cgpaNum / 25.0).toFixed(2);
           kpiCgpa.innerText = `${cgpaNum.toFixed(2)} CGPA`;
-        } else if (latest.stage === "intermediate") {
-          kpiCgpa.innerText = p.SSC_Total_Marks ? `${p.SSC_Total_Marks}/1100 (SSC)` : (latest.score?.includes("%") ? latest.score : `${latest.score}%`);
+        } else if (isMatric) {
+          if (p.final_matric_total) {
+            kpiCgpa.innerText = p.final_matric_total;
+          } else if (p.SSC_Total_Marks) {
+            const pct = +((parseFloat(p.SSC_Total_Marks) / 1100.0) * 100).toFixed(1);
+            kpiCgpa.innerText = `${p.SSC_Total_Marks} / 1100 (${pct}%)`;
+          } else if (p.SSC_I_Marks && p.SSC_II_Marks) {
+            const tot = parseFloat(p.SSC_I_Marks) + parseFloat(p.SSC_II_Marks);
+            const pct = +((tot / 1100.0) * 100).toFixed(1);
+            kpiCgpa.innerText = `${tot} / 1100 (${pct}%)`;
+          } else if (p.SSC_I_Marks) {
+            const tot = parseFloat(p.SSC_I_Marks) * 2;
+            const pct = +((tot / 1100.0) * 100).toFixed(1);
+            kpiCgpa.innerText = `${tot} / 1100 (${pct}%)`;
+          } else {
+            kpiCgpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
+          }
+        } else if (isInter) {
+          if (p.HSSC_I_Marks) {
+            const m = parseFloat(p.HSSC_I_Marks);
+            const pct = +((m / 550.0) * 100).toFixed(1);
+            kpiCgpa.innerText = `${m} / 550 (${pct}%)`;
+          } else if (p.SSC_Total_Marks) {
+            kpiCgpa.innerText = `${p.SSC_Total_Marks} / 1100 (SSC)`;
+          } else {
+            kpiCgpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
+          }
         } else {
           kpiCgpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
         }
       }
 
       if (kpiSemGpa) {
-        if (latest.stage === "university" || isUni) {
-          // Current / Latest completed semester GPA (NOT attendance!)
+        if (isUni) {
           let termGpa = null;
           if (Array.isArray(p.logged_terms) && p.logged_terms.length > 0) {
             const lastTerm = p.logged_terms[p.logged_terms.length - 1];
@@ -278,9 +355,24 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (termGpa === null || isNaN(termGpa)) termGpa = 2.70;
           if (termGpa > 4.0) termGpa = +(termGpa / 25.0).toFixed(2);
           kpiSemGpa.innerText = `${termGpa.toFixed(2)} GPA`;
-        } else if (latest.stage === "intermediate") {
-          kpiSemGpa.innerText = p.HSSC_I_Marks ? `${p.HSSC_I_Marks}/550 (HSSC-I)` : "500/550";
-        } else if (latest.stage === "secondary") {
+        } else if (isMatric) {
+          if (p.SSC_I_Marks) {
+            const m = parseFloat(p.SSC_I_Marks);
+            const pct = +((m / 550.0) * 100).toFixed(1);
+            kpiSemGpa.innerText = `${m} / 550 (${pct}%)`;
+          } else {
+            kpiSemGpa.innerText = "440 / 550 (80%)";
+          }
+        } else if (isInter) {
+          if (p.final_intermediate_total) {
+            kpiSemGpa.innerText = p.final_intermediate_total;
+          } else if (p.HSSC_I_Marks) {
+            const proj = Math.round(parseFloat(p.HSSC_I_Marks) * 2);
+            kpiSemGpa.innerText = `${proj} / 1100 (Proj)`;
+          } else {
+            kpiSemGpa.innerText = "950 / 1100";
+          }
+        } else if (isSec) {
           kpiSemGpa.innerText = p.past_annual_pct ? `${p.past_annual_pct}% (Prior Grade)` : "85% (Prior)";
         } else {
           kpiSemGpa.innerText = p.math_score ? `${p.math_score}% Math` : "86% Numeracy";
@@ -302,7 +394,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // 3. Latest AI Forecast & Badge
       if (kpiPredictedGpa) {
-        if (latest.stage === "university" || isUni) {
+        if (isUni) {
           let predGpa = null;
           if (p.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(p.forecasted_semester_gpa))) {
             predGpa = parseFloat(p.forecasted_semester_gpa);
@@ -315,8 +407,29 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
           if (predGpa === null || isNaN(predGpa)) predGpa = 3.65;
           kpiPredictedGpa.innerText = `${predGpa.toFixed(2)} CGPA`;
+        } else if (isMatric) {
+          if (p.forecasted_10th_marks) {
+            kpiPredictedGpa.innerText = p.forecasted_10th_marks;
+          } else if (p.SSC_I_Marks) {
+            const s1 = parseFloat(p.SSC_I_Marks);
+            const proj10th = Math.min(550, Math.round(s1 * 1.08));
+            const pct = +((proj10th / 550.0) * 100).toFixed(1);
+            kpiPredictedGpa.innerText = `${proj10th} / 550 (${pct}%)`;
+          } else {
+            kpiPredictedGpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
+          }
+        } else if (isInter) {
+          if (p.forecasted_2nd_year) {
+            kpiPredictedGpa.innerText = p.forecasted_2nd_year;
+          } else if (p.HSSC_I_Marks) {
+            const m = parseFloat(p.HSSC_I_Marks);
+            const proj2 = Math.min(550, Math.round(m * 1.06));
+            kpiPredictedGpa.innerText = `${proj2} / 550`;
+          } else {
+            kpiPredictedGpa.innerText = latest.score || "90.0%";
+          }
         } else {
-          kpiPredictedGpa.innerText = latest.score || "90.0%";
+          kpiPredictedGpa.innerText = p.forecasted_target_percentage || latest.score || "90.0%";
         }
       }
       if (kpiStatusBadge) {

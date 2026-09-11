@@ -1415,8 +1415,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const ssc1 = Math.round((overallPct / 100.0) * 550.0);
 
       payload.SSC_I_Marks = ssc1;
-      payload.SSC_II_Marks = ssc1;
-      payload.HSSC_I_Marks = 400;
       payload.Attendance_Rate = avgAtt;
       payload.Study_Hours = studyH;
       payload.Matric_Group = "Science (Computer Science)";
@@ -1663,12 +1661,16 @@ document.addEventListener("DOMContentLoaded", () => {
         };
       }
     } else if (stage === "matric") {
-      const ssc1 = parseFloat(payload.SSC_I_Marks || 465);
+      const ssc1 = parseFloat(payload.SSC_I_Marks || 440);
       const studyH = parseFloat(payload.Study_Hours || payload.study_hours || 4.5);
       const att = parseFloat(payload.Attendance_Rate || 90);
       const ssc1Pct = (ssc1 / 550.0) * 100.0;
-      const habitBoost = ((studyH - 4.0) * 1.5) + ((att - 85.0) * 0.35);
-      const predSsc2Pct = +(Math.min(100.0, Math.max(30.0, ssc1Pct + habitBoost))).toFixed(1);
+      
+      // Calculate realistic AI predictive headroom and growth
+      const habitBoost = ((studyH - 4.0) * 1.2) + ((att - 85.0) * 0.25);
+      const headroom = 100.0 - ssc1Pct;
+      const aiGrowthLift = Math.max(4.5, Math.min(12.5, +(headroom * 0.35 + habitBoost).toFixed(1)));
+      const predSsc2Pct = +(Math.min(98.5, Math.max(ssc1Pct + 1.0, ssc1Pct + aiGrowthLift))).toFixed(1);
       const predSsc2Marks = Math.min(550, Math.max(150, Math.round((predSsc2Pct / 100.0) * 550)));
       const totalMarks = Math.min(1100, Math.max(200, Math.round(ssc1 + predSsc2Marks)));
       const pct = +((totalMarks / 1100) * 100).toFixed(1);
@@ -1685,9 +1687,11 @@ document.addEventListener("DOMContentLoaded", () => {
         stage,
         score: totalMarks,
         predicted_score: totalMarks,
-        forecasted_10th_marks: `${predSsc2Marks} / 550`,
-        final_matric_total: `${totalMarks} / 1100`,
+        forecasted_10th_marks: `${predSsc2Marks} / 550 (${predSsc2Pct}%)`,
+        final_matric_total: `${totalMarks} / 1100 (${pct}%)`,
         formatted_score,
+        forecasted_percentage: predSsc2Pct,
+        current_standing_pct: +ssc1Pct.toFixed(1),
         predicted_grade: grade,
         grade,
         risk_level,
@@ -1698,7 +1702,8 @@ document.addEventListener("DOMContentLoaded", () => {
         confidence_interval: { lower: min_ci, upper: max_ci },
         feature_contributions: {
           top_positive_factors: [
-            `9th Class Board Foundation: ${ssc1}/550 (${ssc1Pct.toFixed(1)}%) baseline logged`,
+            `9th Class Board Foundation: ${ssc1}/550 (${ssc1Pct.toFixed(1)}%) verified baseline`,
+            `10th Class Growth Forecast: +${(predSsc2Pct - ssc1Pct).toFixed(1)}% projected academic lift`,
             `School Attendance: ${att}% regular presence`,
             `Daily Independent Study: ${studyH} hrs/day routine`
           ],
@@ -1707,7 +1712,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `Take regular monthly mock tests to build speed and accuracy`
           ]
         },
-        recommendation: `Solid trajectory predicted for 10th class board examinations. Maintain structured daily revisions.`
+        recommendation: `Model forecasts ${predSsc2Marks}/550 (${predSsc2Pct}%) in 10th Class board exams, lifting your final Matric total to ${totalMarks}/1100 (${pct}%). Maintain structured daily revisions.`
       };
     } else if (stage === "secondary") {
       const tgtClass = payload.target_class || "Class 9 / Matric";

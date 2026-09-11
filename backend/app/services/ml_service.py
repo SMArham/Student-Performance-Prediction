@@ -210,22 +210,31 @@ class MLService:
             return score, formatted, grade
 
         elif stage == "matric_inter":
+            req_stage = str(input_dict.get("stage", "")).lower()
             hssc_i = float(input_dict.get("HSSC_I_Marks", input_dict.get("hssc_i_marks", 0)))
             ssc_i = float(input_dict.get("SSC_I_Marks", input_dict.get("ssc_i_marks", 0)))
             study_h = float(input_dict.get("Study_Hours", input_dict.get("study_hours", 4.0)))
             att = float(input_dict.get("Attendance_Rate", input_dict.get("attendance_rate", 85.0)))
 
-            if hssc_i > 0:
-                # 1st Year (HSSC-I) Marks entered (e.g. 500 / 550)
-                # Projected 2nd Year (HSSC-II) marks calibrated from baseline + study habits
-                habit_boost = (study_h - 4.0) * 3.5 + (att - 80.0) * 0.4
-                projected_hssc2 = min(550.0, max(150.0, (hssc_i * 0.98) + habit_boost))
-                total_marks = round(min(1100.0, max(0.0, hssc_i + projected_hssc2)), 1)
-            elif ssc_i > 0:
-                # 9th Grade (SSC-I) Marks entered (e.g. 480 / 550)
-                habit_boost = (study_h - 4.0) * 3.5 + (att - 80.0) * 0.4
-                projected_ssc2 = min(550.0, max(150.0, (ssc_i * 0.98) + habit_boost))
-                total_marks = round(min(1100.0, max(0.0, ssc_i + projected_ssc2)), 1)
+            if req_stage == "matric" or (ssc_i > 0 and hssc_i == 0):
+                # 9th Grade (SSC-I) Marks entered (e.g. 440 / 550) -> Positive AI Headroom Lift
+                ssc_base = ssc_i if ssc_i > 0 else 440.0
+                ssc_pct = (ssc_base / 550.0) * 100.0
+                headroom = 100.0 - ssc_pct
+                habit_boost = (study_h - 4.0) * 1.5 + (att - 85.0) * 0.35
+                ai_growth_lift = max(4.5, min(12.5, round(headroom * 0.35 + habit_boost, 1)))
+                pred_ssc2_pct = min(98.5, max(ssc_pct + 1.0, ssc_pct + ai_growth_lift))
+                projected_ssc2 = min(550.0, max(150.0, round((pred_ssc2_pct / 100.0) * 550.0)))
+                total_marks = round(min(1100.0, max(0.0, ssc_base + projected_ssc2)), 1)
+            elif hssc_i > 0 or req_stage == "intermediate":
+                hssc_base = hssc_i if hssc_i > 0 else 460.0
+                hssc_pct = (hssc_base / 550.0) * 100.0
+                headroom = 100.0 - hssc_pct
+                habit_boost = (study_h - 4.0) * 1.5 + (att - 85.0) * 0.35
+                ai_growth_lift = max(4.0, min(12.0, round(headroom * 0.32 + habit_boost, 1)))
+                pred_hssc2_pct = min(98.5, max(hssc_pct + 1.0, hssc_pct + ai_growth_lift))
+                projected_hssc2 = min(550.0, max(150.0, round((pred_hssc2_pct / 100.0) * 550.0)))
+                total_marks = round(min(1100.0, max(0.0, hssc_base + projected_hssc2)), 1)
             else:
                 total_marks = round(min(1100.0, max(300.0, raw_pred if raw_pred > 550 else raw_pred * 2)), 1)
 
