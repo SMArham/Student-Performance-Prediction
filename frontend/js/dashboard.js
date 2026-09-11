@@ -92,6 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? user.id
       : (meta.student_id || meta.id_code || (meta.role === "teacher" ? "TCH-01" : "STU-01"));
     const program = meta.program || meta.major || "Software Engineering";
+    const institution = meta.institution_name || meta.institution || "Faculty Campus";
     const stageDisplayMap = {
       university: "University",
       intermediate: "Intermediate (HSSC)",
@@ -99,7 +100,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       secondary: "Secondary School",
       primary: "Primary School"
     };
-    const stageDisplay = stageDisplayMap[currentStage.toLowerCase()] || (currentStage.charAt(0).toUpperCase() + currentStage.slice(1));
+    const effectiveStage = (predictionHistory.length > 0 && predictionHistory[0].stage) 
+      ? predictionHistory[0].stage 
+      : currentStage;
+    const stageDisplay = stageDisplayMap[effectiveStage.toLowerCase()] || (effectiveStage.charAt(0).toUpperCase() + effectiveStage.slice(1));
 
     if (studentNameEl) studentNameEl.innerText = displayName;
     if (studentIdCodeEl) studentIdCodeEl.innerText = idCode;
@@ -123,7 +127,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Portal Initialization (Student Portal)
   // --------------------------------------------------------------------------
   function initPortal() {
-    const firstName = (userMeta.full_name || "User").split(" ")[0];
+    const user = window.authClient ? window.authClient.getUser() : null;
+    const meta = user?.user_metadata || userMeta;
+    const firstName = (meta.full_name || "User").split(" ")[0];
 
     if (studentPortalView) studentPortalView.style.display = "block";
     if (heroGreetingEl) heroGreetingEl.innerText = `Welcome back, ${firstName} 👋`;
@@ -142,16 +148,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // Student Portal Data Loading (Zero Fake Metrics)
+  // Student Portal Data Loading (Zero Fake Metrics - Resilient Local + Cloud Merge)
   // --------------------------------------------------------------------------
   async function loadStudentPortalData(stage) {
-    const userKey = currentUser?.id ? `edumetrics_prediction_history_v2_${currentUser.id}` : null;
+    const activeUser = window.authClient ? window.authClient.getUser() : currentUser;
+    const userId = activeUser?.id;
+    const userEmail = (activeUser?.email || "").toLowerCase();
 
     // Step 0: Gather tombstoned (permanently deleted) IDs
     let deletedIds = new Set();
     try {
       const tombstoneKeys = [
-        currentUser?.id ? `sp_deleted_prediction_ids_${currentUser.id}` : null,
+        userId ? `sp_deleted_prediction_ids_${userId}` : null,
         "sp_deleted_prediction_ids"
       ].filter(Boolean);
       for (const tk of tombstoneKeys) {
@@ -167,63 +175,97 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (e) {}
 
-    // 1. Load user-isolated local cache
-    if (userKey) {
-      const localData = localStorage.getItem(userKey);
-      if (localData) {
-        try {
-          const parsed = JSON.parse(localData);
+    // 1. Load user-isolated local cache (merge all known keys)
+    const localMap = new Map();
+    const userKeys = [
+      userId ? `edumetrics_prediction_history_v2_${userId}` : null,
+      userId ? `edumetrics_prediction_history_${userId}` : null,
+      userId ? `sp_prediction_history_${userId}` : null,
+      "edumetrics_prediction_history_v2"
+    ].filter(Boolean);
+
+    for (const key of userKeys) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) {
-            predictionHistory = parsed.filter(item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase()) && (item.user_id === currentUser.id || (!item.user_id && currentUser.email && item.payload?.user_email === currentUser.email)));
+            parsed.forEach(item => {
+              if (!item || !item.id) return;
+              const itemId = String(item.id).trim().toLowerCase();
+              if (deletedIds.has(itemId)) return;
+              const p = item.input_features || item.payload || {};
+              const pId = String(p.id || "").trim().toLowerCase();
+              if (pId && deletedIds.has(pId)) return;
+              const rUser = item.user_id || p.user_id;
+              const rEmail = (item.user_email || p.user_email || item.email || "").toLowerCase();
+              const isMatch = (userId && rUser === userId) || (userEmail && rEmail === userEmail) || (!rUser && !rEmail && key.includes(userId || ""));
+              if (isMatch) {
+                localMap.set(String(item.id), item);
+              }
+            });
           }
-        } catch (e) {}
-      }
+        }
+      } catch (e) {}
     }
 
     // 2. Fetch live history strictly for this user from Supabase Cloud
-    if (window.authClient && window.authClient.client && currentUser?.id) {
+    const cloudMap = new Map();
+    if (window.authClient && window.authClient.client && (userId || userEmail)) {
       try {
-        const { data, error } = await window.authClient.client
-          .from("prediction_history")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(50);
+        const queryPromise = userId 
+          ? window.authClient.client.from("prediction_history").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50)
+          : window.authClient.client.from("prediction_history").select("*").order("created_at", { ascending: false }).limit(50);
 
-        if (!error && Array.isArray(data)) {
-          const userRows = data.filter((item) => {
-            if (!item) return false;
-            const itemId = String(item.id || "").trim().toLowerCase();
-            if (itemId && deletedIds.has(itemId)) return false;
+        const { data, error } = await queryPromise;
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+          data.forEach((item) => {
+            if (!item || !item.id) return;
+            const itemId = String(item.id).trim().toLowerCase();
+            if (deletedIds.has(itemId)) return;
             const p = item.input_features || item.payload || {};
             const pId = String(p.id || "").trim().toLowerCase();
-            if (pId && deletedIds.has(pId)) return false;
-            const rowUserId = item.user_id || p.user_id;
-            const rowEmail = item.user_email || p.user_email || item.email;
-            return (rowUserId && rowUserId === currentUser.id) || (currentUser.email && rowEmail && rowEmail.toLowerCase() === currentUser.email.toLowerCase());
+            if (pId && deletedIds.has(pId)) return;
+            const rUser = item.user_id || p.user_id;
+            const rEmail = (item.user_email || p.user_email || item.email || "").toLowerCase();
+            const isMatch = (userId && rUser === userId) || (userEmail && rEmail === userEmail);
+            if (isMatch) {
+              const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
+              cloudMap.set(String(item.id), {
+                id: item.id,
+                stage: item.stage,
+                score: item.score || `${rawScore}`,
+                grade: item.predicted_grade || item.grade || "Grade A",
+                status_badge: item.status_badge || "On Track",
+                created_at: item.created_at,
+                timestamp: item.created_at,
+                payload: item.input_features || item.payload || {}
+              });
+            }
           });
-          predictionHistory = userRows.map((item) => {
-            const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
-            return {
-              id: item.id,
-              stage: item.stage,
-              score: item.score || `${rawScore}`,
-              grade: item.predicted_grade || item.grade || "Grade A",
-              status_badge: item.status_badge || "On Track",
-              created_at: item.created_at,
-              timestamp: item.created_at,
-              payload: item.input_features || item.payload || {}
-            };
-          }).filter(item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase()));
-
-          if (userKey) {
-            localStorage.setItem(userKey, JSON.stringify(predictionHistory));
-          }
         }
       } catch (err) {
         console.warn("[Dashboard] Supabase history query note:", err);
       }
     }
 
+    // 3. Merged Unified History List (Local + Cloud deduplicated)
+    const unifiedMap = new Map();
+    localMap.forEach((v, k) => unifiedMap.set(k, v));
+    cloudMap.forEach((v, k) => unifiedMap.set(k, v));
+
+    const finalList = Array.from(unifiedMap.values()).filter(item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase()));
+    finalList.sort((a, b) => new Date(b.timestamp || b.created_at || 0) - new Date(a.timestamp || a.created_at || 0));
+
+    predictionHistory = finalList;
+
+    // Cache merged result back to user key
+    if (userId) {
+      localStorage.setItem(`edumetrics_prediction_history_v2_${userId}`, JSON.stringify(predictionHistory));
+    }
+
+    // Dynamically adopt stage from latest prediction run
     if (predictionHistory.length > 0 && predictionHistory[0].stage) {
       currentStage = predictionHistory[0].stage;
     }
@@ -526,9 +568,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // Auto-refresh when user returns to Dashboard tab or storage updates
+  window.addEventListener("focus", () => loadStudentPortalData(currentStage));
+  window.addEventListener("pageshow", () => loadStudentPortalData(currentStage));
+  window.addEventListener("storage", (e) => {
+    if (e.key && (e.key.includes("prediction") || e.key.includes("history") || e.key.includes("academic"))) {
+      loadStudentPortalData(currentStage);
+    }
+  });
+
   // Initial Boot
   initPortal();
   if (window.authClient && window.authClient.syncProfileWithDatabase) {
-    window.authClient.syncProfileWithDatabase().then(() => renderUserProfile());
+    window.authClient.syncProfileWithDatabase().then(() => {
+      renderUserProfile();
+      loadStudentPortalData(currentStage);
+    });
   }
 });

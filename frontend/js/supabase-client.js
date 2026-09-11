@@ -246,6 +246,19 @@ class SupabaseAuthClient {
       }
     } catch (delMapErr) {}
 
+    // Ensure completely clean slate for newly created accounts (strictly no leftover records from previous users/sessions)
+    try {
+      const allStages = ["university", "intermediate", "matric", "matric_inter", "secondary", "primary"];
+      allStages.forEach(st => {
+        localStorage.removeItem(`sp_academic_records_${st}`);
+      });
+      localStorage.removeItem("sp_academic_records");
+      localStorage.removeItem("edumetrics_prediction_history_v2");
+      localStorage.removeItem("edumetrics_prediction_history");
+      localStorage.removeItem("sp_prediction_history");
+      localStorage.removeItem("sp_user_subjects_v1");
+    } catch (cleanErr) {}
+
     const role = (metadata.role || "student").toLowerCase();
     const cleanName = metadata.full_name || cleanEmail.split("@")[0] || (role === "teacher" ? "Faculty Teacher" : "Student");
     const programName = metadata.program || metadata.major || (role === "teacher" ? (metadata.department || "Computer Science") : "Software Engineering");
@@ -800,11 +813,11 @@ class SupabaseAuthClient {
     if (!this.client || !userId) return;
     try {
       // 1. Sync real academic records & subjects entered by the user
-      const stages = ["university", "matric_inter", "secondary", "primary"];
+      const stages = ["university", "intermediate", "matric", "matric_inter", "secondary", "primary"];
       for (const st of stages) {
         const localKey = `sp_academic_records_${userId}_${st}`;
-        const fallbackKey = `sp_academic_records_${st}`;
-        const raw = localStorage.getItem(localKey) || localStorage.getItem(fallbackKey);
+        // STRICT USER ISOLATION: Never sync un-scoped generic keys to prevent account cross-contamination
+        const raw = localStorage.getItem(localKey);
         if (raw) {
           try {
             const terms = JSON.parse(raw);

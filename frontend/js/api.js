@@ -210,7 +210,6 @@ class APIClient {
         terms.push({ id: termPayload.id || ("term_" + Date.now()), ...termPayload, created_at: new Date().toISOString() });
       }
       localStorage.setItem(key, JSON.stringify(terms));
-      localStorage.setItem(`sp_academic_records_${stage}`, JSON.stringify(terms));
 
       // Asynchronously upsert into Supabase database table if client available
       if (window.authClient && window.authClient.client) {
@@ -318,9 +317,8 @@ class APIClient {
     try {
       const raw = localStorage.getItem(key);
       let terms = raw ? JSON.parse(raw) : [];
-      terms = terms.filter(t => (t.term_name || "").toLowerCase() !== (termName || "").toLowerCase() && (t.id || "") !== termName);
       localStorage.setItem(key, JSON.stringify(terms));
-      localStorage.setItem(`sp_academic_records_${stage}`, JSON.stringify(terms));
+      localStorage.removeItem(`sp_academic_records_${stage}`);
 
       if (window.authClient && window.authClient.client) {
         const session = window.authClient.getSession();
