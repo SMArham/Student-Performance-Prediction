@@ -135,6 +135,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   const kpiLatestBadge = document.getElementById("kpi-latest-badge");
   const kpiGrowthDelta = document.getElementById("kpi-growth-delta");
 
+  // 4 Bento Executive KPI DOMs (Identical to Dashboard)
+  const kpiCgpa = document.getElementById("kpi-cgpa");
+  const kpiSemGpa = document.getElementById("kpi-sem-gpa");
+  const kpiAttendance = document.getElementById("kpi-attendance");
+  const kpiStudyHours = document.getElementById("kpi-study-hours");
+  const kpiPredictedGpa = document.getElementById("kpi-predicted-gpa");
+  const kpiStatusBadge = document.getElementById("kpi-status-badge");
+  const kpiTargetGpa = document.getElementById("kpi-target-gpa");
+  const standingTitleEl = document.getElementById("kpi-standing-title");
+  const standingSublabelEl = document.getElementById("kpi-standing-sublabel");
+  const termSublabelEl = document.getElementById("kpi-term-sublabel");
+  const forecastTitleEl = document.getElementById("kpi-forecast-title");
+  const forecastSublabelEl = document.getElementById("kpi-forecast-sublabel");
+
 
 
   // Ledger DOMs
@@ -239,18 +253,231 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.persistHistory = persistHistory;
 
   // --------------------------------------------------------------------------
-  // 6. LOAD PREDICTION HISTORY (STRICTLY USER ISOLATED)
+  // 5B. CANONICAL PREDICTION DATA EXTRACTOR (SINGLE SOURCE OF TRUTH ACROSS ALL PAGES)
+  // --------------------------------------------------------------------------
+  function parsePredictionForecastRecord(item) {
+    if (!item) {
+      return {
+        isUni: true,
+        stage: "university",
+        standingCgpa: 4.00,
+        standingCgpaStr: "4.00 CGPA",
+        semGpa: 2.00,
+        semGpaStr: "2.00 GPA",
+        forecastVal: 2.06,
+        forecastStr: "2.06 CGPA",
+        diff: -1.94,
+        liftDelta: "-1.94",
+        statusBadge: "Critical Intervention Needed",
+        statusColor: "badge-danger",
+        att: 85,
+        studyHours: 4.5,
+        recommendation: "Model forecasts a 2.06 Semester GPA for your upcoming term, projecting your cumulative standing to 3.03 CGPA."
+      };
+    }
+
+    let p = item.payload || item.input_features || {};
+    if (typeof p === "string") {
+      try { p = JSON.parse(p); } catch (e) { p = {}; }
+    }
+    const stage = (item.stage || p.stage || "university").toLowerCase();
+    const isUni = stage === "university";
+
+    const rec = item.recommendations || item.recommendation || p.recommendations || p.recommendation || "";
+    let recGpa = null;
+    let recCum = null;
+    if (typeof rec === "string") {
+      const mGpa = rec.match(/forecasts\s+a\s+([0-9.]+)\s+Semester\s+GPA/i);
+      if (mGpa) recGpa = parseFloat(mGpa[1]);
+      const mCum = rec.match(/cumulative\s+standing\s+to\s+([0-9.]+)\s+CGPA/i);
+      if (mCum) recCum = parseFloat(mCum[1]);
+    }
+
+    let att = p.Attendance_Pct ?? p.Attendance_Rate ?? p.attendance_rate ?? p.attendance ?? p.att ?? 85;
+    if (att === undefined || att === null || isNaN(att) || att === 0) att = 85;
+    att = Math.round(parseFloat(att));
+    const studyHours = parseFloat(p.Study_Hours_Per_Day ?? p.Study_Hours ?? p.study_hours ?? 4.5);
+
+    if (isUni) {
+      // 1. Standing Cumulative CGPA
+      let standingCgpa = null;
+      if (p.Previous_CGPA !== undefined && !isNaN(parseFloat(p.Previous_CGPA))) {
+        standingCgpa = parseFloat(p.Previous_CGPA);
+      } else if (p.cgpa !== undefined && !isNaN(parseFloat(p.cgpa))) {
+        standingCgpa = parseFloat(p.cgpa);
+      } else if (item.projected_cumulative_cgpa !== undefined && !isNaN(parseFloat(item.projected_cumulative_cgpa))) {
+        standingCgpa = parseFloat(item.projected_cumulative_cgpa);
+      } else if (recCum !== null) {
+        standingCgpa = recCum;
+      } else {
+        standingCgpa = 4.00;
+      }
+      if (standingCgpa > 4.0) standingCgpa = +(standingCgpa / 25.0).toFixed(2);
+      standingCgpa = Math.min(4.0, Math.max(0.0, +Number(standingCgpa).toFixed(2)));
+
+      // 2. Recent Semester GPA
+      let semGpa = null;
+      if (Array.isArray(p.logged_terms) && p.logged_terms.length > 0) {
+        const lt = p.logged_terms[p.logged_terms.length - 1];
+        if (lt && lt.gpa !== undefined && !isNaN(parseFloat(lt.gpa))) semGpa = parseFloat(lt.gpa);
+      }
+      if (semGpa === null && p.latest_semester_gpa !== undefined && !isNaN(parseFloat(p.latest_semester_gpa))) {
+        semGpa = parseFloat(p.latest_semester_gpa);
+      }
+      if (semGpa === null && p.Term_GPA !== undefined && !isNaN(parseFloat(p.Term_GPA))) {
+        semGpa = parseFloat(p.Term_GPA);
+      }
+      if (semGpa === null) semGpa = 2.00;
+      if (semGpa > 4.0) semGpa = +(semGpa / 25.0).toFixed(2);
+      semGpa = Math.min(4.0, Math.max(0.0, +Number(semGpa).toFixed(2)));
+
+      // 3. AI Forecasted Semester GPA (Single Source of Truth)
+      let forecastVal = null;
+      if (recGpa !== null && !isNaN(recGpa)) {
+        forecastVal = recGpa;
+      } else if (item.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(item.forecasted_semester_gpa))) {
+        forecastVal = parseFloat(item.forecasted_semester_gpa);
+      } else if (p.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(p.forecasted_semester_gpa))) {
+        forecastVal = parseFloat(p.forecasted_semester_gpa);
+      } else if (item.score !== undefined && !isNaN(parseFloat(item.score)) && parseFloat(item.score) <= 4.0 && parseFloat(item.score) > 0) {
+        forecastVal = parseFloat(item.score);
+      } else if (item.predicted_score !== undefined && !isNaN(parseFloat(item.predicted_score)) && parseFloat(item.predicted_score) <= 4.0 && parseFloat(item.predicted_score) > 0) {
+        forecastVal = parseFloat(item.predicted_score);
+      } else {
+        forecastVal = 2.06;
+      }
+      forecastVal = Math.min(4.0, Math.max(0.0, +Number(forecastVal).toFixed(2)));
+
+      const diff = +(forecastVal - standingCgpa).toFixed(2);
+      const liftDelta = `${diff >= 0 ? '+' : ''}${diff}`;
+
+      let statusBadge = item.status_badge || p.status_badge;
+      if (!statusBadge || statusBadge === "Awaiting Evaluation" || statusBadge === "Evaluated" || statusBadge.includes("Ascending")) {
+        statusBadge = forecastVal >= 3.6 ? "Exemplary" : forecastVal >= 3.0 ? "On Track" : forecastVal >= 2.3 ? "At Risk" : "Critical Intervention Needed";
+      }
+      const bLower = statusBadge.toLowerCase();
+      let statusColor = "badge-danger";
+      if (bLower.includes("critical") || bLower.includes("risk") || bLower.includes("attention") || diff < 0) {
+        statusColor = (bLower.includes("risk") && !bLower.includes("critical")) ? "badge-warning" : "badge-danger";
+        if (diff < 0 && !bLower.includes("risk") && !bLower.includes("critical")) {
+          statusBadge = "Critical Intervention Needed";
+          statusColor = "badge-danger";
+        }
+      } else if (bLower.includes("exemp") || bLower.includes("track")) {
+        statusColor = "badge-success";
+      } else {
+        statusColor = "badge-warning";
+      }
+
+      return {
+        isUni: true,
+        stage: "university",
+        standingCgpa,
+        standingCgpaStr: `${standingCgpa.toFixed(2)} CGPA`,
+        semGpa,
+        semGpaStr: `${semGpa.toFixed(2)} GPA`,
+        forecastVal,
+        forecastStr: `${forecastVal.toFixed(2)} CGPA`,
+        diff,
+        liftDelta,
+        statusBadge,
+        statusColor,
+        att,
+        studyHours,
+        recommendation: rec || `Model forecasts a ${forecastVal.toFixed(2)} Semester GPA for your upcoming term, projecting your cumulative standing to ${standingCgpa.toFixed(2)} CGPA.`
+      };
+    } else {
+      const s = stage;
+      let standingVal = 85.0;
+      let standingStr = "85.0%";
+      let forecastVal = 88.5;
+      let forecastStr = "88.5%";
+
+      if (s === "matric") {
+        if (p.SSC_I_Marks) {
+          const m = parseFloat(p.SSC_I_Marks);
+          const pct = +((m / 550.0) * 100).toFixed(1);
+          standingVal = pct;
+          standingStr = `${m} / 550 (${pct}%)`;
+        } else {
+          standingVal = 80.0;
+          standingStr = "440 / 550 (80.0%)";
+        }
+        if (p.forecasted_10th_marks) {
+          forecastStr = p.forecasted_10th_marks;
+          const match = String(p.forecasted_10th_marks).match(/(\d+(?:\.\d+)?)\s*%/);
+          if (match) forecastVal = parseFloat(match[1]);
+        } else if (item.score && item.score.includes("/ 550")) {
+          forecastStr = item.score;
+        } else {
+          forecastVal = 88.0;
+          forecastStr = "484 / 550 (88.0%)";
+        }
+      } else if (s === "intermediate") {
+        if (p.HSSC_I_Marks) {
+          const m = parseFloat(p.HSSC_I_Marks);
+          const pct = +((m / 550.0) * 100).toFixed(1);
+          standingVal = pct;
+          standingStr = `${m} / 550 (${pct}%)`;
+        } else {
+          standingVal = 83.6;
+          standingStr = "460 / 550 (83.6%)";
+        }
+        if (p.forecasted_2nd_year) {
+          forecastStr = p.forecasted_2nd_year;
+          const match = String(p.forecasted_2nd_year).match(/(\d+(?:\.\d+)?)\s*%/);
+          if (match) forecastVal = parseFloat(match[1]);
+        } else {
+          forecastVal = 88.2;
+          forecastStr = "485 / 550 (88.2%)";
+        }
+      } else {
+        standingVal = parseFloat(p.past_annual_pct || 85.0);
+        standingStr = `${standingVal.toFixed(1)}%`;
+        forecastVal = parseFloat(p.forecasted_target_percentage || 88.5);
+        forecastStr = `${forecastVal.toFixed(1)}%`;
+      }
+
+      const diff = +(forecastVal - standingVal).toFixed(1);
+      const liftDelta = `${diff >= 0 ? '+' : ''}${diff}%`;
+      const statusBadge = item.status_badge || (diff >= 0 ? "Ascending Growth 🚀" : "Attention Needed");
+      const statusColor = item.status_color || (diff >= 0 ? "badge-success" : "badge-warning");
+
+      return {
+        isUni: false,
+        stage,
+        standingCgpa: standingVal,
+        standingCgpaStr: standingStr,
+        semGpa: 33,
+        semGpaStr: s === "matric" || s === "intermediate" ? "33% Passing" : "40% Passing",
+        forecastVal,
+        forecastStr,
+        diff,
+        liftDelta,
+        statusBadge,
+        statusColor,
+        att,
+        studyHours,
+        recommendation: rec || "Maintain steady academic momentum and weekly revision routine."
+      };
+    }
+  }
+  window.parsePredictionForecastRecord = parsePredictionForecastRecord;
+
+  // --------------------------------------------------------------------------
+  // 6. LOAD PREDICTION HISTORY (STRICTLY USER ISOLATED & SYNCED WITH DASHBOARD)
   // --------------------------------------------------------------------------
   async function loadHistory() {
     try {
-      const user = window.authClient ? window.authClient.getUser() : null;
-      let localList = [];
+      const activeUser = window.authClient ? window.authClient.getUser() : currentUser;
+      const userId = activeUser?.id;
+      const userEmail = (activeUser?.email || "").toLowerCase();
 
       // Step 0: Gather tombstoned (permanently deleted) IDs
       let deletedIds = new Set();
       try {
         const tombstoneKeys = [
-          user?.id ? `sp_deleted_prediction_ids_${user.id}` : null,
+          userId ? `sp_deleted_prediction_ids_${userId}` : null,
           "sp_deleted_prediction_ids"
         ].filter(Boolean);
         for (const tk of tombstoneKeys) {
@@ -266,63 +493,82 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       } catch (e) {}
 
-      // Step 1: User-isolated local storage lookup
-      if (user?.id) {
-        const userKey = `edumetrics_prediction_history_v2_${user.id}`;
-        const altUserKey = `edumetrics_prediction_history_${user.id}`;
-        const raw = localStorage.getItem(userKey) || localStorage.getItem(altUserKey);
-        if (raw) {
-          try {
+      // Step 1: User-isolated local storage lookup (merge all known keys, identical to dashboard.js)
+      const localMap = new Map();
+      const userKeys = [
+        userId ? `edumetrics_prediction_history_v2_${userId}` : null,
+        userId ? `edumetrics_prediction_history_${userId}` : null,
+        userId ? `sp_prediction_history_${userId}` : null,
+        "edumetrics_prediction_history_v2",
+        "edumetrics_prediction_history"
+      ].filter(Boolean);
+
+      for (const key of userKeys) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
             const parsed = JSON.parse(raw);
             if (Array.isArray(parsed)) {
-              localList = parsed.filter(item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase()) && (item.user_id === user.id || (!item.user_id && user.email && item.payload?.user_email === user.email)));
+              parsed.forEach(item => {
+                if (!item || !item.id) return;
+                const itemId = String(item.id).trim().toLowerCase();
+                if (deletedIds.has(itemId)) return;
+                const p = item.input_features || item.payload || {};
+                const pId = String(p.id || "").trim().toLowerCase();
+                if (pId && deletedIds.has(pId)) return;
+                const rUser = item.user_id || p.user_id;
+                const rEmail = (item.user_email || p.user_email || item.email || "").toLowerCase();
+                const isMatch = (userId && rUser === userId) || (userEmail && rEmail === userEmail) || (!rUser && !rEmail && key.includes(userId || "")) || (!userId && !rUser);
+                if (isMatch) {
+                  localMap.set(String(item.id), item);
+                }
+              });
             }
-          } catch(e) {}
-        }
+          }
+        } catch (e) {}
       }
 
       // Step 2: Live Supabase Cloud Database Query strictly for current user
-      let cloudList = [];
-      if (window.authClient && window.authClient.client && user?.id) {
+      const cloudMap = new Map();
+      if (window.authClient && window.authClient.client && (userId || userEmail)) {
         try {
-          const { data, error } = await window.authClient.client
-            .from("prediction_history")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(50);
+          const queryPromise = userId 
+            ? window.authClient.client.from("prediction_history").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50)
+            : window.authClient.client.from("prediction_history").select("*").order("created_at", { ascending: false }).limit(50);
+
+          const { data, error } = await queryPromise;
 
           if (!error && Array.isArray(data) && data.length > 0) {
-            // STRICT USER ISOLATION: Must match current user ID or current user email
-            const userRows = data.filter((item) => {
-              if (!item) return false;
+            data.forEach((item) => {
+              if (!item || !item.id) return;
               const itemId = String(item.id || "").trim().toLowerCase();
-              if (itemId && deletedIds.has(itemId)) return false;
+              if (deletedIds.has(itemId)) return;
               const p = item.input_features || item.payload || {};
               const pId = String(p.id || "").trim().toLowerCase();
-              if (pId && deletedIds.has(pId)) return false;
-              const rowUserId = item.user_id || p.user_id;
-              const rowEmail = item.user_email || p.user_email || item.email;
-              return (rowUserId && rowUserId === user.id) || (user.email && rowEmail && rowEmail.toLowerCase() === user.email.toLowerCase());
-            });
-
-            cloudList = userRows.map((item) => {
-              const stage = item.stage || "university";
-              const rawScore = typeof item.predicted_score === "number" ? item.predicted_score : parseFloat(item.predicted_score || item.score || 85.0);
-              const isLowRisk = (item.status_badge || "").toLowerCase().includes("exemp") || (item.status_badge || "").toLowerCase().includes("on track");
-              return {
-                id: String(item.id || `pred-${Date.now()}`),
-                timestamp: item.created_at || new Date().toISOString(),
-                created_at: item.created_at,
-                role: item.role || "student",
-                stage: stage,
-                score: item.formatted_score || `${rawScore}`,
-                grade: item.predicted_grade || item.grade || "Grade A",
-                status_badge: item.status_badge || (isLowRisk ? "Exemplary" : "Proficient"),
-                status_color: item.status_color || (isLowRisk ? "badge-success" : "badge-info"),
-                payload: item.input_features || item.payload || {},
-                recommendations: item.recommendations || "Maintain steady academic momentum.",
-                user_id: user.id
-              };
+              if (pId && deletedIds.has(pId)) return;
+              const rUser = item.user_id || p.user_id;
+              const rEmail = (item.user_email || p.user_email || item.email || "").toLowerCase();
+              const isMatch = (userId && rUser === userId) || (userEmail && rEmail === userEmail) || (!rUser && !rEmail);
+              if (isMatch) {
+                const canon = parsePredictionForecastRecord(item);
+                cloudMap.set(String(item.id), {
+                  id: String(item.id),
+                  timestamp: item.created_at || new Date().toISOString(),
+                  created_at: item.created_at,
+                  role: item.role || "student",
+                  stage: canon.stage,
+                  score: canon.forecastStr,
+                  predicted_score: canon.forecastVal,
+                  forecasted_semester_gpa: canon.isUni ? canon.forecastVal : undefined,
+                  projected_cumulative_cgpa: item.projected_cumulative_cgpa || p.projected_cumulative_cgpa,
+                  grade: item.predicted_grade || item.grade || "Grade A",
+                  status_badge: canon.statusBadge,
+                  status_color: canon.statusColor,
+                  payload: p,
+                  recommendations: item.recommendations || canon.recommendation,
+                  user_id: userId
+                });
+              }
             });
           }
         } catch (cloudErr) {
@@ -331,21 +577,40 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // Step 3: Merge & Deduplicate strictly for current user
-      const mergedMap = new Map();
-      localList.forEach(item => {
-        if (item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase())) {
-          mergedMap.set(String(item.id), item);
-        }
-      });
-      cloudList.forEach(item => {
-        if (item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase())) {
-          mergedMap.set(String(item.id), item);
-        }
-      });
+      const unifiedMap = new Map();
+      localMap.forEach((v, k) => unifiedMap.set(k, v));
+      cloudMap.forEach((v, k) => unifiedMap.set(k, v));
 
-      let finalList = Array.from(mergedMap.values()).filter(
+      let finalList = Array.from(unifiedMap.values()).filter(
         item => item && item.id && !deletedIds.has(String(item.id).trim().toLowerCase())
       );
+
+      // Self-heal and normalize every single record across memory and cache
+      finalList = finalList.map((item) => {
+        const canon = parsePredictionForecastRecord(item);
+        if (canon.isUni) {
+          item.score = canon.forecastStr;
+          item.predicted_score = canon.forecastVal;
+          item.forecasted_semester_gpa = canon.forecastVal;
+          item.status_badge = canon.statusBadge;
+          item.status_color = canon.statusColor;
+          if (item.payload && typeof item.payload === "object") {
+            item.payload.forecasted_semester_gpa = canon.forecastVal;
+            item.payload.status_badge = canon.statusBadge;
+            item.payload.status_color = canon.statusColor;
+          }
+          // If Supabase record had 85.0, repair it in the database in the background
+          if (window.authClient && window.authClient.client && item.id) {
+            window.authClient.client.from("prediction_history")
+              .update({ predicted_score: canon.forecastVal, status_badge: canon.statusBadge })
+              .eq("id", item.id)
+              .then(() => {})
+              .catch(() => {});
+          }
+        }
+        return item;
+      });
+
       finalList.sort((a, b) => {
         const tA = new Date(a.timestamp || a.created_at || 0).getTime();
         const tB = new Date(b.timestamp || b.created_at || 0).getTime();
@@ -353,9 +618,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       predictionHistory = finalList;
-      if (user?.id) {
-        persistHistory(finalList);
+      if (userId) {
+        localStorage.setItem(`edumetrics_prediction_history_v2_${userId}`, JSON.stringify(predictionHistory));
+        localStorage.setItem(`edumetrics_prediction_history_${userId}`, JSON.stringify(predictionHistory));
       }
+      localStorage.setItem("edumetrics_prediction_history_v2", JSON.stringify(predictionHistory));
+      localStorage.setItem("edumetrics_prediction_history", JSON.stringify(predictionHistory));
 
       refreshAllViews();
     } catch (err) {
@@ -374,23 +642,132 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 8. UPDATE SUMMARY STAT CARDS (KPIS)
+  // 8. UPDATE STUDENT BENTO CARDS & SUMMARY STATS (MATCHING DASHBOARD)
   // --------------------------------------------------------------------------
+  function renderStudentKPIs(stage) {
+    const activeStage = (predictionHistory.length > 0 && predictionHistory[0].stage) ? predictionHistory[0].stage : (stage || "university");
+    const isUni = activeStage === "university";
+    const isMatric = activeStage === "matric";
+    const isInter = activeStage === "intermediate";
+    const isSec = activeStage === "secondary";
+    const isPrim = activeStage === "primary";
+
+    if (standingTitleEl) {
+      if (isUni) standingTitleEl.innerText = "CUMULATIVE CGPA / STANDING";
+      else if (isMatric) standingTitleEl.innerText = "9TH CLASS ACADEMIC BASELINE";
+      else if (isInter) standingTitleEl.innerText = "INTERMEDIATE BASELINE STANDING";
+      else if (isSec) standingTitleEl.innerText = "SECONDARY ACADEMIC STANDING";
+      else standingTitleEl.innerText = "FOUNDATIONAL MASTERY STANDING";
+    }
+
+    if (standingSublabelEl) {
+      if (isUni) standingSublabelEl.innerText = "Cumulative CGPA";
+      else if (isMatric) standingSublabelEl.innerText = "9th Class Baseline";
+      else if (isInter) standingSublabelEl.innerText = "1st Year Baseline";
+      else if (isSec) standingSublabelEl.innerText = "Prior Annual Score";
+      else standingSublabelEl.innerText = "Overall Mastery";
+    }
+
+    if (termSublabelEl) {
+      if (isUni) termSublabelEl.innerText = "Semester GPA";
+      else if (isMatric) termSublabelEl.innerText = "Passing Benchmark";
+      else if (isInter) termSublabelEl.innerText = "Passing Benchmark";
+      else if (isSec) termSublabelEl.innerText = "Passing Benchmark";
+      else termSublabelEl.innerText = "Mastery Benchmark";
+    }
+
+    if (forecastTitleEl) {
+      if (isUni) forecastTitleEl.innerText = "NEXT SEMESTER FORECAST";
+      else if (isMatric) forecastTitleEl.innerText = "10TH CLASS BOARD PREDICTION";
+      else if (isInter) forecastTitleEl.innerText = "INTERMEDIATE BOARD PREDICTION";
+      else if (isSec) forecastTitleEl.innerText = "SECONDARY GRADE PREDICTION";
+      else forecastTitleEl.innerText = "PRIMARY MASTERY PREDICTION";
+    }
+
+    if (forecastSublabelEl) {
+      if (isUni) forecastSublabelEl.innerText = "Forecasted GPA";
+      else if (isMatric) forecastSublabelEl.innerText = "10th Class Forecast";
+      else if (isInter) forecastSublabelEl.innerText = "Target Board Forecast";
+      else if (isSec) forecastSublabelEl.innerText = "Target Class Forecast";
+      else forecastSublabelEl.innerText = "Target Mastery Forecast";
+    }
+
+    if (predictionHistory.length > 0) {
+      const latest = predictionHistory[0];
+      const canon = parsePredictionForecastRecord(latest);
+
+      // 1. Cumulative & Term Standing
+      if (kpiCgpa) {
+        kpiCgpa.innerText = canon.standingCgpaStr;
+      }
+
+      if (kpiSemGpa) {
+        kpiSemGpa.innerText = canon.semGpaStr;
+      }
+
+      // 2. Attendance & Study Time
+      if (kpiAttendance) {
+        kpiAttendance.innerText = `${canon.att}%`;
+      }
+      if (kpiStudyHours) {
+        kpiStudyHours.innerText = `${canon.studyHours.toFixed(1)} hrs`;
+      }
+
+      // 3. Latest AI Forecast & Badge (Direct Single Forecast)
+      if (kpiPredictedGpa) {
+        kpiPredictedGpa.innerText = canon.forecastStr;
+      }
+      if (kpiStatusBadge) {
+        kpiStatusBadge.innerText = canon.statusBadge;
+        kpiStatusBadge.className = `badge ${canon.statusColor}`;
+      }
+
+      // 4. Target Attendance Goal
+      if (kpiTargetGpa) {
+        kpiTargetGpa.innerText = "> 90%";
+      }
+      const kpiTargetSublabel = document.getElementById("kpi-target-sublabel");
+      if (kpiTargetSublabel) {
+        kpiTargetSublabel.innerText = "Attendance Target";
+      }
+    } else {
+      // True Zero-State for account with no history
+      if (kpiCgpa) kpiCgpa.innerText = "--";
+      if (kpiSemGpa) kpiSemGpa.innerText = "--";
+      if (kpiAttendance) kpiAttendance.innerText = "--";
+      if (kpiPredictedGpa) kpiPredictedGpa.innerText = "--";
+      if (kpiStatusBadge) {
+        kpiStatusBadge.innerText = "No Evaluations";
+        kpiStatusBadge.className = "badge badge-neutral";
+      }
+      if (kpiStudyHours) kpiStudyHours.innerText = "--";
+      if (kpiTargetGpa) kpiTargetGpa.innerText = "> 90%";
+      const kpiTargetSublabel = document.getElementById("kpi-target-sublabel");
+      if (kpiTargetSublabel) {
+        kpiTargetSublabel.innerText = "Attendance Target";
+      }
+    }
+  }
+
   function updateSummaryKPIs() {
+    renderStudentKPIs(currentStageFilter === "all" ? (predictionHistory[0]?.stage || "university") : currentStageFilter);
+
     if (kpiTotalEvaluations) kpiTotalEvaluations.innerText = `${predictionHistory.length}`;
 
     if (predictionHistory.length > 0) {
       const latest = predictionHistory[0];
-      if (kpiLatestScore) kpiLatestScore.innerText = latest.score || "--";
+      const canon = parsePredictionForecastRecord(latest);
+      if (kpiLatestScore) kpiLatestScore.innerText = canon.forecastStr || "--";
       if (kpiLatestBadge) {
-        kpiLatestBadge.innerText = latest.status_badge || "Evaluated";
-        kpiLatestBadge.className = `badge ${latest.status_color || "badge-success"}`;
+        kpiLatestBadge.innerText = canon.statusBadge || "Evaluated";
+        kpiLatestBadge.className = `badge ${canon.statusColor || "badge-success"}`;
       }
 
       // Longitudinal improvement delta
       const oldest = predictionHistory[predictionHistory.length - 1];
-      const valLatest = parseFloat(latest.score) || 0;
-      const valOldest = parseFloat(oldest.score) || 0;
+      const canonOldest = parsePredictionForecastRecord(oldest);
+      const valLatest = canon.forecastVal || 0;
+      const valOldest = canonOldest.forecastVal || 0;
       const delta = +(valLatest - valOldest).toFixed(2);
 
       if (kpiGrowthDelta) {
@@ -429,15 +806,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         raw = parseFloat(item.forecasted_semester_gpa);
       } else if (p.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(p.forecasted_semester_gpa))) {
         raw = parseFloat(p.forecasted_semester_gpa);
-      } else if (p.Previous_CGPA !== undefined && !isNaN(parseFloat(p.Previous_CGPA))) {
-        raw = parseFloat(p.Previous_CGPA);
+      } else if (item.score !== undefined && !isNaN(parseFloat(item.score))) {
+        raw = parseFloat(item.score);
+      } else if (item.predicted_score !== undefined && !isNaN(parseFloat(item.predicted_score))) {
+        raw = parseFloat(item.predicted_score);
       } else if (p.latest_semester_gpa !== undefined && !isNaN(parseFloat(p.latest_semester_gpa))) {
         raw = parseFloat(p.latest_semester_gpa);
-      } else if (!isNaN(parseFloat(item.score))) {
-        raw = parseFloat(item.score);
+      } else if (p.Previous_CGPA !== undefined && !isNaN(parseFloat(p.Previous_CGPA))) {
+        raw = parseFloat(p.Previous_CGPA);
       }
       if (raw > 4.0) raw = +(raw / 25.0).toFixed(2);
-      if (raw === 0) raw = 2.70;
+      if (raw === 0) raw = 2.06;
       let pct = +((raw / 4.0) * 100.0).toFixed(1);
       return { raw: +raw.toFixed(2), pct, formatted: `${raw.toFixed(2)} CGPA` };
     } else if (s === "intermediate" || s === "matric") {
@@ -525,177 +904,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     const unitLabel = stageMeta.unit;
 
     const latestRun = stageRecords[0];
-    let latestP = latestRun.payload || latestRun.input_features || {};
-    if (typeof latestP === "string") {
-      try { latestP = JSON.parse(latestP); } catch (e) { latestP = {}; }
-    }
+    const canon = parsePredictionForecastRecord(latestRun);
 
-    let currentStandingVal = isUni ? 2.70 : 65.0;
-    let aiForecastVal = isUni ? 3.65 : 85.0;
+    const currentStandingVal = canon.standingCgpa;
+    const aiForecastVal = canon.forecastVal;
+    const diff = canon.diff;
+    const liftDelta = canon.liftDelta;
 
-    if (isUni) {
-      // University: Scale is 0.00 – 4.00 CGPA
-      if (latestP.Previous_CGPA !== undefined && !isNaN(parseFloat(latestP.Previous_CGPA))) {
-        currentStandingVal = parseFloat(latestP.Previous_CGPA);
-      } else if (latestP.latest_semester_gpa !== undefined && !isNaN(parseFloat(latestP.latest_semester_gpa))) {
-        currentStandingVal = parseFloat(latestP.latest_semester_gpa);
-      } else if (latestRun.projected_cumulative_cgpa !== undefined && !isNaN(parseFloat(latestRun.projected_cumulative_cgpa))) {
-        currentStandingVal = parseFloat(latestRun.projected_cumulative_cgpa);
-      } else {
-        const parsed = parseNormalizedScore(latestRun);
-        currentStandingVal = parsed.raw;
-      }
-      if (currentStandingVal > 4.0) currentStandingVal = +(currentStandingVal / 25.0).toFixed(2);
-      currentStandingVal = Math.min(4.0, Math.max(0.0, +Number(currentStandingVal).toFixed(2)));
-
-      if (latestRun.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(latestRun.forecasted_semester_gpa))) {
-        aiForecastVal = parseFloat(latestRun.forecasted_semester_gpa);
-      } else if (latestP.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(latestP.forecasted_semester_gpa))) {
-        aiForecastVal = parseFloat(latestP.forecasted_semester_gpa);
-      } else if (parseFloat(latestRun.score) <= 4.0 && parseFloat(latestRun.score) > 0) {
-        aiForecastVal = parseFloat(latestRun.score);
-      } else {
-        aiForecastVal = Math.min(4.0, +(currentStandingVal + 0.35).toFixed(2));
-      }
-      if (aiForecastVal > 4.0) aiForecastVal = +(aiForecastVal / 25.0).toFixed(2);
-      aiForecastVal = Math.min(4.0, Math.max(0.0, +Number(aiForecastVal).toFixed(2)));
-
-      if (aiForecastVal <= currentStandingVal && currentStandingVal < 3.85) {
-        aiForecastVal = Math.min(4.0, +(currentStandingVal + 0.30).toFixed(2));
-      }
-
-    } else {
-      // Non-University: Intermediate, Matric, Secondary, Primary (0 – 100% Percentage Scale)
-      let verifiedPct = null;
-
-      // 1. Calculate actual aggregate percentage from logged terms & subjects
-      const terms = latestP.logged_terms || [];
-      if (Array.isArray(terms) && terms.length > 0) {
-        let totalObt = 0;
-        let totalMax = 0;
-        let hasSubjectScores = false;
-
-        terms.forEach((t) => {
-          if (t.subjects && Array.isArray(t.subjects) && t.subjects.length > 0) {
-            t.subjects.forEach((sub) => {
-              const obt = parseFloat(sub.obtained_marks !== undefined ? sub.obtained_marks : sub.obtained);
-              const max = parseFloat(sub.total_marks !== undefined ? sub.total_marks : sub.max);
-              if (!isNaN(obt) && !isNaN(max) && max > 0) {
-                totalObt += obt;
-                totalMax += max;
-                hasSubjectScores = true;
-              }
-            });
-          }
-        });
-
-        if (hasSubjectScores && totalMax > 0) {
-          verifiedPct = +((totalObt / totalMax) * 100.0).toFixed(1);
-        } else {
-          const lastTerm = terms[terms.length - 1];
-          const termPct = parseFloat(lastTerm.percentage !== undefined ? lastTerm.percentage : lastTerm.gpa);
-          if (!isNaN(termPct) && termPct > 0) {
-            verifiedPct = termPct > 100 ? +((termPct / 550.0) * 100.0).toFixed(1) : +termPct.toFixed(1);
-          }
-        }
-      }
-
-      // 2. Stage-Specific Fallback (Strict Separation: Never read HSSC for Matric!)
-      if (verifiedPct === null || isNaN(verifiedPct) || verifiedPct <= 0) {
-        if (s === "matric") {
-          if (latestP.SSC_I_Marks !== undefined && !isNaN(parseFloat(latestP.SSC_I_Marks))) {
-            const rawM = parseFloat(latestP.SSC_I_Marks);
-            verifiedPct = rawM > 100 ? +((rawM / 550.0) * 100.0).toFixed(1) : rawM;
-          } else if (latestP.SSC_Total_Marks !== undefined && !isNaN(parseFloat(latestP.SSC_Total_Marks))) {
-            const rawM = parseFloat(latestP.SSC_Total_Marks);
-            verifiedPct = rawM > 100 ? +((rawM / 1100.0) * 100.0).toFixed(1) : rawM;
-          } else if (latestRun.current_standing_pct !== undefined && !isNaN(parseFloat(latestRun.current_standing_pct))) {
-            verifiedPct = parseFloat(latestRun.current_standing_pct);
-          }
-        } else if (s === "intermediate") {
-          if (latestP.HSSC_I_Marks !== undefined && !isNaN(parseFloat(latestP.HSSC_I_Marks))) {
-            const rawM = parseFloat(latestP.HSSC_I_Marks);
-            verifiedPct = rawM > 100 ? +((rawM / 550.0) * 100.0).toFixed(1) : rawM;
-          } else if (latestP.SSC_Total_Marks !== undefined && !isNaN(parseFloat(latestP.SSC_Total_Marks))) {
-            const rawM = parseFloat(latestP.SSC_Total_Marks);
-            verifiedPct = rawM > 100 ? +((rawM / 1100.0) * 100.0).toFixed(1) : rawM;
-          }
-        } else if (s === "secondary") {
-          if (latestP.past_annual_pct !== undefined && !isNaN(parseFloat(latestP.past_annual_pct))) {
-            verifiedPct = parseFloat(latestP.past_annual_pct);
-          }
-        }
-
-        if (verifiedPct === null || isNaN(verifiedPct) || verifiedPct <= 0) {
-          const parsed = parseNormalizedScore(latestRun);
-          verifiedPct = parsed.pct;
-        }
-      }
-
-      // Safety clamp: strictly 10% to 100%
-      verifiedPct = Math.min(100.0, Math.max(10.0, +Number(verifiedPct).toFixed(1)));
-      currentStandingVal = verifiedPct;
-
-      // 3. AI Forecasted Target percentage
-      let forecastedPct = null;
-      if (latestP.forecasted_percentage !== undefined && !isNaN(parseFloat(latestP.forecasted_percentage))) {
-        forecastedPct = parseFloat(latestP.forecasted_percentage);
-      } else if (latestRun.forecasted_percentage !== undefined && !isNaN(parseFloat(latestRun.forecasted_percentage))) {
-        forecastedPct = parseFloat(latestRun.forecasted_percentage);
-      } else if (s === "matric" && latestP.forecasted_10th_marks) {
-        const m10 = String(latestP.forecasted_10th_marks).match(/(\d+(?:\.\d+)?)\s*%/);
-        if (m10) forecastedPct = parseFloat(m10[1]);
-      } else if (latestRun.score) {
-        const strScore = String(latestRun.score);
-        const match = strScore.match(/(\d+(?:\.\d+)?)\s*%/);
-        if (match) forecastedPct = parseFloat(match[1]);
-      }
-
-      if (forecastedPct === null) {
-        const rawPred = parseFloat(latestRun.predicted_score !== undefined ? latestRun.predicted_score : latestRun.score);
-        if (!isNaN(rawPred) && rawPred > 0) {
-          if (rawPred <= 100) {
-            forecastedPct = rawPred;
-          } else if (rawPred <= 550) {
-            forecastedPct = +((rawPred / 550.0) * 100.0).toFixed(1);
-          } else {
-            forecastedPct = +((rawPred / 1100.0) * 100.0).toFixed(1);
-          }
-        }
-      }
-
-      // Guarantee realistic, ascending AI growth trajectory
-      if (!forecastedPct || isNaN(forecastedPct) || forecastedPct <= currentStandingVal) {
-        const headroom = 100.0 - currentStandingVal;
-        const liftBonus = Math.max(6.0, Math.min(18.0, +(headroom * 0.35).toFixed(1)));
-        forecastedPct = Math.min(98.0, +(currentStandingVal + liftBonus).toFixed(1));
-      }
-
-      forecastedPct = Math.min(100.0, Math.max(currentStandingVal, +Number(forecastedPct).toFixed(1)));
-      aiForecastVal = forecastedPct;
-    }
-
-    const diff = +(aiForecastVal - currentStandingVal).toFixed(2);
-    const liftDelta = isUni ? `${diff >= 0 ? '+' : ''}${diff}` : `${diff >= 0 ? '+' : ''}${diff}%`;
-
-    // Dynamic clean Y-Axis bounds: wide vertical span for clear visual upward curve
-    let yMin = 0;
-    let yMax = 100;
-    if (isUni) {
-      const minScore = Math.min(currentStandingVal, aiForecastVal);
-      yMin = Math.max(0.0, Math.floor((minScore - 0.4) * 2) / 2);
-      yMax = 4.0;
-      if (yMax - yMin < 1.0) yMin = Math.max(0.0, yMax - 1.5);
-    } else {
+    let yMin = 0.0;
+    let yMax = 4.0;
+    if (!isUni) {
       const minVal = Math.min(currentStandingVal, aiForecastVal);
+      const maxVal = Math.max(currentStandingVal, aiForecastVal);
       yMin = Math.max(0, Math.floor((minVal - 20) / 10) * 10);
-      yMax = 100;
+      yMax = Math.min(100, Math.ceil((maxVal + 10) / 10) * 10);
       if (yMax - yMin < 35) yMin = Math.max(0, yMax - 45);
     }
 
     const labels = [
-      `1. Current Standing (${currentStandingVal}${unitLabel})`,
-      `2. ⚡ AI Projected Lift (${aiForecastVal}${unitLabel} 🚀)`
+      `1. Current Standing (${canon.standingCgpaStr})`,
+      `2. ⚡ AI Forecast (${canon.forecastStr})`
     ];
 
     return {
@@ -708,7 +936,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       yMin,
       yMax,
       labels,
-      isPositive: diff >= 0
+      isPositive: diff >= 0,
+      canon,
+      latestRun
     };
   }
 
@@ -763,17 +993,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     const traj = computeTrajectoryData(stageRecords, activeStage);
     if (!traj) return;
 
-    const { isUni, unitLabel, currentStandingVal, aiForecastVal, diff, liftDelta, yMin, yMax, labels, isPositive } = traj;
+    const { isUni, unitLabel, currentStandingVal, aiForecastVal, diff, liftDelta, yMin, yMax, labels, isPositive, canon, latestRun } = traj;
 
     const pastScores = [currentStandingVal, null];
     const predScores = [currentStandingVal, aiForecastVal];
 
-    if (trajActualEl) trajActualEl.innerText = `${currentStandingVal.toFixed ? currentStandingVal.toFixed(2) : currentStandingVal}${unitLabel}`;
-    if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal.toFixed ? aiForecastVal.toFixed(2) : aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
+    if (trajActualEl) trajActualEl.innerText = canon.standingCgpaStr;
+    if (trajAiLiftEl) {
+      const icon = diff >= 0 ? "🚀" : "⚠️";
+      trajAiLiftEl.innerText = `${canon.forecastStr} (${liftDelta} ${icon})`;
+      trajAiLiftEl.style.color = diff >= 0 ? "var(--color-blue)" : "var(--color-orange)";
+    }
     if (trajProjEl) trajProjEl.innerText = "";
     if (trajBadgeEl) {
-      trajBadgeEl.innerText = isPositive ? "Ascending Growth 🚀" : "Attention Needed ⚠️";
-      trajBadgeEl.className = `badge ${isPositive ? "badge-success" : "badge-warning"}`;
+      trajBadgeEl.innerText = canon.statusBadge;
+      trajBadgeEl.className = `badge ${canon.statusColor}`;
     }
 
     if (insightEl) {
@@ -808,15 +1042,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             pointHoverRadius: 10
           },
           {
-            label: "2. ⚡ AI Projected Lift (Forecast)",
+            label: "2. ⚡ AI Forecast (Target)",
             data: predScores,
-            borderColor: "#38BDF8",
+            borderColor: diff >= 0 ? "#38BDF8" : "#F97316",
             borderDash: [6, 4],
             borderWidth: 3.5,
             fill: true,
             backgroundColor: blueGradient,
             tension: 0.35,
-            pointBackgroundColor: ["transparent", "#38BDF8"],
+            pointBackgroundColor: ["transparent", diff >= 0 ? "#38BDF8" : "#F97316"],
             pointBorderColor: ["transparent", "#101217"],
             pointBorderWidth: [0, 2.5],
             pointRadius: [0, isMobile ? 7.5 : 9],
@@ -832,7 +1066,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             display: true,
             position: "top",
             labels: {
-              color: "#CBD5E1",
+              color: "#F8FAFC",
               font: { family: "Inter", size: isMobile ? 11 : 12, weight: "600" },
               boxWidth: 12,
               padding: 14
@@ -850,9 +1084,9 @@ document.addEventListener("DOMContentLoaded", async () => {
               label: (context) => {
                 if (context.parsed.y === null || context.parsed.y === undefined) return "";
                 if (context.dataIndex === 0) {
-                  return ` 🟢 Current Standing: ${context.parsed.y}${unitLabel}`;
+                  return ` 🟢 Current Standing: ${Number(Number(context.parsed.y).toFixed(2))}${unitLabel}`;
                 } else {
-                  return ` ⚡ AI Projected Lift: ${context.parsed.y}${unitLabel} (Forecast)`;
+                  return ` ⚡ AI Forecast: ${Number(Number(context.parsed.y).toFixed(2))}${unitLabel}`;
                 }
               }
             }
@@ -864,13 +1098,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11, weight: "600" } }
           },
           y: {
-            min: yMin,
-            max: yMax,
+            min: +yMin.toFixed(2),
+            max: +yMax.toFixed(2),
             grid: { color: "rgba(255, 255, 255, 0.06)" },
             ticks: {
+              stepSize: isUni ? 0.5 : 10,
               color: "#94A3B8",
               font: { family: "Inter", size: isMobile ? 10 : 11 },
-              callback: (val) => `${val}${unitLabel}`
+              callback: (val) => `${Number(Number(val).toFixed(2))}${unitLabel}`
             }
           }
         }
@@ -912,23 +1147,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     const traj = computeTrajectoryData(stageRecords, activeStage);
     if (!traj) return;
 
-    const { isUni, unitLabel, currentStandingVal, aiForecastVal, diff, liftDelta, yMin, yMax, labels, isPositive } = traj;
+    const { isUni, unitLabel, currentStandingVal, aiForecastVal, diff, liftDelta, yMin, yMax, labels, isPositive, canon, latestRun } = traj;
 
     const barValues = [currentStandingVal, aiForecastVal];
     const bgColors = [
       "rgba(163, 230, 53, 0.85)",
-      "rgba(56, 189, 248, 0.90)"
+      diff >= 0 ? "rgba(56, 189, 248, 0.90)" : "rgba(248, 113, 113, 0.90)"
     ];
-    const borderColors = ["#A3E635", "#38BDF8"];
+    const borderColors = ["#A3E635", diff >= 0 ? "#38BDF8" : "#EF4444"];
 
     const trajActualEl = document.getElementById("trajectory-actual-val");
     const trajAiLiftEl = document.getElementById("trajectory-ai-lift");
     const trajBadgeEl = document.getElementById("trajectory-status-badge");
-    if (trajActualEl) trajActualEl.innerText = `${currentStandingVal.toFixed ? currentStandingVal.toFixed(2) : currentStandingVal}${unitLabel}`;
-    if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal.toFixed ? aiForecastVal.toFixed(2) : aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
+    if (trajActualEl) trajActualEl.innerText = canon.standingCgpaStr;
+    if (trajAiLiftEl) {
+      const icon = diff >= 0 ? "🚀" : "⚠️";
+      trajAiLiftEl.innerText = `${canon.forecastStr} (${liftDelta} ${icon})`;
+      trajAiLiftEl.style.color = diff >= 0 ? "var(--color-blue)" : "var(--color-orange)";
+    }
     if (trajBadgeEl) {
-      trajBadgeEl.innerText = isPositive ? "Ascending Growth 🚀" : "Attention Needed ⚠️";
-      trajBadgeEl.className = `badge ${isPositive ? "badge-success" : "badge-warning"}`;
+      trajBadgeEl.innerText = canon.statusBadge;
+      trajBadgeEl.className = `badge ${canon.statusColor}`;
     }
 
     const insightEl = document.getElementById("score-insight-text");
@@ -964,7 +1203,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             padding: 10,
             callbacks: {
               label: (context) => {
-                const prefix = context.dataIndex === 0 ? "🟢 Current Standing: " : "⚡ AI Projected Lift: ";
+                const prefix = context.dataIndex === 0 ? "🟢 Current Standing: " : "⚡ AI Forecast: ";
                 return ` ${prefix}${context.parsed.y}${unitLabel}`;
               }
             }
@@ -976,13 +1215,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             ticks: { color: "#94A3B8", font: { family: "Inter", size: isMobile ? 10 : 11, weight: "600" } }
           },
           y: {
-            min: yMin,
-            max: yMax,
+            min: +yMin.toFixed(2),
+            max: +yMax.toFixed(2),
             grid: { color: "rgba(255, 255, 255, 0.06)" },
             ticks: {
+              stepSize: isUni ? 0.5 : 10,
               color: "#94A3B8",
               font: { family: "Inter", size: isMobile ? 10 : 11 },
-              callback: (val) => `${val}${unitLabel}`
+              callback: (val) => `${Number(Number(val).toFixed(2))}${unitLabel}`
             }
           }
         }
@@ -1234,20 +1474,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           .map(([k, v]) => `${k.replace(/_/g, " ")}: ${formatDiagnosticParam(k, v)}`)
           .join(" | ");
 
-        let scoreText = item.score || "N/A";
-        const isItemUni = (item.stage || "university").toLowerCase() === "university";
-        if (isItemUni && typeof scoreText === "string" && !scoreText.includes("CGPA") && !scoreText.includes("GPA") && !isNaN(parseFloat(scoreText))) {
-          const num = parseFloat(scoreText);
-          scoreText = num <= 4.0 ? `${num.toFixed(2)} CGPA` : `${(num / 25.0).toFixed(2)} CGPA`;
-        } else if (!isItemUni && typeof scoreText === "string" && !scoreText.includes("%") && !scoreText.includes("Marks") && !isNaN(parseFloat(scoreText))) {
-          const num = parseFloat(scoreText);
-          if (num > 100) {
-            const pct = num <= 550 ? ((num / 550.0) * 100.0).toFixed(1) : ((num / 1100.0) * 100.0).toFixed(1);
-            scoreText = `${num} Marks (${pct}%)`;
-          } else {
-            scoreText = `${num.toFixed(1)}%`;
-          }
-        }
+        const canon = parsePredictionForecastRecord(item);
+        const scoreText = canon.forecastStr;
+        const statusBadge = canon.statusBadge;
+        const statusColor = canon.statusColor;
 
         const cleanId = String(item.id || "").replace(/'/g, "\\'");
 
@@ -1272,7 +1502,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             ${scoreText}
           </td>
           <td>
-            <span class="badge ${item.status_color || "badge-success"}">${item.status_badge || "Evaluated"}</span>
+            <span class="badge ${statusColor}">${statusBadge}</span>
           </td>
           <td style="text-align: right; white-space: nowrap;">
             <div class="action-btn-group" style="justify-content: flex-end;">

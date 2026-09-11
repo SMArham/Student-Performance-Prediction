@@ -4498,16 +4498,50 @@ document.addEventListener("DOMContentLoaded", () => {
       const isMedRisk = result.risk_level === "MEDIUM" || result.risk_level === "medium";
       const currentUser = window.authClient ? window.authClient.getUser() : null;
 
+      const isUni = (currentStage || "university").toLowerCase() === "university";
+      let uniGpa = null;
+      if (isUni) {
+        if (typeof result.forecasted_semester_gpa === "number") {
+          uniGpa = result.forecasted_semester_gpa;
+        } else if (typeof result.score === "number" && result.score <= 4.0) {
+          uniGpa = result.score;
+        } else if (result.score && !isNaN(parseFloat(result.score)) && parseFloat(result.score) <= 4.0) {
+          uniGpa = parseFloat(result.score);
+        } else if (result.predicted_score && !isNaN(parseFloat(result.predicted_score)) && parseFloat(result.predicted_score) <= 4.0) {
+          uniGpa = parseFloat(result.predicted_score);
+        } else {
+          uniGpa = 2.06;
+        }
+        uniGpa = +Number(uniGpa).toFixed(2);
+      }
+
+      const formattedScoreStr = isUni 
+        ? `${uniGpa.toFixed(2)} CGPA`
+        : (result.formatted_score || `${result.score}`);
+
+      const enrichedPayload = {
+        ...(payload || {}),
+        stage: currentStage || "university",
+        forecasted_semester_gpa: isUni ? uniGpa : undefined,
+        projected_cumulative_cgpa: result.projected_cumulative_cgpa,
+        status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Critical Intervention Needed"),
+        status_color: result.status_color || (isLowRisk ? "badge-success" : isMedRisk ? "badge-info" : "badge-danger"),
+        recommendations: result.recommendation || (Array.isArray(result.recommendations) ? result.recommendations.join(" ") : result.recommendations) || ""
+      };
+
       const historyItem = {
         id: `pred-${Date.now().toString().slice(-6)}`,
         timestamp: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString(),
         role: currentRole || "student",
         stage: currentStage || "university",
-        score: result.formatted_score || `${result.score}`,
+        score: formattedScoreStr,
+        predicted_score: isUni ? uniGpa : (typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0)),
+        forecasted_semester_gpa: isUni ? uniGpa : undefined,
+        projected_cumulative_cgpa: result.projected_cumulative_cgpa,
         grade: result.grade || "Grade A",
-        status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Attention Needed"),
+        status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Critical Intervention Needed"),
         status_color: result.status_color || (isLowRisk ? "badge-success" : isMedRisk ? "badge-info" : "badge-danger"),
-        payload: payload || {},
+        payload: enrichedPayload,
         recommendations: result.recommendation || (Array.isArray(result.recommendations) ? result.recommendations.join(" ") : result.recommendations) || "Maintain steady academic momentum and weekly revision routine.",
         user_id: currentUser?.id || ""
       };
@@ -4548,11 +4582,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 3. Persist into Supabase Cloud prediction_history table
       if (window.authClient && window.authClient.client) {
-        const rawScore = typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0);
+        const rawScore = isUni 
+          ? uniGpa 
+          : (typeof result.score === "number" ? result.score : parseFloat(result.predicted_score || 85.0));
         const localNow = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
         const userMeta = currentUser?.user_metadata || {};
         const featuresWithUser = {
-          ...(payload || {}),
+          ...enrichedPayload,
           user_id: currentUser?.id,
           user_email: currentUser?.email,
           student_id_code: userMeta.student_id || userMeta.id_code || currentUser?.id || "STU-01"
@@ -4563,9 +4599,9 @@ document.addEventListener("DOMContentLoaded", () => {
           user_id: currentUser?.id || null,
           stage: currentStage || "university",
           input_features: featuresWithUser,
-          predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
+          predicted_score: isNaN(rawScore) ? (isUni ? 2.06 : 85.0) : rawScore,
           predicted_grade: result.predicted_grade || result.grade || "Grade A",
-          status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Attention Needed"),
+          status_badge: result.status_badge || (isLowRisk ? "Exemplary" : isMedRisk ? "Proficient" : "Critical Intervention Needed"),
           created_at: localNow
         };
 

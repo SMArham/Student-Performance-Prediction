@@ -106,7 +106,18 @@ class APIClient {
     // 1. Asynchronously save directly to Supabase cloud table if active
     if (window.authClient && window.authClient.client) {
       const user = window.authClient.getUser();
-      const rawScore = typeof predictionData.score === "number" ? predictionData.score : parseFloat(predictionData.predicted_score || 85.0);
+      const isUni = (predictionData.stage || "university").toLowerCase() === "university";
+      let rawScore = null;
+      if (isUni) {
+        if (typeof predictionData.forecasted_semester_gpa === "number") rawScore = predictionData.forecasted_semester_gpa;
+        else if (predictionData.payload?.forecasted_semester_gpa !== undefined) rawScore = parseFloat(predictionData.payload.forecasted_semester_gpa);
+        else if (typeof predictionData.predicted_score === "number" && predictionData.predicted_score <= 4.0) rawScore = predictionData.predicted_score;
+        else if (typeof predictionData.score === "number" && predictionData.score <= 4.0) rawScore = predictionData.score;
+        else if (predictionData.score && !isNaN(parseFloat(predictionData.score)) && parseFloat(predictionData.score) <= 4.0) rawScore = parseFloat(predictionData.score);
+        else rawScore = 2.06;
+      } else {
+        rawScore = typeof predictionData.score === "number" ? predictionData.score : parseFloat(predictionData.predicted_score || 85.0);
+      }
       const localTime = window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString();
       const features = {
         ...(predictionData.payload || predictionData.input_features || {}),
@@ -120,7 +131,7 @@ class APIClient {
         user_id: user?.id || null,
         stage: predictionData.stage || "university",
         input_features: features,
-        predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
+        predicted_score: isNaN(rawScore) ? (isUni ? 2.06 : 85.0) : rawScore,
         predicted_grade: predictionData.predicted_grade || predictionData.grade || "Grade A",
         status_badge: predictionData.status_badge || "On Track",
         created_at: localTime

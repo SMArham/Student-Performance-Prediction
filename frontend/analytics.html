@@ -111,27 +111,86 @@
               </div>
             </div>
 
-          <!-- Quick Summary Stat Cards (2 Clean Cards) -->
-          <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: var(--space-6);">
-            <div class="card kpi-card">
-              <div class="kpi-label">Total Predictions Evaluated</div>
-              <div class="kpi-value-row">
-                <div class="kpi-value" id="kpi-total-evaluations">0</div>
-                <div class="kpi-icon-container" style="background: rgba(99, 102, 241, 0.1); color: var(--primary-400);">📊</div>
+          <!-- 4 EXECUTIVE KPI BENTO CARDS (Exact Match to Dashboard) -->
+          <div class="kpi-quad-grid" style="margin-bottom: var(--space-6);">
+            
+            <!-- KPI 1: Cumulative CGPA / Standing -->
+            <div class="card bento-metric-card">
+              <div class="bento-title">
+                <span id="kpi-standing-title">CUMULATIVE CGPA / STANDING</span>
               </div>
-              <div class="kpi-meta" id="kpi-eval-meta">Across all registered stages</div>
+              <div class="bento-kpi-row">
+                <div class="kpi-col">
+                  <div class="kpi-number-big" id="kpi-cgpa">--</div>
+                  <div class="kpi-sublabel" id="kpi-standing-sublabel">Cumulative CGPA</div>
+                </div>
+                <div class="kpi-col">
+                  <div class="kpi-number-big" id="kpi-sem-gpa" style="color: var(--color-lime);">--</div>
+                  <div class="kpi-sublabel" id="kpi-term-sublabel">Semester GPA</div>
+                </div>
+              </div>
             </div>
 
-            <div class="card kpi-card">
-              <div class="kpi-label">Latest Model Prediction</div>
-              <div class="kpi-value-row">
-                <div class="kpi-value" id="kpi-latest-score" style="color: var(--accent-emerald);">--</div>
-                <div class="kpi-icon-container" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-emerald);">🎯</div>
+            <!-- KPI 2: Lecture Attendance Rate & Study Time -->
+            <div class="card bento-metric-card">
+              <div class="bento-title">
+                <span>ATTENDANCE & STUDY TIME</span>
               </div>
-              <div class="kpi-meta">
-                <span class="badge badge-neutral" id="kpi-latest-badge">--</span>
+              <div class="bento-kpi-row">
+                <div class="kpi-col">
+                  <div class="kpi-number-big" id="kpi-attendance" style="color: var(--color-lime);">--</div>
+                  <div class="kpi-sublabel">Attendance Rate</div>
+                </div>
+                <div class="kpi-col">
+                  <div class="kpi-number-big" id="kpi-study-hours" style="color: var(--color-orange);">--</div>
+                  <div class="kpi-sublabel">Daily Study Time</div>
+                </div>
               </div>
             </div>
+
+            <!-- KPI 3: Latest AI Forecast & Status Tier -->
+            <div class="card bento-metric-card">
+              <div class="bento-title">
+                <span id="kpi-forecast-title">NEXT SEMESTER FORECAST</span>
+              </div>
+              <div class="bento-kpi-row">
+                <div class="kpi-col">
+                  <div class="kpi-number-big" id="kpi-predicted-gpa" style="color: var(--color-lime);">--</div>
+                  <div class="kpi-sublabel" id="kpi-forecast-sublabel">Forecasted GPA</div>
+                </div>
+                <div class="kpi-col">
+                  <div style="margin-top: 4px; display: flex; justify-content: flex-start; align-items: center;">
+                    <span class="badge badge-neutral" id="kpi-status-badge">No Evaluations</span>
+                  </div>
+                  <div class="kpi-sublabel" style="margin-top: 6px;">Status Tier</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- KPI 4: Target Attendance Goal -->
+            <div class="card bento-metric-card">
+              <div class="bento-title">
+                <span>TARGET ATTENDANCE</span>
+              </div>
+              <div class="bento-kpi-row">
+                <div class="kpi-col">
+                  <div class="kpi-number-big" id="kpi-target-gpa" style="color: var(--color-orange);">> 90%</div>
+                  <div class="kpi-sublabel" id="kpi-target-sublabel">Attendance Target</div>
+                </div>
+                <div class="kpi-col">
+                  <div style="font-size: 13.5px; font-weight: 700; color: var(--color-lime); line-height: 1.3;">Target Goal</div>
+                  <div class="kpi-sublabel">Attendance &gt; 90% should be your target</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <!-- Hidden compatibility elements for legacy references -->
+          <div style="display:none;" aria-hidden="true">
+            <span id="kpi-total-evaluations"></span>
+            <span id="kpi-latest-score"></span>
+            <span id="kpi-latest-badge"></span>
+            <span id="kpi-growth-delta"></span>
           </div>
 
           <!-- ================================================================
@@ -168,12 +227,12 @@
               </div>
               <div style="font-size: 18px; color: var(--color-lime); font-weight: 800;">➔</div>
               <div>
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--color-blue); font-weight: 700;">2. ⚡ AI Projected Lift</div>
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--color-blue); font-weight: 700;" id="trajectory-lift-label">2. ⚡ AI Next Semester Forecast</div>
                 <div style="font-size: 18px; font-weight: 800; color: var(--color-blue);" id="trajectory-ai-lift">--</div>
               </div>
               <div style="text-align: right;">
-                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Trajectory</div>
-                <span class="badge badge-success" id="trajectory-status-badge">Ascending 🚀</span>
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Trajectory Status</div>
+                <span class="badge badge-neutral" id="trajectory-status-badge">--</span>
               </div>
             </div>
 

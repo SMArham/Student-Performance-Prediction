@@ -899,7 +899,18 @@ class SupabaseAuthClient {
             const preds = JSON.parse(rawPreds);
             if (Array.isArray(preds) && preds.length > 0) {
               for (const p of preds) {
-                const rawScore = typeof p.score === "number" ? p.score : parseFloat(p.predicted_score || p.score || 85.0);
+                const isUni = (p.stage || "university").toLowerCase() === "university";
+                let rawScore = null;
+                if (isUni) {
+                  if (typeof p.forecasted_semester_gpa === "number") rawScore = p.forecasted_semester_gpa;
+                  else if (p.payload?.forecasted_semester_gpa !== undefined) rawScore = parseFloat(p.payload.forecasted_semester_gpa);
+                  else if (typeof p.predicted_score === "number" && p.predicted_score <= 4.0) rawScore = p.predicted_score;
+                  else if (typeof p.score === "number" && p.score <= 4.0) rawScore = p.score;
+                  else if (p.score && !isNaN(parseFloat(p.score)) && parseFloat(p.score) <= 4.0) rawScore = parseFloat(p.score);
+                  else rawScore = 2.06;
+                } else {
+                  rawScore = typeof p.score === "number" ? p.score : parseFloat(p.predicted_score || p.score || 85.0);
+                }
                 const features = {
                   ...(p.input_features || p.payload || {}),
                   user_id: userId,
@@ -910,9 +921,9 @@ class SupabaseAuthClient {
                   user_id: userId,
                   stage: p.stage || "university",
                   input_features: features,
-                  predicted_score: isNaN(rawScore) ? 85.0 : rawScore,
+                  predicted_score: isNaN(rawScore) ? (isUni ? 2.06 : 85.0) : rawScore,
                   predicted_grade: p.predicted_grade || p.grade || "Grade A",
-                  status_badge: p.status_badge || "On Track",
+                  status_badge: p.status_badge || (isUni && rawScore < 2.3 ? "Critical Intervention Needed" : "On Track"),
                   created_at: p.created_at || p.timestamp || new Date().toISOString()
                 };
                 const { error } = await this.client.from("prediction_history").upsert(predRow, { onConflict: "id" });
