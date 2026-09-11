@@ -291,34 +291,42 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (standingTitleEl) {
       if (isUni) standingTitleEl.innerText = "CUMULATIVE CGPA / STANDING";
-      else if (isMatric) standingTitleEl.innerText = "MATRICULATION (SSC) STANDING";
-      else if (isInter) standingTitleEl.innerText = "INTERMEDIATE (HSSC) STANDING";
+      else if (isMatric) standingTitleEl.innerText = "9TH CLASS ACADEMIC BASELINE";
+      else if (isInter) standingTitleEl.innerText = "INTERMEDIATE BASELINE STANDING";
       else if (isSec) standingTitleEl.innerText = "SECONDARY ACADEMIC STANDING";
       else standingTitleEl.innerText = "FOUNDATIONAL MASTERY STANDING";
     }
 
     if (standingSublabelEl) {
       if (isUni) standingSublabelEl.innerText = "Cumulative CGPA";
-      else if (isMatric) standingSublabelEl.innerText = "Final Matric Total";
-      else if (isInter) standingSublabelEl.innerText = "1st Year Score";
-      else if (isSec) standingSublabelEl.innerText = "Overall Performance";
+      else if (isMatric) standingSublabelEl.innerText = "9th Class Baseline";
+      else if (isInter) standingSublabelEl.innerText = "1st Year Baseline";
+      else if (isSec) standingSublabelEl.innerText = "Prior Annual Score";
       else standingSublabelEl.innerText = "Overall Mastery";
     }
 
     if (termSublabelEl) {
       if (isUni) termSublabelEl.innerText = "Semester GPA";
-      else if (isMatric) termSublabelEl.innerText = "9th Class Baseline";
-      else if (isInter) termSublabelEl.innerText = "Projected 2-Year Total";
-      else if (isSec) termSublabelEl.innerText = "Previous Class Final";
-      else termSublabelEl.innerText = "Numeracy & Literacy";
+      else if (isMatric) termSublabelEl.innerText = "Passing Benchmark";
+      else if (isInter) termSublabelEl.innerText = "Passing Benchmark";
+      else if (isSec) termSublabelEl.innerText = "Passing Benchmark";
+      else termSublabelEl.innerText = "Mastery Benchmark";
+    }
+
+    if (forecastTitleEl) {
+      if (isUni) forecastTitleEl.innerText = "NEXT SEMESTER FORECAST";
+      else if (isMatric) forecastTitleEl.innerText = "10TH CLASS BOARD PREDICTION";
+      else if (isInter) forecastTitleEl.innerText = "INTERMEDIATE BOARD PREDICTION";
+      else if (isSec) forecastTitleEl.innerText = "SECONDARY GRADE PREDICTION";
+      else forecastTitleEl.innerText = "PRIMARY MASTERY PREDICTION";
     }
 
     if (forecastSublabelEl) {
       if (isUni) forecastSublabelEl.innerText = "Forecasted GPA";
       else if (isMatric) forecastSublabelEl.innerText = "10th Class Forecast";
-      else if (isInter) forecastSublabelEl.innerText = "2nd Year Forecast";
+      else if (isInter) forecastSublabelEl.innerText = "Target Board Forecast";
       else if (isSec) forecastSublabelEl.innerText = "Target Class Forecast";
-      else forecastSublabelEl.innerText = "Target Mastery";
+      else forecastSublabelEl.innerText = "Target Mastery Forecast";
     }
 
     if (predictionHistory.length > 0) {
@@ -342,34 +350,25 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (cgpaNum > 4.0) cgpaNum = +(cgpaNum / 25.0).toFixed(2);
           kpiCgpa.innerText = `${cgpaNum.toFixed(2)} CGPA`;
         } else if (isMatric) {
-          if (p.final_matric_total) {
-            kpiCgpa.innerText = p.final_matric_total;
-          } else if (p.SSC_Total_Marks) {
-            const pct = +((parseFloat(p.SSC_Total_Marks) / 1100.0) * 100).toFixed(1);
-            kpiCgpa.innerText = `${p.SSC_Total_Marks} / 1100 (${pct}%)`;
-          } else if (p.SSC_I_Marks && p.SSC_II_Marks) {
-            const tot = parseFloat(p.SSC_I_Marks) + parseFloat(p.SSC_II_Marks);
-            const pct = +((tot / 1100.0) * 100).toFixed(1);
-            kpiCgpa.innerText = `${tot} / 1100 (${pct}%)`;
-          } else if (p.SSC_I_Marks) {
-            const tot = parseFloat(p.SSC_I_Marks) * 2;
-            const pct = +((tot / 1100.0) * 100).toFixed(1);
-            kpiCgpa.innerText = `${tot} / 1100 (${pct}%)`;
+          if (p.SSC_I_Marks) {
+            const m = parseFloat(p.SSC_I_Marks);
+            const pct = +((m / 550.0) * 100).toFixed(1);
+            kpiCgpa.innerText = `${m} / 550 (${pct}%)`;
           } else {
-            kpiCgpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
+            kpiCgpa.innerText = "440 / 550 (80.0%)";
           }
         } else if (isInter) {
           if (p.HSSC_I_Marks) {
             const m = parseFloat(p.HSSC_I_Marks);
             const pct = +((m / 550.0) * 100).toFixed(1);
             kpiCgpa.innerText = `${m} / 550 (${pct}%)`;
-          } else if (p.SSC_Total_Marks) {
-            kpiCgpa.innerText = `${p.SSC_Total_Marks} / 1100 (SSC)`;
           } else {
-            kpiCgpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
+            kpiCgpa.innerText = "460 / 550 (83.6%)";
           }
+        } else if (isSec) {
+          kpiCgpa.innerText = p.past_annual_pct ? `${p.past_annual_pct}%` : "85.0%";
         } else {
-          kpiCgpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
+          kpiCgpa.innerText = p.past_annual_pct ? `${p.past_annual_pct}%` : "88.0%";
         }
       }
 
@@ -398,26 +397,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (termGpa > 4.0) termGpa = +(termGpa / 25.0).toFixed(2);
           kpiSemGpa.innerText = `${termGpa.toFixed(2)} GPA`;
         } else if (isMatric) {
-          if (p.SSC_I_Marks) {
-            const m = parseFloat(p.SSC_I_Marks);
-            const pct = +((m / 550.0) * 100).toFixed(1);
-            kpiSemGpa.innerText = `${m} / 550 (${pct}%)`;
-          } else {
-            kpiSemGpa.innerText = "440 / 550 (80%)";
-          }
+          kpiSemGpa.innerText = "33% Passing";
         } else if (isInter) {
-          if (p.final_intermediate_total) {
-            kpiSemGpa.innerText = p.final_intermediate_total;
-          } else if (p.HSSC_I_Marks) {
-            const proj = Math.round(parseFloat(p.HSSC_I_Marks) * 2);
-            kpiSemGpa.innerText = `${proj} / 1100 (Proj)`;
-          } else {
-            kpiSemGpa.innerText = "950 / 1100";
-          }
+          kpiSemGpa.innerText = "33% Passing";
         } else if (isSec) {
-          kpiSemGpa.innerText = p.past_annual_pct ? `${p.past_annual_pct}% (Prior Grade)` : "85% (Prior)";
+          kpiSemGpa.innerText = "40% Passing";
         } else {
-          kpiSemGpa.innerText = p.math_score ? `${p.math_score}% Math` : "86% Numeracy";
+          kpiSemGpa.innerText = "50% Mastery";
         }
       }
 
@@ -434,7 +420,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         kpiStudyHours.innerText = `${parseFloat(sh).toFixed(1)} hrs`;
       }
 
-      // 3. Latest AI Forecast & Badge
+      // 3. Latest AI Forecast & Badge (Direct Single Forecast)
       if (kpiPredictedGpa) {
         if (isUni) {
           let predGpa = null;
@@ -452,26 +438,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else if (isMatric) {
           if (p.forecasted_10th_marks) {
             kpiPredictedGpa.innerText = p.forecasted_10th_marks;
+          } else if (latest.score && latest.score.includes("/ 550")) {
+            kpiPredictedGpa.innerText = latest.score;
           } else if (p.SSC_I_Marks) {
             const s1 = parseFloat(p.SSC_I_Marks);
-            const proj10th = Math.min(550, Math.round(s1 * 1.08));
+            const proj10th = Math.min(550, Math.round(s1 * 1.09));
             const pct = +((proj10th / 550.0) * 100).toFixed(1);
             kpiPredictedGpa.innerText = `${proj10th} / 550 (${pct}%)`;
           } else {
-            kpiPredictedGpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
+            kpiPredictedGpa.innerText = "484 / 550 (88.0%)";
           }
         } else if (isInter) {
           if (p.forecasted_2nd_year) {
             kpiPredictedGpa.innerText = p.forecasted_2nd_year;
+          } else if (p.forecasted_1st_year) {
+            kpiPredictedGpa.innerText = p.forecasted_1st_year;
+          } else if (latest.score && latest.score.includes("/ 550")) {
+            kpiPredictedGpa.innerText = latest.score;
           } else if (p.HSSC_I_Marks) {
             const m = parseFloat(p.HSSC_I_Marks);
-            const proj2 = Math.min(550, Math.round(m * 1.06));
-            kpiPredictedGpa.innerText = `${proj2} / 550`;
+            const proj2 = Math.min(550, Math.round(m * 1.07));
+            const pct = +((proj2 / 550.0) * 100).toFixed(1);
+            kpiPredictedGpa.innerText = `${proj2} / 550 (${pct}%)`;
           } else {
-            kpiPredictedGpa.innerText = latest.score || "90.0%";
+            kpiPredictedGpa.innerText = "485 / 550 (88.2%)";
           }
+        } else if (isSec) {
+          kpiPredictedGpa.innerText = p.forecasted_target_percentage || (latest.score?.includes("%") ? latest.score : `${latest.score}%`) || "88.5%";
         } else {
-          kpiPredictedGpa.innerText = p.forecasted_target_percentage || latest.score || "90.0%";
+          kpiPredictedGpa.innerText = p.forecasted_target_percentage || (latest.score?.includes("%") ? latest.score : `${latest.score}%`) || "92.0%";
         }
       }
       if (kpiStatusBadge) {
@@ -534,6 +529,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       .map((item) => {
         const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent";
         const stageLabel = (item.stage || "University").charAt(0).toUpperCase() + (item.stage || "University").slice(1);
+        const p = item.payload || {};
+        const displayScore = p.forecasted_10th_marks || 
+                             p.forecasted_2nd_year || 
+                             p.forecasted_1st_year || 
+                             p.forecasted_target_percentage || 
+                             (item.score && item.score.includes("/ 1100") 
+                               ? (item.score.match(/(\d+(?:\.\d+)?)\s*%/)?.[0] ? `${item.score.match(/(\d+(?:\.\d+)?)\s*%/)[0]} Forecast` : item.score)
+                               : item.score) || "N/A";
         return `
         <tr>
           <td>
@@ -544,7 +547,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <span class="badge badge-primary" style="font-size: 11px;">${stageLabel}</span>
           </td>
           <td style="font-weight: 800; font-size: 14px; color: var(--color-lime);">
-            ${item.score || "N/A"}
+            ${displayScore}
           </td>
           <td>
             <span class="badge ${item.status_color || "badge-success"}">${item.status_badge || "Evaluated"}</span>

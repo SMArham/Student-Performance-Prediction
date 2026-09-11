@@ -1568,12 +1568,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const habitBoost = ((studyH - 4.0) * 1.2) + ((att - 80.0) * 0.25) + (((midterm - 75.0) / 100.0) * 8.0) + groupPenalty;
 
       if (targetLevel === "hssc1") {
-        const predHssc1Pct = +(Math.min(100.0, Math.max(30.0, sscPct + habitBoost))).toFixed(1);
+        const predHssc1Pct = +(Math.min(99.0, Math.max(35.0, sscPct + Math.max(2.0, habitBoost)))).toFixed(1);
         const predHssc1Marks = Math.min(550, Math.max(150, Math.round((predHssc1Pct / 100.0) * 550)));
-        const proj2YearTotal = Math.min(1100, predHssc1Marks * 2);
 
         score = predHssc1Marks;
-        formatted_score = `${predHssc1Marks} / 550 (${predHssc1Pct}%) Forecasted 1st Year`;
+        formatted_score = `${predHssc1Marks} / 550 (${predHssc1Pct}%)`;
         min_ci = Math.max(0, predHssc1Marks - 18);
         max_ci = Math.min(550, predHssc1Marks + 18);
         grade = predHssc1Pct >= 80 ? "Grade A-1 (Exceptional)" : predHssc1Pct >= 70 ? "Grade A (Excellent)" : predHssc1Pct >= 60 ? "Grade B (Very Good)" : predHssc1Pct >= 50 ? "Grade C (Good / Passing)" : "Grade D / Needs Support";
@@ -1586,8 +1585,7 @@ document.addEventListener("DOMContentLoaded", () => {
           target_level: "hssc1",
           score: predHssc1Marks,
           predicted_score: predHssc1Marks,
-          forecasted_1st_year: `${predHssc1Marks} / 550`,
-          projected_2year_total: `${proj2YearTotal} / 1100`,
+          forecasted_1st_year: `${predHssc1Marks} / 550 (${predHssc1Pct}%)`,
           formatted_score,
           predicted_grade: grade,
           grade,
@@ -1609,33 +1607,32 @@ document.addEventListener("DOMContentLoaded", () => {
               `Prioritize numerical problem sets & theory concept memorization`
             ]
           },
-          recommendation: `Strong performance predicted in 1st Year (11th). Maintain consistent study hours for top board position.`
+          recommendation: `AI Engine forecasts ${predHssc1Marks} / 550 (${predHssc1Pct}%) in 1st Year (11th). Maintain consistent study hours for top board position.`
         };
       } else {
         const hssc1 = parseFloat(payload.HSSC_I_Marks || 460);
         const hssc1Pct = (hssc1 / 550.0) * 100.0;
-        const basePct = (hssc1Pct * 0.70) + (sscPct * 0.30);
-        const predHssc2Pct = +(Math.min(100.0, Math.max(30.0, basePct + habitBoost))).toFixed(1);
+        const headroom = 100.0 - hssc1Pct;
+        const habitBoost = ((studyH - 4.0) * 1.2) + ((att - 80.0) * 0.25) + (((midterm - 75.0) / 100.0) * 8.0) + groupPenalty;
+        const aiGrowthLift = Math.max(4.0, Math.min(12.0, +(headroom * 0.35 + habitBoost).toFixed(1)));
+        const predHssc2Pct = +(Math.min(99.0, Math.max(hssc1Pct + 1.5, hssc1Pct + aiGrowthLift))).toFixed(1);
         const predHssc2Marks = Math.min(550, Math.max(150, Math.round((predHssc2Pct / 100.0) * 550)));
-        const finalTotal = Math.min(1100, Math.max(200, Math.round(hssc1 + predHssc2Marks)));
-        const finalPct = +((finalTotal / 1100.0) * 100.0).toFixed(1);
 
-        score = finalTotal;
-        formatted_score = `${finalTotal} / 1100 (${finalPct}%) Final Intermediate`;
-        min_ci = Math.max(0, finalTotal - 32);
-        max_ci = Math.min(1100, finalTotal + 32);
-        grade = finalPct >= 80 ? "Grade A-1 (Exceptional)" : finalPct >= 70 ? "Grade A (Excellent)" : finalPct >= 60 ? "Grade B (Very Good)" : finalPct >= 50 ? "Grade C (Good / Passing)" : "Grade D / Needs Support";
-        risk_level = finalPct >= 70 ? "LOW" : finalPct >= 55 ? "MEDIUM" : "HIGH";
-        status_badge = finalPct >= 80 ? "Exemplary" : finalPct >= 65 ? "On Track" : finalPct >= 50 ? "At Risk" : "Critical Intervention Needed";
-        status_color = finalPct >= 80 ? "badge-success" : finalPct >= 65 ? "badge-primary" : finalPct >= 50 ? "badge-warning" : "badge-danger";
+        score = predHssc2Marks;
+        formatted_score = `${predHssc2Marks} / 550 (${predHssc2Pct}%)`;
+        min_ci = Math.max(0, predHssc2Marks - 18);
+        max_ci = Math.min(550, predHssc2Marks + 18);
+        grade = predHssc2Pct >= 80 ? "Grade A-1 (Exceptional)" : predHssc2Pct >= 70 ? "Grade A (Excellent)" : predHssc2Pct >= 60 ? "Grade B (Very Good)" : predHssc2Pct >= 50 ? "Grade C (Good / Passing)" : "Grade D / Needs Support";
+        risk_level = predHssc2Pct >= 70 ? "LOW" : predHssc2Pct >= 55 ? "MEDIUM" : "HIGH";
+        status_badge = predHssc2Pct >= 80 ? "Exemplary" : predHssc2Pct >= 65 ? "On Track" : predHssc2Pct >= 50 ? "At Risk" : "Critical Intervention Needed";
+        status_color = predHssc2Pct >= 80 ? "badge-success" : predHssc2Pct >= 65 ? "badge-primary" : predHssc2Pct >= 50 ? "badge-warning" : "badge-danger";
 
         return {
           stage,
           target_level: "hssc2",
-          score: finalTotal,
-          predicted_score: finalTotal,
-          forecasted_2nd_year: `${predHssc2Marks} / 550`,
-          final_intermediate_total: `${finalTotal} / 1100`,
+          score: predHssc2Marks,
+          predicted_score: predHssc2Marks,
+          forecasted_2nd_year: `${predHssc2Marks} / 550 (${predHssc2Pct}%)`,
           formatted_score,
           predicted_grade: grade,
           grade,
@@ -1647,8 +1644,8 @@ document.addEventListener("DOMContentLoaded", () => {
           confidence_interval: { lower: min_ci, upper: max_ci },
           feature_contributions: {
             top_positive_factors: [
-              `1st Year Board Score: ${hssc1}/550 (${hssc1Pct.toFixed(1)}%) proven intermediate benchmark`,
-              `Matric Baseline: ${sscTotal}/1100 (${sscPct.toFixed(1)}%) strong background`,
+              `1st Year Board Baseline: ${hssc1}/550 (${hssc1Pct.toFixed(1)}%) verified intermediate benchmark`,
+              `2nd Year Academic Lift: +${(predHssc2Pct - hssc1Pct).toFixed(1)}% projected academic lift`,
               `College Attendance: ${att}% consistent presence`,
               `Daily Independent Study: ${studyH} hrs/day`
             ],
@@ -1657,7 +1654,7 @@ document.addEventListener("DOMContentLoaded", () => {
               `Prepare for MDCAT / ECAT / Entry Test parallel to board exams`
             ]
           },
-          recommendation: `Excellent trajectory for 2nd Year and overall Intermediate completion. Maintain rigorous mock practice.`
+          recommendation: `AI Engine forecasts ${predHssc2Marks} / 550 (${predHssc2Pct}%) in 2nd Year (12th). Maintain rigorous mock practice.`
         };
       }
     } else if (stage === "matric") {
@@ -1669,26 +1666,24 @@ document.addEventListener("DOMContentLoaded", () => {
       // Calculate realistic AI predictive headroom and growth
       const habitBoost = ((studyH - 4.0) * 1.2) + ((att - 85.0) * 0.25);
       const headroom = 100.0 - ssc1Pct;
-      const aiGrowthLift = Math.max(4.5, Math.min(12.5, +(headroom * 0.35 + habitBoost).toFixed(1)));
-      const predSsc2Pct = +(Math.min(98.5, Math.max(ssc1Pct + 1.0, ssc1Pct + aiGrowthLift))).toFixed(1);
+      const aiGrowthLift = Math.max(5.0, Math.min(12.5, +(headroom * 0.35 + habitBoost).toFixed(1)));
+      const predSsc2Pct = +(Math.min(98.5, Math.max(ssc1Pct + 2.0, ssc1Pct + aiGrowthLift))).toFixed(1);
       const predSsc2Marks = Math.min(550, Math.max(150, Math.round((predSsc2Pct / 100.0) * 550)));
-      const totalMarks = Math.min(1100, Math.max(200, Math.round(ssc1 + predSsc2Marks)));
-      const pct = +((totalMarks / 1100) * 100).toFixed(1);
-      score = totalMarks;
-      formatted_score = `${totalMarks} / 1100 (${pct}%) Final Matric (SSC)`;
-      min_ci = Math.max(0, totalMarks - 30);
-      max_ci = Math.min(1100, totalMarks + 30);
-      grade = pct >= 80 ? "Grade A-1 (Exceptional)" : pct >= 70 ? "Grade A (Excellent)" : pct >= 60 ? "Grade B (Very Good)" : pct >= 50 ? "Grade C (Good / Passing)" : pct >= 40 ? "Grade D (Fair)" : "Grade F / Fail";
-      risk_level = pct >= 65 ? "LOW" : pct >= 50 ? "MEDIUM" : "HIGH";
-      status_badge = pct >= 80 ? "Exemplary" : pct >= 65 ? "On Track" : pct >= 50 ? "At Risk" : "Critical Intervention Needed";
-      status_color = pct >= 80 ? "badge-success" : pct >= 65 ? "badge-primary" : pct >= 50 ? "badge-warning" : "badge-danger";
+
+      score = predSsc2Marks;
+      formatted_score = `${predSsc2Marks} / 550 (${predSsc2Pct}%)`;
+      min_ci = Math.max(0, predSsc2Marks - 18);
+      max_ci = Math.min(550, predSsc2Marks + 18);
+      grade = predSsc2Pct >= 80 ? "Grade A-1 (Exceptional)" : predSsc2Pct >= 70 ? "Grade A (Excellent)" : predSsc2Pct >= 60 ? "Grade B (Very Good)" : predSsc2Pct >= 50 ? "Grade C (Good / Passing)" : predSsc2Pct >= 40 ? "Grade D (Fair)" : "Grade F / Fail";
+      risk_level = predSsc2Pct >= 65 ? "LOW" : predSsc2Pct >= 50 ? "MEDIUM" : "HIGH";
+      status_badge = predSsc2Pct >= 80 ? "Exemplary" : predSsc2Pct >= 65 ? "On Track" : predSsc2Pct >= 50 ? "At Risk" : "Critical Intervention Needed";
+      status_color = predSsc2Pct >= 80 ? "badge-success" : predSsc2Pct >= 65 ? "badge-primary" : predSsc2Pct >= 50 ? "badge-warning" : "badge-danger";
 
       return {
         stage,
-        score: totalMarks,
-        predicted_score: totalMarks,
+        score: predSsc2Marks,
+        predicted_score: predSsc2Marks,
         forecasted_10th_marks: `${predSsc2Marks} / 550 (${predSsc2Pct}%)`,
-        final_matric_total: `${totalMarks} / 1100 (${pct}%)`,
         formatted_score,
         forecasted_percentage: predSsc2Pct,
         current_standing_pct: +ssc1Pct.toFixed(1),
@@ -1702,7 +1697,7 @@ document.addEventListener("DOMContentLoaded", () => {
         confidence_interval: { lower: min_ci, upper: max_ci },
         feature_contributions: {
           top_positive_factors: [
-            `9th Class Board Foundation: ${ssc1}/550 (${ssc1Pct.toFixed(1)}%) verified baseline`,
+            `9th Class Board Baseline: ${ssc1}/550 (${ssc1Pct.toFixed(1)}%) verified standing`,
             `10th Class Growth Forecast: +${(predSsc2Pct - ssc1Pct).toFixed(1)}% projected academic lift`,
             `School Attendance: ${att}% regular presence`,
             `Daily Independent Study: ${studyH} hrs/day routine`
@@ -1712,7 +1707,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `Take regular monthly mock tests to build speed and accuracy`
           ]
         },
-        recommendation: `Model forecasts ${predSsc2Marks}/550 (${predSsc2Pct}%) in 10th Class board exams, lifting your final Matric total to ${totalMarks}/1100 (${pct}%). Maintain structured daily revisions.`
+        recommendation: `AI Engine forecasts ${predSsc2Marks} / 550 (${predSsc2Pct}%) in 10th Class board exams. Maintain structured daily revisions.`
       };
     } else if (stage === "secondary") {
       const tgtClass = payload.target_class || "Class 9 / Matric";
@@ -1722,7 +1717,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const termsCount = payload.logged_terms?.length || 1;
 
       const habitBoost = ((studyH - 3.0) * 1.2) + ((att - 85.0) * 0.2) + Math.min(2.0, (termsCount - 1) * 0.5);
-      const predTgtPct = +(Math.min(100.0, Math.max(25.0, cumPct + habitBoost))).toFixed(1);
+      const headroom = 100.0 - cumPct;
+      const aiGrowthLift = Math.max(3.0, Math.min(10.0, +(headroom * 0.3 + habitBoost).toFixed(1)));
+      const predTgtPct = +(Math.min(99.0, Math.max(cumPct + 1.5, cumPct + aiGrowthLift))).toFixed(1);
 
       score = predTgtPct;
       formatted_score = `${predTgtPct}% in ${tgtClass}`;
@@ -1733,14 +1730,11 @@ document.addEventListener("DOMContentLoaded", () => {
       status_badge = predTgtPct >= 85 ? "Exemplary" : predTgtPct >= 70 ? "On Track" : predTgtPct >= 55 ? "At Risk" : "Critical Intervention Needed";
       status_color = predTgtPct >= 85 ? "badge-success" : predTgtPct >= 70 ? "badge-primary" : predTgtPct >= 55 ? "badge-warning" : "badge-danger";
 
-      const loggedClassNames = (payload.logged_terms || []).map(t => t.term_name).join(", ") || `${termsCount} Classes Logged`;
-
       return {
         stage,
         target_class: tgtClass,
         score: predTgtPct,
         predicted_score: predTgtPct,
-        past_final_percentage: `${cumPct}% (${loggedClassNames})`,
         forecasted_target_percentage: `${predTgtPct}% (${tgtClass})`,
         formatted_score,
         predicted_grade: grade,
@@ -1753,7 +1747,8 @@ document.addEventListener("DOMContentLoaded", () => {
         confidence_interval: { lower: min_ci, upper: max_ci },
         feature_contributions: {
           top_positive_factors: [
-            `Historical Multi-Class Aggregate: ${cumPct}% recorded across ${termsCount} classes`,
+            `Historical Baseline: ${cumPct}% recorded across coursework`,
+            `Academic Growth Lift: +${(predTgtPct - cumPct).toFixed(1)}% projected advancement`,
             `School Attendance: ${att}% presence logged`,
             `Daily Independent Study: ${studyH} hrs/day routine`
           ],
@@ -1762,7 +1757,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `Solve model assessment papers ahead of final examinations`
           ]
         },
-        recommendation: `Solid academic progression forecasted for ${tgtClass} based on your multi-class coursework profile.`
+        recommendation: `AI Engine forecasts ${predTgtPct}% in ${tgtClass}. Continue consistent daily revision.`
       };
     } else {
       const tgtClass = payload.target_class || "Class 4";
@@ -1770,8 +1765,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const att = parseFloat(payload.Attendance_Rate || 94.0);
       const termsCount = payload.logged_terms?.length || 1;
 
-      const attBoost = (att - 90.0) * 0.15;
-      const predTgtPct = +(Math.min(100.0, Math.max(30.0, cumPct + attBoost))).toFixed(1);
+      const headroom = 100.0 - cumPct;
+      const attBoost = ((att - 90.0) * 0.15);
+      const aiGrowthLift = Math.max(3.0, Math.min(8.0, +(headroom * 0.3 + attBoost).toFixed(1)));
+      const predTgtPct = +(Math.min(99.0, Math.max(cumPct + 1.5, cumPct + aiGrowthLift))).toFixed(1);
 
       score = predTgtPct;
       formatted_score = `${predTgtPct}% in ${tgtClass}`;
@@ -1782,14 +1779,11 @@ document.addEventListener("DOMContentLoaded", () => {
       status_badge = predTgtPct >= 85 ? "Exemplary" : predTgtPct >= 70 ? "On Track" : predTgtPct >= 50 ? "At Risk" : "Critical Intervention Needed";
       status_color = predTgtPct >= 85 ? "badge-success" : predTgtPct >= 70 ? "badge-primary" : predTgtPct >= 50 ? "badge-warning" : "badge-danger";
 
-      const loggedClassNames = (payload.logged_terms || []).map(t => t.term_name).join(", ") || `${termsCount} Grades Logged`;
-
       return {
         stage,
         target_class: tgtClass,
         score: predTgtPct,
         predicted_score: predTgtPct,
-        past_final_percentage: `${cumPct}% (${loggedClassNames})`,
         forecasted_target_percentage: `${predTgtPct}% (${tgtClass})`,
         formatted_score,
         predicted_grade: grade,
@@ -1802,7 +1796,8 @@ document.addEventListener("DOMContentLoaded", () => {
         confidence_interval: { lower: min_ci, upper: max_ci },
         feature_contributions: {
           top_positive_factors: [
-            `Primary Foundation: ${cumPct}% mastery aggregate recorded`,
+            `Foundational Baseline: ${cumPct}% recorded mastery`,
+            `Developmental Growth: +${(predTgtPct - cumPct).toFixed(1)}% projected advancement`,
             `Attendance: ${att}% consistent presence in school`,
             `Multi-Subject Breadth: ${termsCount} primary grade records logged`
           ],
@@ -1811,7 +1806,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `Reinforce creative writing and interactive projects`
           ]
         },
-        recommendation: `High developmental readiness for ${tgtClass}. Continue positive learning reinforcement.`
+        recommendation: `AI Engine forecasts ${predTgtPct}% mastery for ${tgtClass}. Continue positive learning reinforcement.`
       };
     }
 
@@ -1846,71 +1841,83 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderStudentResults(res) {
     if (!studentResultCard) return;
 
-    if (resultPredictedVal) resultPredictedVal.innerText = res.formatted_score || `${res.score}`;
+    if (resultPredictedVal) {
+      if (currentStage === "matric") {
+        resultPredictedVal.innerText = res.forecasted_10th_marks || res.formatted_score || `${res.score} / 550`;
+      } else if (currentStage === "intermediate") {
+        resultPredictedVal.innerText = (res.target_level === "hssc1" ? res.forecasted_1st_year : res.forecasted_2nd_year) || res.formatted_score || `${res.score} / 550`;
+      } else if (currentStage === "secondary" || currentStage === "primary") {
+        resultPredictedVal.innerText = res.forecasted_target_percentage || res.formatted_score || `${res.score}%`;
+      } else if (currentStage === "university") {
+        const nextGpa = res.forecasted_semester_gpa || res.score || (res.predicted_score ? parseFloat(res.predicted_score) : 3.65);
+        const formattedGpa = typeof nextGpa === "number" ? nextGpa.toFixed(2) : nextGpa;
+        resultPredictedVal.innerText = `${formattedGpa} GPA`;
+      } else {
+        resultPredictedVal.innerText = res.formatted_score || `${res.score}`;
+      }
+    }
     
     // Resolve Grade correctly
     const gradeText = res.predicted_grade || res.grade || "Grade A (Excellent)";
-    if (resultGradeVal) resultGradeVal.innerText = gradeText;
+    if (resultGradeVal) {
+      if (currentStage === "matric") {
+        resultGradeVal.innerText = `${gradeText} • 10th Class Forecast`;
+      } else if (currentStage === "intermediate") {
+        const yr = res.target_level === "hssc1" ? "1st Year Forecast" : "2nd Year Forecast";
+        resultGradeVal.innerText = `${gradeText} • ${yr}`;
+      } else if (currentStage === "secondary") {
+        resultGradeVal.innerText = `${gradeText} • Target Class Forecast`;
+      } else if (currentStage === "primary") {
+        resultGradeVal.innerText = `${gradeText} • Target Grade Mastery`;
+      } else {
+        resultGradeVal.innerText = `${gradeText} • Next Semester Forecast`;
+      }
+    }
 
-    // Dual Projection Pill rendering for University, Intermediate, Matric, Secondary, Primary
+    // Single Direct Projection Pill rendering (Clean, Simple & Focused on Prediction)
     const dualProjectionContainer = document.getElementById("result-dual-projection");
     if (dualProjectionContainer) {
       if (currentStage === "university") {
         const nextGpa = res.forecasted_semester_gpa || res.score || (res.predicted_score ? parseFloat(res.predicted_score) : 3.65);
-        const formattedGpa = typeof nextGpa === 'number' ? nextGpa.toFixed(2) : nextGpa;
+        const formattedGpa = typeof nextGpa === "number" ? nextGpa.toFixed(2) : nextGpa;
         dualProjectionContainer.innerHTML = `
           <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 Next Semester Forecast</div>
             <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${formattedGpa} GPA</div>
           </div>
         `;
-        if (resultPredictedVal) {
-          resultPredictedVal.innerText = `${formattedGpa} GPA`;
-        }
       } else if (currentStage === "intermediate") {
-        if (res.target_level === "hssc1") {
-          dualProjectionContainer.innerHTML = `
-            <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
-              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 1st Year (11th) Forecast</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${res.forecasted_1st_year || res.score + ' / 550'}</div>
-            </div>
-            <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
-              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎓 Projected 2-Year Total</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${res.projected_2year_total || (res.score * 2) + ' / 1100'}</div>
-            </div>
-          `;
-        } else {
-          dualProjectionContainer.innerHTML = `
-            <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
-              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 2nd Year (12th) Forecast</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${res.forecasted_2nd_year || '485 / 550'}</div>
-            </div>
-            <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
-              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🏛️ Final Intermediate Total</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${res.final_intermediate_total || res.score + ' / 1100'}</div>
-            </div>
-          `;
-        }
-      } else if (currentStage === "matric") {
+        const isHssc1 = res.target_level === "hssc1";
+        const val = isHssc1 ? (res.forecasted_1st_year || res.formatted_score || `${res.score} / 550`) : (res.forecasted_2nd_year || res.formatted_score || `${res.score} / 550`);
+        const label = isHssc1 ? "🎯 1st Year (11th) Board Forecast" : "🎯 2nd Year (12th) Board Forecast";
         dualProjectionContainer.innerHTML = `
           <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
-            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 10th Class Forecast</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${res.forecasted_10th_marks || '480 / 550'}</div>
-          </div>
-          <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
-            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🏛️ Final Matric Total</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${res.final_matric_total || res.score + ' / 1100'}</div>
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${label}</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${val}</div>
           </div>
         `;
-      } else if (currentStage === "secondary" || currentStage === "primary") {
+      } else if (currentStage === "matric") {
+        const val = res.forecasted_10th_marks || res.formatted_score || `${res.score} / 550`;
         dualProjectionContainer.innerHTML = `
           <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-cyan); border-radius: 6px; padding: 6px 14px;">
-            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">📘 Previous Class Final</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${res.past_final_percentage || '85.0%'}</div>
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 10th Class Board Forecast</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-cyan);">${val}</div>
           </div>
-          <div style="background: rgba(168, 240, 75, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
+        `;
+      } else if (currentStage === "secondary") {
+        const val = res.forecasted_target_percentage || res.formatted_score || `${res.score}%`;
+        dualProjectionContainer.innerHTML = `
+          <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 Target Class Forecast</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${res.forecasted_target_percentage || res.score + '%'}</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${val}</div>
+          </div>
+        `;
+      } else if (currentStage === "primary") {
+        const val = res.forecasted_target_percentage || res.formatted_score || `${res.score}%`;
+        dualProjectionContainer.innerHTML = `
+          <div style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--color-lime); border-radius: 6px; padding: 6px 14px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">🎯 Target Grade Mastery Forecast</div>
+            <div style="font-size: 16px; font-weight: 800; color: var(--color-lime);">${val}</div>
           </div>
         `;
       } else {
@@ -1938,32 +1945,35 @@ document.addEventListener("DOMContentLoaded", () => {
       if (currentStage === "university") {
         ciLow = Math.max(0, +(parseFloat(res.predicted_score || res.score || 3.5) - 0.18).toFixed(2));
         ciHigh = Math.min(4.0, +(parseFloat(res.predicted_score || res.score || 3.5) + 0.16).toFixed(2));
-      } else if (currentStage === "intermediate") {
-        const raw = parseFloat(res.predicted_score || res.score || (res.target_level === "hssc1" ? 480 : 960));
-        const span = res.target_level === "hssc1" ? 18 : 32;
-        const maxLim = res.target_level === "hssc1" ? 550 : 1100;
-        ciLow = Math.max(0, Math.round(raw - span));
-        ciHigh = Math.min(maxLim, Math.round(raw + span));
-      } else if (currentStage === "matric") {
-        const raw = parseFloat(res.predicted_score || res.score || 950);
-        ciLow = Math.max(0, Math.round(raw - 30));
-        ciHigh = Math.min(1100, Math.round(raw + 30));
-      } else if (currentStage === "secondary") {
-        const raw = parseFloat(res.predicted_score || res.score || 88);
-        ciLow = Math.max(0, +(raw - 3.5).toFixed(1));
-        ciHigh = Math.min(100, +(raw + 3.5).toFixed(1));
+      } else if (currentStage === "intermediate" || currentStage === "matric") {
+        const raw = parseFloat(res.predicted_score || res.score || 480);
+        ciLow = Math.max(0, Math.round(raw - 18));
+        ciHigh = Math.min(550, Math.round(raw + 18));
       } else {
-        const raw = parseFloat(res.predicted_score || res.score || 85);
+        const raw = parseFloat(res.predicted_score || res.score || 88);
         ciLow = Math.max(0, +(raw - 3.0).toFixed(1));
         ciHigh = Math.min(100, +(raw + 3.0).toFixed(1));
       }
     }
 
-    const unit = currentStage === "university" ? " CGPA" : (currentStage === "intermediate" || currentStage === "matric") ? " Marks" : "%";
+    const unit = currentStage === "university" ? " CGPA" : (currentStage === "intermediate" || currentStage === "matric") ? " / 550" : "%";
     if (resultCiRange) resultCiRange.innerText = `[${ciLow} — ${ciHigh}${unit}]`;
     if (ciMinLabel) ciMinLabel.innerText = currentStage === "university" ? "0.00" : (currentStage === "intermediate" || currentStage === "matric") ? "0" : "0%";
     if (ciMaxLabel) {
-      ciMaxLabel.innerText = currentStage === "university" ? "4.00" : currentStage === "intermediate" ? (res.target_level === "hssc1" ? "550" : "1100") : currentStage === "matric" ? "1100" : "100%";
+      ciMaxLabel.innerText = currentStage === "university" ? "4.00" : (currentStage === "intermediate" || currentStage === "matric") ? "550" : "100%";
+    }
+
+    if (resultCiBarFill && resultCiMarker) {
+      const maxVal = currentStage === "university" ? 4.0 : (currentStage === "intermediate" || currentStage === "matric") ? 550 : 100;
+      const leftPct = Math.max(0, Math.min(100, (ciLow / maxVal) * 100));
+      const rightPct = Math.max(0, Math.min(100, (ciHigh / maxVal) * 100));
+      const widthPct = Math.max(5, rightPct - leftPct);
+      const scoreVal = typeof res.score === "number" ? res.score : parseFloat(res.score || ciLow);
+      const markerPct = Math.max(0, Math.min(100, (scoreVal / maxVal) * 100));
+
+      resultCiBarFill.style.left = `${leftPct.toFixed(1)}%`;
+      resultCiBarFill.style.width = `${widthPct.toFixed(1)}%`;
+      resultCiMarker.style.left = `${markerPct.toFixed(1)}%`;
     }
 
     // Explainable AI (XAI) Feature Weight Bars
