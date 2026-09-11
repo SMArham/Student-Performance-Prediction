@@ -54,20 +54,18 @@ class SupabaseService:
         # Fallback to in-memory store
         return memory_db.profiles.get(user_id, {
             "id": resolved_id,
-            "short_id": f"STU-{resolved_id[:4].upper()}",
             "full_name": "Demo User",
             "email": "user@demo.edu",
             "role": "student",
             "stage": "university",
             "institution_name": "Faculty Campus",
-            "department_or_program": "Software Engineering",
-            "current_gpa": 3.65,
+            "department_or_program": "Software Engineering"
         })
 
     def get_student_profile(self, user_id: str, stage: str = "university") -> Dict[str, Any]:
         """Fetches student details directly from the single unified public.profiles table."""
         prof = self.get_user_profile(user_id)
-        short_id = prof.get("short_id") or f"STU-{str(prof.get('id',''))[:4].upper()}"
+        short_id = prof.get("id") or "STU-01"
         return {
             "user_id": prof.get("id"),
             "student_id_code": short_id,
@@ -75,8 +73,8 @@ class SupabaseService:
             "institution_name": prof.get("institution_name", "Faculty of Engineering"),
             "program_or_major": prof.get("department_or_program", "Software Engineering"),
             "current_grade_level": "Semester 6",
-            "current_cgpa": float(prof.get("current_gpa", 3.48)),
-            "current_gpa": float(prof.get("current_gpa", 3.65)),
+            "current_cgpa": 3.48,
+            "current_gpa": 3.65,
             "target_cgpa": 3.80,
             "attendance_pct": 85.00,
         }
@@ -84,7 +82,7 @@ class SupabaseService:
     def get_teacher_profile(self, user_id: str) -> Dict[str, Any]:
         """Fetches teacher details directly from the single unified public.profiles table."""
         prof = self.get_user_profile(user_id)
-        short_id = prof.get("short_id") or f"TCH-{str(prof.get('id',''))[:4].upper()}"
+        short_id = prof.get("id") or "TCH-01"
         return {
             "user_id": prof.get("id"),
             "faculty_id_code": short_id,
@@ -100,14 +98,12 @@ class SupabaseService:
             try:
                 update_payload = {
                     "department_or_program": profile_data.get("department") or profile_data.get("department_or_program"),
-                    "institution_name": profile_data.get("institution_name"),
-                    "updated_at": datetime.now(timezone.utc).isoformat()
+                    "institution_name": profile_data.get("institution_name")
                 }
                 update_payload = {k: v for k, v in update_payload.items() if v is not None}
                 self.client.table("profiles").update(update_payload).eq("id", resolved_id).execute()
             except Exception as e:
                 logger.warning(f"Error updating profiles in Supabase: {e}")
-        return self.get_teacher_profile(resolved_id)
         return self.get_teacher_profile(resolved_id)
 
     # --------------------------------------------------------------------------

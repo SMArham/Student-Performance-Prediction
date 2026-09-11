@@ -36,7 +36,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const studentIdCodeEl = document.getElementById("student-id-code");
 
     if (studentNameEl) studentNameEl.innerText = displayName;
-    if (studentIdCodeEl) studentIdCodeEl.innerText = meta.student_id || meta.id_code || "STU-2026-001";
+    if (studentIdCodeEl) {
+      studentIdCodeEl.innerText = (user?.id && (user.id.startsWith("STU-") || user.id.startsWith("TCH-")))
+        ? user.id
+        : (meta.student_id || meta.id_code || "STU-01");
+    }
 
     const words = displayName.trim().split(/\s+/);
     const initials = words.length > 1
@@ -47,6 +51,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   syncUserProfile();
+  if (window.authClient && window.authClient.syncProfileWithDatabase) {
+    window.authClient.syncProfileWithDatabase().then(() => syncUserProfile());
+  }
 
   // Initial Academic Subjects Store by Stage (Starts strictly empty for new users)
   const defaultSubjectsStore = {

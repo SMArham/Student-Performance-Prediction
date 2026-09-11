@@ -88,7 +88,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const meta = user?.user_metadata || {};
     const displayName = meta.full_name || (user?.email ? user.email.split("@")[0] : "User");
     const roleLabel = (meta.role === "teacher" || meta.role === "instructor") ? "Teacher / Instructor" : "Student";
-    const idCode = meta.student_id || meta.id_code || (meta.role === "teacher" ? "TCH-2026-001" : "STU-2026-001");
+    const idCode = (user?.id && (user.id.startsWith("STU-") || user.id.startsWith("TCH-")))
+      ? user.id
+      : (meta.student_id || meta.id_code || (meta.role === "teacher" ? "TCH-01" : "STU-01"));
     const program = meta.program || meta.major || "Software Engineering";
     const institution = meta.institution_name || meta.institution || "Faculty of Engineering";
     const stageDisplay = currentStage.charAt(0).toUpperCase() + currentStage.slice(1);
@@ -413,4 +415,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initial Boot
   initPortal();
+  if (window.authClient && window.authClient.syncProfileWithDatabase) {
+    window.authClient.syncProfileWithDatabase().then(() => renderUserProfile());
+  }
 });

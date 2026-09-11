@@ -312,9 +312,6 @@ document.addEventListener("DOMContentLoaded", () => {
           submitBtn.innerText = "Creating Account...";
         }
 
-        const uniqueSuffix = Math.floor(10 + Math.random() * 90);
-        const autoId = role === "teacher" ? `TCH-0${Math.floor(1 + Math.random() * 9)}` : `STU-${uniqueSuffix}`;
-
         await window.authClient.signUp(email, password, {
           full_name: fullName,
           gender: gender,
@@ -325,9 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
           program: program,
           major: program,
           department: department || program,
-          designation: designation,
-          student_id: autoId,
-          id_code: autoId
+          designation: designation
         });
 
         showToast("Account created successfully! Please sign in with your password.", "success");

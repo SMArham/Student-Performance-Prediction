@@ -187,7 +187,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const user = window.authClient ? window.authClient.getUser() : null;
     const meta = user?.user_metadata || {};
     const displayName = meta.full_name || (user?.email ? user.email.split("@")[0] : "Muhammad Ali");
-    const idCode = meta.student_id || meta.id_code || (meta.role === "teacher" ? "TCH-2026-001" : "STU-2026-001");
+    const idCode = (user?.id && (user.id.startsWith("STU-") || user.id.startsWith("TCH-")))
+      ? user.id
+      : (meta.student_id || meta.id_code || (meta.role === "teacher" ? "TCH-01" : "STU-01"));
 
     // Set Name & ID Code
     const studentNameEl = document.getElementById("student-name");
@@ -206,6 +208,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   syncUserProfile();
+  if (window.authClient && window.authClient.syncProfileWithDatabase) {
+    window.authClient.syncProfileWithDatabase().then(() => syncUserProfile());
+  }
 
   // Logout Handler
   if (logoutBtn) {

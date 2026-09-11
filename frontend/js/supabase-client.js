@@ -248,24 +248,43 @@ class SupabaseAuthClient {
 
     const role = (metadata.role || "student").toLowerCase();
     const cleanName = metadata.full_name || cleanEmail.split("@")[0] || (role === "teacher" ? "Faculty Teacher" : "Student");
-    const uniqueSuffix = Math.floor(1000 + Math.random() * 9000);
-    const autoId = metadata.student_id || metadata.id_code || (role === "teacher" ? `TCH-${uniqueSuffix}` : `STU-${uniqueSuffix}`);
     const programName = metadata.program || metadata.major || (role === "teacher" ? (metadata.department || "Computer Science") : "Software Engineering");
     const institutionName = metadata.institution_name || metadata.institution || "Faculty of Engineering";
+    const prefix = role === "teacher" ? "TCH-" : "STU-";
 
-    function createSafeUUID() {
-      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-        return crypto.randomUUID();
+    let autoId = metadata.student_id || metadata.id_code;
+    if (!autoId || autoId.startsWith("STU-2026") || autoId.startsWith("TCH-2026")) {
+      let maxNum = 0;
+      if (this.client) {
+        try {
+          const { data: existingRows } = await this.client
+            .from("profiles")
+            .select("id")
+            .ilike("id", `${prefix}%`);
+          if (existingRows && existingRows.length > 0) {
+            existingRows.forEach(row => {
+              const numPart = parseInt((row.id || "").replace(/[^0-9]/g, ""), 10);
+              if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+            });
+          }
+        } catch (idErr) {
+          console.warn("[Auth] Cloud id fetch notice:", idErr);
+        }
       }
-      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === "x" ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
+      if (maxNum === 0) {
+        Object.values(registry).forEach(acc => {
+          const aId = acc.id || acc.user_metadata?.student_id || "";
+          if (aId.startsWith(prefix)) {
+            const numPart = parseInt(aId.replace(/[^0-9]/g, ""), 10);
+            if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+          }
+        });
+      }
+      autoId = `${prefix}${String(maxNum + 1).padStart(2, "0")}`;
     }
 
     const userObj = {
-      id: createSafeUUID(),
+      id: autoId,
       email: cleanEmail,
       user_metadata: {
         ...metadata,
@@ -296,40 +315,32 @@ class SupabaseAuthClient {
     // 2. Attempt live Supabase cloud signup sync & Database persistence
     if (this.client) {
       try {
-        const { data, error } = await this.client.auth.signUp({
+        await this.client.auth.signUp({
           email: cleanEmail,
           password: password,
           options: {
             data: userObj.user_metadata
           }
         });
-
-        if (!error && data?.user) {
-          userObj.id = data.user.id;
-          registry[cleanEmail].id = data.user.id;
-          this.saveAccountsRegistry(registry);
-        }
       } catch (supabaseErr) {
         console.warn("[Auth] Live Supabase signup notice:", supabaseErr);
       }
 
-      // Persist directly into Supabase database tables with exact local time
+      // Persist directly into Supabase database profiles table (non-redundant clean schema)
       const localNow = getLocalTimestamp();
       const validStage = (role === "teacher" || !userObj.user_metadata.stage || userObj.user_metadata.stage === "all") ? "university" : userObj.user_metadata.stage;
       try {
         await this.client.from("profiles").upsert({
-          id: userObj.id,
-          short_id: autoId,
+          id: autoId,
           email: cleanEmail,
           full_name: cleanName,
           role: role,
           stage: validStage,
           institution_name: institutionName,
           department_or_program: programName,
-          created_at: localNow,
-          updated_at: localNow
+          created_at: localNow
         }, { onConflict: "id" });
-        console.log(`[Auth] ${role} profile saved to Supabase profiles table successfully!`);
+        console.log(`[Auth] ${role} profile (${autoId}) saved to Supabase profiles table successfully!`);
       } catch (profErr) {
         console.warn("[Auth] Supabase profiles initial insert note:", profErr);
       }
@@ -407,7 +418,7 @@ class SupabaseAuthClient {
       try {
         const { data: prof } = await this.client
           .from("profiles")
-          .select("id, role, email, full_name, short_id, stage, institution_name, department_or_program")
+          .select("id, role, email, full_name, stage, institution_name, department_or_program")
           .eq("email", cleanEmail)
           .maybeSingle();
 
@@ -423,7 +434,7 @@ class SupabaseAuthClient {
         try {
           const { data: profById } = await this.client
             .from("profiles")
-            .select("id, role, email, full_name, short_id, stage, institution_name, department_or_program")
+            .select("id, role, email, full_name, stage, institution_name, department_or_program")
             .eq("id", cloudUser.id)
             .maybeSingle();
 
@@ -436,16 +447,14 @@ class SupabaseAuthClient {
             const autoId = meta.student_id || meta.id_code || (uRole === "teacher" ? "TCH-01" : "STU-01");
             const validStage = (uRole === "teacher" || !meta.stage || meta.stage === "all") ? "university" : meta.stage;
             const { data: syncedProf } = await this.client.from("profiles").upsert({
-              id: cloudUser.id,
-              short_id: autoId,
+              id: autoId,
               email: cleanEmail,
               full_name: meta.full_name || cleanEmail.split("@")[0],
               role: uRole,
               stage: validStage,
               institution_name: meta.institution_name || meta.institution || "Faculty Campus",
               department_or_program: meta.department || meta.program || "Computer Science",
-              created_at: localNow,
-              updated_at: localNow
+              created_at: localNow
             }, { onConflict: "id" }).select().maybeSingle();
             if (syncedProf) {
               cloudProfile = syncedProf;
@@ -490,26 +499,28 @@ class SupabaseAuthClient {
       }
     }
 
-    // 5. Build authenticated session
+    // 5. Build authenticated session: Database profile ID is the single source of truth
+    const resolvedId = cloudProfile?.id || existingAccount?.id || (registeredRole === "teacher" ? "TCH-01" : "STU-01");
+
     const combinedMeta = {
+      ...(existingAccount?.user_metadata || {}),
+      ...(cloudUser?.user_metadata || {}),
       ...(cloudProfile ? {
         full_name: cloudProfile.full_name,
         role: cloudProfile.role,
         stage: cloudProfile.stage,
-        student_id: cloudProfile.short_id,
-        id_code: cloudProfile.short_id,
         institution_name: cloudProfile.institution_name,
         institution: cloudProfile.institution_name,
         department: cloudProfile.department_or_program,
         program: cloudProfile.department_or_program
       } : {}),
-      ...(existingAccount?.user_metadata || {}),
-      ...(cloudUser?.user_metadata || {}),
+      student_id: resolvedId,
+      id_code: resolvedId,
       role: registeredRole
     };
 
     const loggedUser = {
-      id: cloudUser?.id || existingAccount?.id || ("usr-" + Math.random().toString(36).substring(2, 9)),
+      id: resolvedId,
       email: cleanEmail,
       user_metadata: combinedMeta
     };
@@ -555,17 +566,14 @@ class SupabaseAuthClient {
         try {
           const role = newMeta.role || "student";
           const validStage = (role === "teacher" || !newMeta.stage || newMeta.stage === "all") ? "university" : newMeta.stage;
-          const autoId = newMeta.student_id || newMeta.id_code || (role === "teacher" ? "TCH-01" : "STU-01");
           const profilePayload = {
             id: userId,
-            short_id: autoId,
             email: cleanEmail,
             full_name: newMeta.full_name || cleanEmail.split("@")[0],
             role: role,
             stage: validStage,
             institution_name: newMeta.institution_name || newMeta.institution || "Faculty Campus",
-            department_or_program: newMeta.department || newMeta.program || newMeta.major || "Software Engineering",
-            updated_at: getLocalTimestamp()
+            department_or_program: newMeta.department || newMeta.program || newMeta.major || "Software Engineering"
           };
           await this.client.from("profiles").upsert(profilePayload, { onConflict: "id" });
           console.log(`[Supabase] ${role} profile updated successfully in profiles table!`);
@@ -733,6 +741,54 @@ class SupabaseAuthClient {
 
   isAuthenticated() {
     return !!this.getSession();
+  }
+
+  async syncProfileWithDatabase() {
+    const user = this.getUser();
+    if (!user || !user.email || !this.client) return user;
+    try {
+      const cleanEmail = user.email.toLowerCase().trim();
+      const { data: prof } = await this.client
+        .from("profiles")
+        .select("id, role, email, full_name, stage, institution_name, department_or_program")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (prof && prof.id) {
+        let changed = false;
+        if (user.id !== prof.id) {
+          user.id = prof.id;
+          changed = true;
+        }
+        if (!user.user_metadata) user.user_metadata = {};
+        if (user.user_metadata.student_id !== prof.id || user.user_metadata.id_code !== prof.id) {
+          user.user_metadata.student_id = prof.id;
+          user.user_metadata.id_code = prof.id;
+          changed = true;
+        }
+        if (prof.full_name && user.user_metadata.full_name !== prof.full_name) {
+          user.user_metadata.full_name = prof.full_name;
+          changed = true;
+        }
+        if (changed) {
+          localStorage.setItem("sp_auth_user", JSON.stringify(user));
+          // Update any UI ID elements directly on screen
+          const idEls = document.querySelectorAll("#student-id, #student-id-code, #hero-profile-id, #setting-studentid");
+          idEls.forEach(el => {
+            if (el.tagName === "INPUT") el.value = prof.id;
+            else el.innerText = prof.id;
+          });
+          const nameEls = document.querySelectorAll("#student-name, #hero-profile-name, #setting-fullname");
+          nameEls.forEach(el => {
+            if (el.tagName === "INPUT") el.value = prof.full_name;
+            else el.innerText = prof.full_name;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("[Auth] Live profile sync warning:", err);
+    }
+    return user;
   }
 }
 

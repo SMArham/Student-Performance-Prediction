@@ -71,13 +71,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function getTeacherIdentity() {
     const u = window.authClient ? window.authClient.getUser() : null;
     const meta = u?.user_metadata || {};
-    const code = meta.id_code || meta.student_id || "";
-    const uid = u?.id || "";
+    const code = (u?.id && u.id.startsWith("TCH-")) ? u.id : (meta.id_code || meta.student_id || u?.id || "TCH-01");
+    const uid = (u?.id && u.id.startsWith("TCH-")) ? u.id : (code || u?.id || "TCH-01");
     return {
       id: uid,
       code: code,
       name: meta.full_name || "Instructor",
-      storageKey: code ? `edumetrics_teacher_${code}` : (uid ? `edumetrics_teacher_${uid}` : "edumetrics_teacher_default")
+      storageKey: code ? `edumetrics_teacher_${code}` : "edumetrics_teacher_default"
     };
   }
 
