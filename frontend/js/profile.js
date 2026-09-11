@@ -117,59 +117,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const settingEmailInput = document.getElementById("setting-email");
     const settingStudentId = document.getElementById("setting-studentid");
     const settingStage = document.getElementById("setting-stage");
-    const settingProgram = document.getElementById("setting-program");
-    const settingInstitution = document.getElementById("setting-institution");
-    const settingActivity = document.getElementById("setting-activity");
 
     if (settingNameInput) settingNameInput.value = displayName;
     if (settingEmailInput) settingEmailInput.value = email;
     if (settingStudentId) settingStudentId.value = idCode;
     if (settingStage) settingStage.value = stage;
-    if (settingProgram) settingProgram.value = program;
-    if (settingInstitution) settingInstitution.value = institution;
-    if (settingActivity) settingActivity.value = meta.academic_activity || meta.activity || "";
-  }
-
-  // 8. Profile Details Form Save Handler (Only 3 fields editable: Major, Institution, Activity)
-  const profileForm = document.getElementById("profile-details-form");
-  if (profileForm) {
-    profileForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const saveBtn = document.getElementById("btn-save-profile");
-      const originalBtnText = saveBtn ? saveBtn.innerHTML : "Save";
-
-      if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = `⏳ Saving...`;
-      }
-
-      // Strictly the 3 user-permitted parameters
-      const program = document.getElementById("setting-program")?.value.trim() || "";
-      const inst = document.getElementById("setting-institution")?.value.trim() || "";
-      const activity = document.getElementById("setting-activity")?.value.trim() || "";
-
-      try {
-        if (window.authClient) {
-          await window.authClient.updateUser({
-            program: program,
-            major: program,
-            institution_name: inst,
-            institution: inst,
-            academic_activity: activity,
-            activity: activity
-          });
-        }
-        renderProfile();
-        showToast("Profile details updated successfully!", "success");
-      } catch (err) {
-        showToast(err.message || "Failed to update profile.", "error");
-      } finally {
-        if (saveBtn) {
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalBtnText;
-        }
-      }
-    });
   }
 
   // 12. Delete Account Action
