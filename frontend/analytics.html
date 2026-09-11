@@ -153,7 +153,7 @@
           </div>
 
           <!-- ================================================================
-               MAIN CENTRAL CHART CARD (LINE & BAR SWITCHER)
+               CHART 1: MAIN CENTRAL CHART CARD (LINE & BAR SWITCHER - LIVE AI)
                ================================================================ -->
           <section class="card chart-card" id="main-analytics-chart-card" style="margin-bottom: var(--space-6);">
             <div class="card-header" style="flex-wrap: wrap; gap: var(--space-3);">
@@ -175,9 +175,6 @@
                     📊 Bar Chart
                   </button>
                 </div>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-fullscreen-progression" title="Expand Full Screen View">
-                  <span>⛶ Fullscreen</span>
-                </button>
                 <button type="button" class="btn btn-outline btn-sm" id="btn-save-progression-png" title="Download chart as PNG">
                   <span>🖼️ Save PNG</span>
                 </button>
@@ -233,6 +230,62 @@
                   <strong style="color: var(--color-orange);">📊 Bar Chart Mode:</strong> Click the Bar Chart button above anytime to inspect individual Coursework Mastery & Study Routine impact.
                 </div>
               </div>
+            </div>
+          </section>
+
+          <!-- ================================================================
+               CHART 2: ADVANCED MULTI-DIMENSIONAL COGNITIVE DIAGNOSTIC & RISK MATRIX (PRO LOCKED & BLURRED)
+               ================================================================ -->
+          <section class="card chart-card pro-locked-card" id="pro-analytics-chart-card" style="margin-bottom: var(--space-6); position: relative; overflow: hidden; cursor: pointer; border: 1px solid rgba(245, 158, 11, 0.35);">
+            <div class="card-header" style="flex-wrap: wrap; gap: var(--space-3);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <h2 class="card-title" style="margin-bottom: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12 2.1 12.5"/><path d="m12 12 6.5-6.5"/></svg>
+                    <span>🧠 Cognitive Diagnostic & Longitudinal Risk Matrix</span>
+                  </h2>
+                  <span class="badge" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.05em;">🔒 PRO FEATURE</span>
+                </div>
+                <div class="card-subtitle" style="margin-top: 4px;">6-Axis neural diagnostic: Cognitive load, stress vulnerability, habit velocity, & burnout risk</div>
+              </div>
+              
+              <div style="display: flex; gap: var(--space-2); align-items: center;">
+                <span class="badge badge-warning" style="font-size: 11px; padding: 4px 10px; font-weight: 700; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #f59e0b;">🔒 Locked (Pro Only)</span>
+              </div>
+            </div>
+
+            <!-- Relative Chart Viewport with Blurred Canvas and Lock Overlay -->
+            <div class="pro-chart-viewport" style="position: relative; min-height: 380px; height: 380px; width: 100%; border-radius: var(--radius-md); overflow: hidden; background: rgba(0,0,0,0.3);">
+              
+              <!-- Blurred Canvas in Background -->
+              <div style="width: 100%; height: 100%; filter: blur(7px); -webkit-filter: blur(7px); opacity: 0.45; pointer-events: none; transform: scale(0.98);">
+                <canvas id="proCognitiveRadarChart"></canvas>
+              </div>
+
+              <!-- Interactive Glassmorphism Lock Overlay -->
+              <div class="pro-lock-overlay" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(12, 13, 18, 0.76); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 24px; text-align: center; z-index: 10; border-radius: inherit; border: 1px dashed rgba(245, 158, 11, 0.4); transition: all 0.25s ease;">
+                <div style="width: 58px; height: 58px; border-radius: 50%; background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.15)); border: 1.5px solid rgba(245, 158, 11, 0.6); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 12px; box-shadow: 0 0 24px rgba(245, 158, 11, 0.3);">
+                  🔒
+                </div>
+                <h3 style="font-size: 19px; font-weight: 800; color: #ffffff; margin-bottom: 6px; letter-spacing: 0.02em;">
+                  Unlock Deep-Dive Cognitive AI Matrix
+                </h3>
+                <p style="font-size: 13px; color: var(--text-secondary); max-width: 460px; line-height: 1.5; margin-bottom: 16px;">
+                  Inspect real-time neural cognitive load, habit retention velocity, subject burnout probability, and 6-axis percentile benchmarks.
+                </p>
+                <button type="button" class="btn btn-primary" id="btn-unlock-pro-overlay" style="background: linear-gradient(135deg, #f59e0b, #e11d48); color: #ffffff; font-weight: 800; border: none; padding: 10px 22px; font-size: 13px; box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4); border-radius: 8px; cursor: pointer; letter-spacing: 0.02em;">
+                  ⚡ Upgrade to Pro to Unlock
+                </button>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">
+                  💡 Click anywhere on this card or button to upgrade
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom Sub-info Box -->
+            <div style="margin-top: 14px; padding: 12px 16px; background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px; font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <span>🔒 <strong>Pro Exclusive:</strong> Multi-dimensional longitudinal clustering & semester-wise early risk detection models.</span>
+              <span style="color: var(--accent-amber); font-weight: 700;">PRO Tier Required ➔</span>
             </div>
           </section>
 
@@ -348,13 +401,70 @@
   </div>
 </div>
 
+  <!-- ================================================================
+       PRO UPGRADE NOTIFICATION MODAL
+       ================================================================ -->
+  <div id="pro-upgrade-modal" class="modal-backdrop" style="display: none;" aria-hidden="true">
+    <div class="modal-content" style="max-width: 520px; border: 1px solid rgba(245, 158, 11, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.85); background: #12141a;">
+      <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            ⭐
+          </div>
+          <div>
+            <h3 style="font-size: 17px; font-weight: 800; color: #fff; margin: 0;">Upgrade to EduMetrics AI Pro</h3>
+            <div style="font-size: 12px; color: var(--text-muted);">Unlock full predictive power & cognitive neural diagnostics</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" id="btn-close-pro-modal" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; line-height:1;" title="Close">&times;</button>
+      </div>
+      
+      <div class="modal-body" style="padding: 20px 0;">
+        <div style="padding: 14px 18px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(225, 29, 72, 0.08)); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; margin-bottom: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 800; color: #f59e0b; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">EduMetrics Pro Plan</span>
+            <span style="font-weight: 800; color: #fff; font-size: 18px;">$9<span style="font-size: 12px; color: var(--text-muted); font-weight: normal;"> / month</span></span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Institutional & Student Edition with complete AI access</div>
+        </div>
+
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">What's included in Pro:</div>
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 11px; font-size: 13px; color: var(--text-secondary);">
+          <li style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: var(--color-lime); font-weight: bold;">✓</span>
+            <span><strong>6-Axis Cognitive Diagnostic Matrix:</strong> Real-time neural retention, study velocity, and stress index.</span>
+          </li>
+          <li style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: var(--color-lime); font-weight: bold;">✓</span>
+            <span><strong>Unlimited Longitudinal AI Forecasts:</strong> Multi-semester trajectory projections across all degree levels.</span>
+          </li>
+          <li style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: var(--color-lime); font-weight: bold;">✓</span>
+            <span><strong>Early Intervention & Dropout Shield:</strong> Proactive alerts before GPA/percentage dips.</span>
+          </li>
+          <li style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: var(--color-lime); font-weight: bold;">✓</span>
+            <span><strong>Export High-Definition PDF Audits:</strong> Complete diagnostic reports with instructor signature slots.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
+        <button type="button" class="btn btn-outline" id="btn-cancel-pro-modal">Maybe Later</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-pro-upgrade" style="background: linear-gradient(135deg, #f59e0b, #e11d48); color: #fff; font-weight: 700; border: none; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4); padding: 8px 18px;">
+          ⚡ Upgrade to Pro Now
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Application Scripts -->
-  <script src="js/supabase-client.js?v=3.7.0"></script>
-  <script src="js/auth.js?v=3.7.0"></script>
-  <script src="js/api.js?v=3.7.0"></script>
-  <script src="js/analytics.js?v=3.7.0"></script>
-  <script src="js/tour.js?v=3.7.0"></script>
+  <script src="js/supabase-client.js?v=3.8.0"></script>
+  <script src="js/auth.js?v=3.8.0"></script>
+  <script src="js/api.js?v=3.8.0"></script>
+  <script src="js/analytics.js?v=3.8.0"></script>
+  <script src="js/tour.js?v=3.8.0"></script>
 </body>
 </html>

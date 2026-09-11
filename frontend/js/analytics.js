@@ -1,13 +1,15 @@
 /**
  * ============================================================================
- * EDUMETRICS AI — DEDICATED ANALYTICS, COMPARISON & HISTORY HUB (analytics.js)
- * Complete Multi-Stage Longitudinal Engine with Full CRUD, XAI, and Visual Charts
+ * EDUMETRICS AI — DEDICATED ANALYTICS & LONGITUDINAL INTELLIGENCE (analytics.js)
+ * Dual Chart Engine: 
+ *  1. Live AI Performance Trajectory & Learning Analytics (Unlocked)
+ *  2. Longitudinal Cognitive Diagnostic & Risk Matrix (PRO Locked & Blurred)
  * ============================================================================
  */
 
 // Global state repository
 window.__edumetricsPredictionHistory = window.__edumetricsPredictionHistory || [];
-window.__modalTrajChartInstance = null;
+window.__proCognitiveChartInstance = null;
 
 // Modal helper: open
 window.showAnalyticsModal = function(modalEl) {
@@ -155,19 +157,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   const filterLedgerRole = document.getElementById("filter-ledger-role");
   const btnClearAllHistory = document.getElementById("btn-clear-all-history");
 
-
-
-  // Chart Instances & Filters
+  // Chart 1 Controls
   let progressionChart = null;
-  let gradeDistributionChart = null;
-  let subjectMasteryChart = null;
-  let habitsCorrelationChart = null;
-  let modalTrajChartInstance = null;
-  let fsChartInstance = null;
-
   let currentChartMode = "line"; // "line" | "bar"
   const btnChartModeLine = document.getElementById("btn-chart-mode-line");
   const btnChartModeBar = document.getElementById("btn-chart-mode-bar");
+
+  // Chart 2 PRO DOMs
+  const proCard = document.getElementById("pro-analytics-chart-card");
+  const btnUnlockProOverlay = document.getElementById("btn-unlock-pro-overlay");
+  const proUpgradeModal = document.getElementById("pro-upgrade-modal");
+  const btnCloseProModal = document.getElementById("btn-close-pro-modal");
+  const btnCancelProModal = document.getElementById("btn-cancel-pro-modal");
+  const btnConfirmProUpgrade = document.getElementById("btn-confirm-pro-upgrade");
 
   let predictionHistory = [];
   let currentStageFilter = "all";
@@ -181,12 +183,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!container) return;
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
+    const icon = type === "warning" || type === "lock" ? "🔒" : type === "success" ? "✓" : "ℹ️";
+    const title = type === "warning" || type === "lock" ? "Pro Upgrade Required" : type === "success" ? "Success" : "Notification";
     toast.innerHTML = `
-      <div style="flex:1;">${message}</div>
-      <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.6;font-size:18px;">&times;</button>
+      <div class="toast-icon-wrap" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;margin-right:10px;font-size:14px;background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.4);">${icon}</div>
+      <div class="toast-msg-content" style="flex:1;">
+        <div class="toast-msg-title" style="font-size:11.5px;font-weight:800;color:#f59e0b;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;">${title}</div>
+        <div class="toast-msg-body" style="font-size:12.5px;color:#f1f5f9;line-height:1.4;">${message}</div>
+      </div>
+      <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.6;font-size:18px;margin-left:8px;">&times;</button>
     `;
     container.appendChild(toast);
-    setTimeout(() => { if (toast.parentElement) toast.remove(); }, 3500);
+    setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
   }
   window.showToast = showToast;
 
@@ -198,8 +206,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const meta = user?.user_metadata || {};
     const displayName = meta.full_name || (user?.email ? user.email.split("@")[0] : "Muhammad Ali");
     const idCode = meta.student_id || meta.id_code || (meta.role === "teacher" ? "TCH-2026-001" : "STU-2026-001");
-    const program = meta.program || meta.major || "Software Engineering";
-    const institution = meta.institution_name || meta.institution || "Faculty of Engineering";
 
     // Set Name & ID Code
     const studentNameEl = document.getElementById("student-name");
@@ -207,7 +213,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (studentNameEl) studentNameEl.innerText = displayName;
     if (studentIdCodeEl) studentIdCodeEl.innerText = idCode;
 
-    // Set Avatar Initials (e.g. "Muhammad Ali" -> "MA")
+    // Set Avatar Initials
     const words = displayName.trim().split(/\s+/);
     const initials = words.length > 1
       ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
@@ -228,7 +234,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 6. PERSISTENCE & HISTORY STORAGE HELPER
+  // 5. PERSISTENCE & HISTORY STORAGE HELPER
   // --------------------------------------------------------------------------
   function persistHistory(historyList) {
     predictionHistory = historyList;
@@ -243,42 +249,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   window.persistHistory = persistHistory;
 
-  // Formatter for diagnostic payload parameters
-  function formatDiagnosticParam(k, v) {
-    if (v === null || v === undefined) return "N/A";
-    if (k === "subjects" || Array.isArray(v)) {
-      if (Array.isArray(v)) {
-        if (v.length === 0) return "No coursework listed";
-        return v
-          .map((item) => {
-            if (typeof item === "object" && item !== null) {
-              const name = item.name || item.subject || "Subject";
-              const obtained = item.obtained !== undefined ? item.obtained : item.marks !== undefined ? item.marks : "";
-              const total = item.total !== undefined ? item.total : 100;
-              return obtained !== "" ? `${name} (${obtained}/${total})` : name;
-            }
-            return String(item);
-          })
-          .join(", ");
-      }
-    }
-    if (typeof v === "object" && v !== null) {
-      return Object.entries(v)
-        .map(([subK, subV]) => `${subK.replace(/_/g, " ")}: ${subV}`)
-        .join(", ");
-    }
-    return String(v);
-  }
-
   // --------------------------------------------------------------------------
-  // 7. LOAD PREDICTION HISTORY (OFFLINE-FIRST + LIVE SUPABASE CLOUD SYNC)
+  // 6. LOAD PREDICTION HISTORY (AGGREGATE OFFLINE-FIRST + SUPABASE CLOUD SYNC)
   // --------------------------------------------------------------------------
   async function loadHistory() {
     try {
       const user = window.authClient ? window.authClient.getUser() : null;
       let localList = [];
 
-      // Step 1: Scan all potential local storage keys for existing history
+      // Step 1: Aggregate and deduplicate across all known candidate keys
       const candidateKeys = [];
       if (user?.id) {
         candidateKeys.push(`edumetrics_prediction_history_v2_${user.id}`);
@@ -288,22 +267,32 @@ document.addEventListener("DOMContentLoaded", async () => {
       candidateKeys.push("edumetrics_prediction_history_v2");
       candidateKeys.push("edumetrics_prediction_history");
 
+      const localMap = new Map();
       for (const k of candidateKeys) {
         try {
           const raw = localStorage.getItem(k);
           if (raw) {
             const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const matching = parsed.filter(item => !item.user_id || !user?.id || item.user_id === user.id);
-              if (matching.length > 0) {
-                localList = matching;
-                predictionHistory = localList;
-                refreshAllViews();
-                break;
-              }
+            if (Array.isArray(parsed)) {
+              parsed.forEach((item) => {
+                if (item && item.id) {
+                  if (!item.user_id || !user?.id || item.user_id === user.id) {
+                    if (!localMap.has(String(item.id))) {
+                      localMap.set(String(item.id), item);
+                    }
+                  }
+                }
+              });
             }
           }
         } catch (e) {}
+      }
+      localList = Array.from(localMap.values());
+
+      // If local list found, render immediately
+      if (localList.length > 0) {
+        predictionHistory = localList;
+        refreshAllViews();
       }
 
       // Step 2: Live Supabase Cloud Database Table Query
@@ -346,7 +335,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      // Step 3: Backend API fallback if both local and cloud query yielded no results
+      // Step 3: Backend API fallback if both yielded no records
       if (localList.length === 0 && cloudList.length === 0 && window.apiClient) {
         try {
           const apiRecords = await window.apiClient.getHistory(50);
@@ -356,7 +345,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         } catch (e) {}
       }
 
-      // Step 4: Merge & Deduplicate by record ID (Never wipe local data)
+      // Step 4: Merge & Deduplicate by record ID
       const mergedMap = new Map();
       localList.forEach(item => { if (item && item.id) mergedMap.set(String(item.id), item); });
       cloudList.forEach(item => { if (item && item.id) mergedMap.set(String(item.id), item); });
@@ -382,18 +371,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 8. MASTER REFRESH VIEW CONTROLLER
+  // 7. MASTER REFRESH VIEW CONTROLLER
   // --------------------------------------------------------------------------
   function refreshAllViews() {
     updateSummaryKPIs();
     renderMainAnalyticsChart();
-    renderStudentInstructorMatrix();
+    renderProCognitiveRadarChart();
     populateComparisonDropdowns();
     renderLedgerTable();
   }
 
   // --------------------------------------------------------------------------
-  // 9. UPDATE SUMMARY STAT CARDS (KPIS)
+  // 8. UPDATE SUMMARY STAT CARDS (KPIS)
   // --------------------------------------------------------------------------
   function updateSummaryKPIs() {
     if (kpiTotalEvaluations) kpiTotalEvaluations.innerText = `${predictionHistory.length}`;
@@ -441,7 +430,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 10. STAGE METADATA & NORMALIZATION HELPERS
+  // 9. STAGE METADATA & NORMALIZATION HELPERS
   // --------------------------------------------------------------------------
   function parseNormalizedScore(item) {
     if (!item) return { raw: 0, pct: 0, formatted: "0" };
@@ -486,37 +475,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // Helper to display clean zero-state placeholders for brand new accounts
-  // --------------------------------------------------------------------------
-  function updateChartEmptyState(canvasId, isEmpty, emptyConfig = {}) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    if (!parent) return;
-
-    let emptyEl = parent.querySelector(".chart-empty-state-overlay");
-    if (isEmpty) {
-      canvas.style.display = "none";
-      if (!emptyEl) {
-        emptyEl = document.createElement("div");
-        emptyEl.className = "chart-empty-state-overlay";
-        emptyEl.style.cssText = "display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:220px; height:100%; text-align:center; padding:1.5rem; background:rgba(0,0,0,0.25); border-radius:8px; border:1px dashed rgba(255,255,255,0.1);";
-        parent.appendChild(emptyEl);
-      }
-      emptyEl.innerHTML = `
-        <div style="font-size:2rem; margin-bottom:0.5rem; opacity:0.8;">${emptyConfig.icon || "📊"}</div>
-        <div style="font-weight:700; color:var(--text-primary); font-size:0.95rem; margin-bottom:0.25rem;">${emptyConfig.title || "No Data Recorded Yet"}</div>
-        <div style="font-size:0.8rem; color:var(--text-muted); max-width:320px; line-height:1.45; margin-bottom:1rem;">${emptyConfig.description || "Run an AI evaluation to generate analytics."}</div>
-        ${emptyConfig.buttonText ? `<a href="${emptyConfig.buttonHref || 'prediction.html'}" class="btn btn-outline btn-sm" style="font-size:0.75rem; text-decoration:none; border-color:var(--color-lime); color:var(--color-lime); font-weight:700;">${emptyConfig.buttonText}</a>` : ''}
-      `;
-    } else {
-      canvas.style.display = "block";
-              if (emptyEl) emptyEl.remove();
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // 11. CHART 1: PROGRESSION & TARGET TRAJECTORY (DYNAMIC ASCENDING GROWTH PROJECTION)
+  // 10. CHART 1: PERFORMANCE TRAJECTORY (UNLOCKED & LIVE EVALUATION DATA)
   // --------------------------------------------------------------------------
   function renderProgressionChart() {
     const canvas = document.getElementById("analyticsProgressionChart");
@@ -542,8 +501,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const trajBadgeEl = document.getElementById("trajectory-status-badge");
     const insightEl = document.getElementById("score-insight-text");
 
-    updateChartEmptyState("analyticsProgressionChart", false);
-
     const parseVal = (r) => {
       const parsed = parseNormalizedScore(r);
       if (isUni) {
@@ -562,6 +519,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let totalGoalDelta = "";
 
     if (!stageRecords || stageRecords.length === 0) {
+      // Clean baseline guidance for a brand new account
       if (isUni) {
         pastScores = [2.65, 2.95, 3.25, null, null];
         currentStandingVal = 3.25;
@@ -592,14 +550,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
       if (trajProjEl) trajProjEl.innerText = `${targetGoalVal}${unitLabel} (${totalGoalDelta} ⭐)`;
       if (trajBadgeEl) {
-        trajBadgeEl.innerText = "Upward Trajectory 🚀";
-        trajBadgeEl.className = "badge badge-success";
+        trajBadgeEl.innerText = "Initial Baseline 🚀";
+        trajBadgeEl.className = "badge badge-info";
       }
 
       if (insightEl) {
-        insightEl.innerHTML = `🌟 <strong>Ascending Trajectory:</strong> Verified past exams start lower in green, while <strong>⚡ AI Prediction projects a ${liftDelta} upward lift</strong> to ${aiForecastVal}${unitLabel} toward your <strong>Target Goal of ${targetGoalVal}${unitLabel}</strong>!`;
+        insightEl.innerHTML = `💡 <strong>Initial AI Projection:</strong> Run an evaluation on the <a href="prediction.html" style="color:var(--color-lime);text-decoration:underline;">Forecast page</a> to log your verified marks and generate your personalized live growth curve!`;
       }
     } else {
+      // User has logged prediction attempts from prediction.html!
       const activeList = stageRecords.slice().reverse();
       const latestRun = stageRecords[0];
       const latestVal = parseVal(latestRun);
@@ -624,7 +583,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels = [
           "1. Baseline Diagnostic",
           "2. Term Examination",
-          "3. Current Standing (Verified)",
+          `3. Current Standing (${latestVal}${unitLabel})`,
           `4. ⚡ AI Prediction (${liftDelta} Lift 🚀)`,
           `5. 🎯 Target Milestone (${totalGoalDelta} Goal ⭐)`
         ];
@@ -632,7 +591,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         predScores = [null, null, latestVal, aiForecastVal, targetGoalVal];
       } else {
         const rawPast = activeList.map((r) => parseVal(r));
-        labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (Current)` : `Test #${i + 1}`));
+        labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${rawPast[i]}${unitLabel})` : `Test #${i + 1}`));
         labels.push(`⚡ AI Prediction (${liftDelta} 🚀)`);
         labels.push(`🎯 Target Milestone (${totalGoalDelta} ⭐)`);
 
@@ -650,14 +609,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       if (insightEl) {
-        insightEl.innerHTML = `🚀 <strong>Longitudinal Growth Path:</strong> Starting from your past test standing of <strong>${currentStandingVal}${unitLabel}</strong>, AI prediction models an expected upward surge of <strong>${liftDelta}</strong> to <strong>${aiForecastVal}${unitLabel}</strong>, putting you firmly on track for <strong>${targetGoalVal}${unitLabel}</strong>!`;
+        insightEl.innerHTML = `🚀 <strong>Verified Evaluation Trajectory:</strong> Based on your logged attempt of <strong>${currentStandingVal}${unitLabel}</strong>, the AI models an expected upward surge of <strong>${liftDelta}</strong> to <strong>${aiForecastVal}${unitLabel}</strong>, putting you firmly on track for <strong>${targetGoalVal}${unitLabel}</strong>!`;
       }
     }
 
-    // Dynamic clean Y-Axis bounds: Never squashed at top near 100
+    // Dynamic clean Y-Axis bounds
     let allNonZero = [...pastScores, ...predScores].filter((v) => typeof v === "number" && !isNaN(v));
     let minScore = Math.min(...allNonZero);
-
     let yMin = isUni ? Math.max(1.0, Math.floor((minScore - 0.4) * 2) / 2) : Math.max(30, Math.floor((minScore - 10) / 10) * 10);
     let yMax = isUni ? 4.0 : 100;
 
@@ -675,7 +633,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         labels: labels,
         datasets: [
           {
-            label: "Verified Past Tests (Lower Baseline)",
+            label: "Verified Past Tests (Baseline)",
             data: pastScores,
             borderColor: "#A3E635",
             borderWidth: 3.5,
@@ -757,7 +715,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 12. MERGED BAR CHART (COMPREHENSIVE CHECKPOINT & FORECAST OVERVIEW)
+  // 11. MERGED BAR CHART (PROGRESSION IN BAR MODE)
   // --------------------------------------------------------------------------
   function renderMergedBarChart() {
     const canvas = document.getElementById("analyticsProgressionChart");
@@ -855,7 +813,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         borderColors = ["#A3E635", "#A3E635", "#A3E635", "#38BDF8", "#F59E0B"];
       } else {
         const values = activeList.map((r) => parseVal(r));
-        labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${values[i]}${unitLabel})` : `Test #${i + 1} (${values[i]}${unitLabel})`));
+        labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${values[i]}${unitLabel})` : `Test #${i + 1}`));
         labels.push(`⚡ AI Prediction (${liftDelta} 🚀)`);
         labels.push(`🎯 Target Goal (${totalGoalDelta} ⭐)`);
 
@@ -932,9 +890,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // --------------------------------------------------------------------------
-  // 13. MASTER MAIN CHART RENDERER & MODE TOGGLE CONTROLLER
-  // --------------------------------------------------------------------------
   function renderMainAnalyticsChart() {
     if (currentChartMode === "bar") {
       renderMergedBarChart();
@@ -967,114 +922,70 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnChartModeBar) {
     btnChartModeBar.addEventListener("click", () => setChartMode("bar"));
   }
-  let studentBehaviorRadarInstance = null;
 
-  function renderStudentInstructorMatrix() {
-    const card = document.getElementById("student-instructor-analytics-card");
-    const canvas = document.getElementById("studentBehaviorRadarChart");
-    if (!card || !canvas) return;
-
-    // Search predictionHistory for any instructor-evaluated record
-    let teacherEval = null;
-    for (const h of predictionHistory) {
-      const p = h.payload || h.input_payload || {};
-      if (h.role === "teacher" || p.role === "teacher" || p.attentive || p.comm_skill) {
-        teacherEval = {
-          focus: p.attentive || p.attentiveness_level || "High",
-          comm: p.comm_skill || p.communication_skill || "Good",
-          behavior: p.behavior || p.behavior_discipline || "Cooperative",
-          need: p.academic_need || "Independent",
-          participation: p.participation || "Active",
-          att: Number(p.attendance_pct || 85),
-          rating: h.teacher_rating ?? p.rating ?? p.teacher_rating ?? 5.0,
-          strategy: h.teacher_notes || p.strategy || p.notes || h.recommendations || "Maintain regular coursework momentum and participate actively during class discussions."
-        };
-        break;
-      }
-    }
-
-    if (!teacherEval) {
-      card.style.display = "none";
-      return;
-    }
-
-    card.style.display = "block";
-
-    // Set text values
-    const ratingEl = document.getElementById("analytics-teacher-rating");
-    const focusEl = document.getElementById("radar-val-focus");
-    const commEl = document.getElementById("radar-val-comm");
-    const behEl = document.getElementById("radar-val-behavior");
-    const needEl = document.getElementById("radar-val-need");
-    const stratEl = document.getElementById("analytics-teacher-strategy-text");
-
-    if (ratingEl) ratingEl.innerText = `${Number(teacherEval.rating).toFixed(1)} ⭐ Faculty Rating`;
-    if (focusEl) focusEl.innerText = teacherEval.focus;
-    if (commEl) commEl.innerText = teacherEval.comm;
-    if (behEl) behEl.innerText = teacherEval.behavior;
-    if (needEl) needEl.innerText = teacherEval.need;
-    if (stratEl) stratEl.innerText = teacherEval.strategy;
-
-    // Map to numeric values for Radar chart
-    const fVal = teacherEval.focus.toLowerCase() === "high" ? 95 : teacherEval.focus.toLowerCase() === "moderate" ? 75 : 45;
-    const cVal = teacherEval.comm.toLowerCase() === "exceptional" ? 96 : teacherEval.comm.toLowerCase() === "good" ? 82 : 60;
-    const bVal = teacherEval.behavior.toLowerCase() === "exemplary" ? 98 : teacherEval.behavior.toLowerCase() === "cooperative" ? 85 : 55;
-    const pVal = teacherEval.participation.toLowerCase() === "leader" ? 98 : teacherEval.participation.toLowerCase() === "active" ? 85 : 50;
-    const nVal = teacherEval.need.toLowerCase() === "independent" ? 92 : teacherEval.need.toLowerCase() === "moderate" ? 70 : 40;
-    const aVal = teacherEval.att;
-
-    if (studentBehaviorRadarInstance) studentBehaviorRadarInstance.destroy();
-
+  // --------------------------------------------------------------------------
+  // 12. CHART 2: COGNITIVE DIAGNOSTIC & RISK MATRIX (PRO LOCKED & BLURRED)
+  // --------------------------------------------------------------------------
+  function renderProCognitiveRadarChart() {
+    const canvas = document.getElementById("proCognitiveRadarChart");
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    studentBehaviorRadarInstance = new Chart(ctx, {
+
+    if (window.__proCognitiveChartInstance) {
+      window.__proCognitiveChartInstance.destroy();
+    }
+
+    window.__proCognitiveChartInstance = new Chart(ctx, {
       type: "radar",
       data: {
         labels: [
-          "🎯 Classroom Focus",
-          "🗣️ Verbal Presentation",
-          "🤝 Conduct & Discipline",
-          "👥 Participation",
-          "🛠️ Independence",
-          "📅 Attendance"
+          "🧠 Cognitive Load Index",
+          "⚡ Study Habit Velocity",
+          "🎯 Concept Retention Depth",
+          "🛡️ Exam Stress Resilience",
+          "⏱️ Time Allocation Efficiency",
+          "📈 Longitudinal Growth Momentum"
         ],
         datasets: [
           {
-            label: "Evaluated Competency (%)",
-            data: [fVal, cVal, bVal, pVal, nVal, aVal],
-            backgroundColor: "rgba(168, 240, 75, 0.15)",
-            borderColor: "#a8f04b",
-            borderWidth: 2,
-            pointBackgroundColor: "#ffffff",
-            pointBorderColor: "#a8f04b",
+            label: "Your Evaluated AI Neural Profile",
+            data: [88, 92, 85, 78, 86, 94],
+            backgroundColor: "rgba(245, 158, 11, 0.28)",
+            borderColor: "#f59e0b",
+            borderWidth: 2.5,
+            pointBackgroundColor: "#fbbf24",
+            pointBorderColor: "#18191d",
             pointRadius: 4,
             pointHoverRadius: 6
           },
           {
-            label: "Institutional Target",
-            data: [80, 80, 80, 80, 80, 80],
-            backgroundColor: "transparent",
-            borderColor: "rgba(255, 255, 255, 0.2)",
-            borderWidth: 1.5,
-            borderDash: [4, 4],
-            pointRadius: 0
+            label: "Top 5% Cohort Benchmark",
+            data: [95, 96, 92, 90, 94, 98],
+            backgroundColor: "rgba(56, 189, 248, 0.15)",
+            borderColor: "#38bdf8",
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointBackgroundColor: "#38bdf8",
+            pointRadius: 3
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 1200 },
         scales: {
           r: {
-            angleLines: { color: "rgba(255, 255, 255, 0.06)" },
-            grid: { color: "rgba(255, 255, 255, 0.06)" },
+            angleLines: { color: "rgba(255, 255, 255, 0.08)" },
+            grid: { color: "rgba(255, 255, 255, 0.08)" },
             pointLabels: {
-              color: "#a8a8a8",
-              font: { size: 11, weight: "600" }
+              color: "#CBD5E1",
+              font: { family: "Inter", size: 11, weight: "600" }
             },
             ticks: {
               backdropColor: "transparent",
-              color: "#666a75",
-              font: { size: 10 },
+              color: "#64748B",
+              font: { size: 9 },
               stepSize: 20
             },
             min: 0,
@@ -1084,22 +995,81 @@ document.addEventListener("DOMContentLoaded", async () => {
         plugins: {
           legend: {
             position: "bottom",
-            labels: { color: "#a8a8a8", font: { size: 11, weight: "600" } }
-          }
+            labels: {
+              color: "#CBD5E1",
+              font: { family: "Inter", size: 11, weight: "600" },
+              padding: 12
+            }
+          },
+          tooltip: { enabled: false }
         }
       }
     });
   }
 
   // --------------------------------------------------------------------------
-  // 15. COMPARISON MATRIX (RUN A VS RUN B DELTA)
+  // 13. PRO UPGRADE NOTIFICATION & MODAL EVENT LISTENERS
+  // --------------------------------------------------------------------------
+  function triggerProUpgradeNotice() {
+    showToast("🔒 Upgrade to Pro Required: 6-Axis Cognitive Diagnostic & Longitudinal Risk Matrix is an exclusive EduMetrics PRO feature. Please upgrade to unlock.", "warning");
+    if (proUpgradeModal) {
+      window.showAnalyticsModal(proUpgradeModal);
+    }
+  }
+
+  if (proCard) {
+    proCard.addEventListener("click", (e) => {
+      e.preventDefault();
+      triggerProUpgradeNotice();
+    });
+  }
+
+  if (btnUnlockProOverlay) {
+    btnUnlockProOverlay.addEventListener("click", (e) => {
+      e.stopPropagation();
+      triggerProUpgradeNotice();
+    });
+  }
+
+  if (btnCloseProModal) {
+    btnCloseProModal.addEventListener("click", (e) => {
+      e.stopPropagation();
+      window.hideAnalyticsModal(proUpgradeModal);
+    });
+  }
+
+  if (btnCancelProModal) {
+    btnCancelProModal.addEventListener("click", (e) => {
+      e.stopPropagation();
+      window.hideAnalyticsModal(proUpgradeModal);
+    });
+  }
+
+  if (btnConfirmProUpgrade) {
+    btnConfirmProUpgrade.addEventListener("click", (e) => {
+      e.stopPropagation();
+      window.hideAnalyticsModal(proUpgradeModal);
+      showToast("🎉 Thank you! Your request to upgrade to EduMetrics PRO has been received. Our team will activate your Pro license shortly.", "success");
+    });
+  }
+
+  if (proUpgradeModal) {
+    proUpgradeModal.addEventListener("click", (e) => {
+      if (e.target === proUpgradeModal) {
+        window.hideAnalyticsModal(proUpgradeModal);
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // 14. COMPARISON MATRIX (RUN A VS RUN B DELTA)
   // --------------------------------------------------------------------------
   function populateComparisonDropdowns() {
     if (!compareSelectBaseline || !compareSelectTarget) return;
 
     if (!predictionHistory || predictionHistory.length === 0) {
-      compareSelectBaseline.innerHTML = `<option value="">No prediction checkpoints available</option>`;
-      compareSelectTarget.innerHTML = `<option value="">No prediction checkpoints available</option>`;
+      compareSelectBaseline.innerHTML = '<option value="">No prediction checkpoints available</option>';
+      compareSelectTarget.innerHTML = '<option value="">No prediction checkpoints available</option>';
       if (cmpScoreA) cmpScoreA.innerText = "--";
       if (cmpScoreB) cmpScoreB.innerText = "--";
       if (cmpScoreDelta) {
@@ -1111,7 +1081,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         cmpStatusBadge.className = "badge badge-neutral";
       }
       if (cmpDetailNotes) {
-        cmpDetailNotes.innerHTML = `No prediction runs found. Perform an AI forecast to generate comparative analytics.`;
+        cmpDetailNotes.innerHTML = "No prediction runs found. Perform an AI forecast on the Forecast page to generate comparative analytics.";
       }
       return;
     }
@@ -1177,7 +1147,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (compareSelectTarget) compareSelectTarget.addEventListener("change", calculateComparison);
 
   // --------------------------------------------------------------------------
-  // 16. HISTORICAL PREDICTION & DIAGNOSTIC LEDGER TABLE
+  // 15. HISTORICAL PREDICTION & DIAGNOSTICS LEDGER TABLE
   // --------------------------------------------------------------------------
   function renderLedgerTable() {
     if (!ledgerTableBody) return;
@@ -1282,7 +1252,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --------------------------------------------------------------------------
-  // 17. CRUD OPERATION: DELETE RECORD & PERMANENT CLEAR ALL
+  // 16. CRUD OPERATION: DELETE RECORD & PERMANENT CLEAR ALL
   // --------------------------------------------------------------------------
   window.deleteDiagnostic = async (id) => {
     if (!confirm("Are you sure you want to permanently delete this historical prediction record?")) return;
@@ -1381,11 +1351,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // --------------------------------------------------------------------------
-  // 20. CHART PNG EXPORT UTILITIES
+  // 17. CHART PNG EXPORT UTILITIES
   // --------------------------------------------------------------------------
   function saveChartAsPng(canvasId, fileNamePrefix) {
     const canvas = document.getElementById(canvasId);
-    if (!canvas || canvas.style.display === "none") {
+    if (!canvas) {
       showToast("No evaluation chart data recorded yet to export.", "info");
       return;
     }
@@ -1400,330 +1370,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("btn-save-progression-png")?.addEventListener("click", () => saveChartAsPng("analyticsProgressionChart", "edumetrics_progression_trajectory"));
-  document.getElementById("btn-save-distribution-png")?.addEventListener("click", () => saveChartAsPng("analyticsGradeDistributionChart", "edumetrics_grade_distribution"));
-  document.getElementById("btn-save-mastery-png")?.addEventListener("click", () => saveChartAsPng("analyticsSubjectMasteryChart", "edumetrics_subject_mastery"));
-  document.getElementById("btn-save-habits-png")?.addEventListener("click", () => saveChartAsPng("analyticsHabitsCorrelationChart", "edumetrics_habits_correlation"));
 
-  // --------------------------------------------------------------------------
-  // 21. FULLSCREEN HIGH-RESOLUTION THEATER CHART ENGINE
-  // --------------------------------------------------------------------------
-  window.openFullscreenChart = (chartType) => {
-    if (!fsModal || !fsCanvas) return;
-
-    if (chartType === "progression") {
-      const canvas = document.getElementById("analyticsProgressionChart");
-      if (!canvas || canvas.style.display === "none" || !progressionChart) {
-        showToast("No academic progression evaluations logged yet to expand.", "info");
-        return;
-      }
-    } else if (chartType === "distribution") {
-      const canvas = document.getElementById("analyticsGradeDistributionChart");
-      if (!canvas || canvas.style.display === "none" || !gradeDistributionChart) {
-        showToast("No performance evaluations logged yet to expand.", "info");
-        return;
-      }
-    } else if (chartType === "mastery") {
-      const canvas = document.getElementById("analyticsSubjectMasteryChart");
-      if (!canvas || canvas.style.display === "none" || !subjectMasteryChart || !subjectMasteryChart.data?.datasets?.[0]?.data?.length) {
-        showToast("No coursework domain assessments logged yet to expand.", "info");
-        return;
-      }
-    } else if (chartType === "habits") {
-      const canvas = document.getElementById("analyticsHabitsCorrelationChart");
-      if (!canvas || canvas.style.display === "none" || !habitsCorrelationChart || !habitsCorrelationChart.data?.datasets?.[0]?.data?.length) {
-        showToast("No study routines recorded yet to expand.", "info");
-        return;
-      }
-    }
-
-    const ctx = fsCanvas.getContext("2d");
-    if (fsChartInstance) fsChartInstance.destroy();
-
-    const activeStage = currentStageFilter === "all" ? (predictionHistory[0]?.stage || "university") : currentStageFilter;
-    const stageMeta = getStageMetadata(activeStage);
-
-    if (chartType === "progression") {
-      if (fsModalTitle) fsModalTitle.innerHTML = `<span>📈 Academic Progression & AI Target Trajectory (Full Screen)</span>`;
-      if (fsModalSubtitle) fsModalSubtitle.innerText = `${stageMeta.title} | ${stageMeta.scale} | High-Definition Theater View`;
-
-      const stageRecords = currentStageFilter === "all" ? predictionHistory : predictionHistory.filter((r) => (r.stage || "university").toLowerCase() === currentStageFilter.toLowerCase());
-      let labels = [];
-      let pastScores = [];
-      let predScores = [];
-
-      if (stageRecords.length > 0) {
-        const activeList = stageRecords.slice().reverse();
-        const parseVal = (r) => {
-          const parsed = parseNormalizedScore(r);
-          if (currentStageFilter !== "all" && stageMeta.isUni) {
-            return parsed.raw <= 4.0 ? parsed.raw : +(parsed.pct / 25.0).toFixed(2);
-          }
-          return parsed.pct;
-        };
-
-        if (activeList.length === 1) {
-          const item = activeList[0];
-          const val = parseVal(item);
-          const baseline = stageMeta.isUni && currentStageFilter !== "all" ? Math.max(0, +(val - 0.25).toFixed(2)) : Math.max(0, Math.round(val - 6));
-          const aiForecast = stageMeta.isUni && currentStageFilter !== "all" ? Math.min(4.0, +(val + 0.18).toFixed(2)) : Math.min(100, Math.round(val + 4));
-          const target = stageMeta.isUni && currentStageFilter !== "all" ? Math.min(4.0, +(val + 0.35).toFixed(2)) : Math.min(100, Math.round(val + 8));
-
-          labels = ["Diagnostic Baseline", "Current Score", "⚡ AI Prediction", "🎯 Target Goal"];
-          pastScores = [baseline, val, null, null];
-          predScores = [null, val, aiForecast, target];
-        } else {
-          const values = activeList.map((r) => parseVal(r));
-          const lastVal = values[values.length - 1];
-          const aiForecast = stageMeta.isUni && currentStageFilter !== "all" ? Math.min(4.0, +(lastVal + 0.15).toFixed(2)) : Math.min(100, Math.round(lastVal + 4));
-          const target = stageMeta.isUni && currentStageFilter !== "all" ? Math.min(4.0, +(lastVal + 0.30).toFixed(2)) : Math.min(100, Math.round(lastVal + 8));
-
-          labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (Latest)` : `Test #${i + 1}`));
-          labels.push("⚡ AI Prediction");
-          labels.push("🎯 Target Goal");
-
-          pastScores = [...values, null, null];
-          predScores = values.map((v, idx) => (idx === values.length - 1 ? v : null));
-          predScores.push(aiForecast, target);
-        }
-      } else {
-        labels = ["Diagnostic Baseline", "1st Term Exam", "Current Standing", "⚡ AI Prediction", "🎯 Target Goal"];
-        if (stageMeta.isUni && currentStageFilter !== "all") {
-          pastScores = [2.85, 3.05, 3.25, null, null];
-          predScores = [null, null, 3.25, 3.52, 3.75];
-        } else {
-          pastScores = [70, 76, 82, null, null];
-          predScores = [null, null, 82, 86, 90];
-        }
-      }
-
-      const greenGradient = ctx.createLinearGradient(0, 0, 0, 450);
-      greenGradient.addColorStop(0, "rgba(163, 230, 53, 0.35)");
-      greenGradient.addColorStop(1, "rgba(163, 230, 53, 0.0)");
-
-      const blueGradient = ctx.createLinearGradient(0, 0, 0, 450);
-      blueGradient.addColorStop(0, "rgba(56, 189, 248, 0.35)");
-      blueGradient.addColorStop(1, "rgba(56, 189, 248, 0.0)");
-
-      fsChartInstance = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: "Verified Past Tests",
-              data: pastScores,
-              borderColor: "#A3E635",
-              borderWidth: 4,
-              fill: true,
-              backgroundColor: greenGradient,
-              tension: 0.38,
-              pointBackgroundColor: "#A3E635",
-              pointBorderColor: "#101217",
-              pointBorderWidth: 3,
-              pointRadius: 7,
-              pointHoverRadius: 10
-            },
-            {
-              label: "AI Prediction & Target Goal",
-              data: predScores,
-              borderColor: "#38BDF8",
-              borderDash: [8, 6],
-              borderWidth: 4,
-              fill: true,
-              backgroundColor: blueGradient,
-              tension: 0.38,
-              pointBackgroundColor: "#38BDF8",
-              pointBorderColor: "#101217",
-              pointBorderWidth: 3,
-              pointRadius: 7.5,
-              pointHoverRadius: 10
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: "top",
-              labels: {
-                color: "#F8FAFC",
-                font: { family: "Inter", size: 13, weight: "bold" },
-                padding: 20
-              }
-            },
-            tooltip: {
-              backgroundColor: "rgba(15, 23, 42, 0.98)",
-              titleFont: { size: 15 },
-              bodyFont: { size: 14 },
-              padding: 16,
-              callbacks: {
-                label: (context) => {
-                  if (context.parsed.y === null || context.parsed.y === undefined) return "";
-                  const isPred = context.datasetIndex === 1;
-                  const prefix = isPred ? "⚡ AI Prediction / Target: " : "🟢 Verified Score: ";
-                  return ` ${prefix}${context.parsed.y}${currentStageFilter === "all" ? "%" : stageMeta.unit}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: { grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } },
-            y: { min: currentStageFilter === "all" ? 0 : stageMeta.min, max: currentStageFilter === "all" ? 100 : stageMeta.max, grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } }
-          }
-        }
-      });
-    } else if (chartType === "distribution") {
-      if (fsModalTitle) fsModalTitle.innerHTML = `<span>🍩 Performance Tier & Risk Distribution (Full Screen)</span>`;
-      if (fsModalSubtitle) fsModalSubtitle.innerText = `Evaluated classification across historical prediction snapshots`;
-
-      let honors = 0, proficient = 0, standard = 0, atRisk = 0;
-      predictionHistory.forEach((item) => {
-        const badge = (item.status_badge || "").toLowerCase();
-        const score = parseFloat(item.score) || 0;
-        if (badge.includes("exemplary") || badge.includes("honor") || (score <= 4 ? score >= 3.6 : score >= 80)) honors++;
-        else if (badge.includes("proficient") || badge.includes("track") || (score <= 4 ? score >= 3.0 : score >= 70)) proficient++;
-        else if (badge.includes("standard") || badge.includes("capable") || (score <= 4 ? score >= 2.5 : score >= 60)) standard++;
-        else atRisk++;
-      });
-
-      fsChartInstance = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-          labels: ["Honors / Exemplary", "Proficient / On Track", "Standard Competency", "Attention / At Risk"],
-          datasets: [{ data: [honors, proficient, standard, atRisk], backgroundColor: ["#a8f04b", "#c5f871", "#f7f7f7", "#ff9c27"], borderColor: "#18191d", borderWidth: 3 }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: "bottom", labels: { color: "#F8FAFC", font: { size: 14 }, padding: 24, boxWidth: 16 } },
-            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 15 }, bodyFont: { size: 14 }, padding: 16 }
-          },
-          cutout: "60%"
-        }
-      });
-    } else if (chartType === "mastery") {
-      if (fsModalTitle) fsModalTitle.innerHTML = `<span>📊 Course Domain Mastery & Competency (Full Screen)</span>`;
-      if (fsModalSubtitle) fsModalSubtitle.innerText = `Evaluated competency across Core Science, Applied Labs, Quantitative Skills, & Humanities`;
-
-      const liveLabels = subjectMasteryChart?.data?.labels || [];
-      const liveData = subjectMasteryChart?.data?.datasets?.[0]?.data || [];
-      const liveColors = subjectMasteryChart?.data?.datasets?.[0]?.backgroundColor || [];
-
-      fsChartInstance = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: liveLabels,
-          datasets: [{
-            label: "Domain Mastery Level %",
-            data: liveData,
-            backgroundColor: liveColors,
-            borderWidth: 0,
-            borderRadius: 8
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          indexAxis: "y",
-          plugins: {
-            legend: { display: false },
-            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 14 }, bodyFont: { size: 13 }, padding: 14 }
-          },
-          scales: {
-            x: { min: 0, max: 100, grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } },
-            y: { grid: { display: false }, ticks: { color: "#F8FAFC", font: { size: 14, weight: "bold" } } }
-          }
-        }
-      });
-    } else if (chartType === "habits") {
-      if (fsModalTitle) fsModalTitle.innerHTML = `<span>🎯 Study Effort vs Outcome Correlation (Full Screen)</span>`;
-      if (fsModalSubtitle) fsModalSubtitle.innerText = `Empirical impact of daily self-study hours on examination outcomes`;
-
-      const liveHabitLabels = habitsCorrelationChart?.data?.labels || [];
-      const liveHabitData = habitsCorrelationChart?.data?.datasets?.[0]?.data || [];
-      const liveHabitColors = habitsCorrelationChart?.data?.datasets?.[0]?.backgroundColor || [];
-
-      fsChartInstance = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: liveHabitLabels,
-          datasets: [{
-            label: "Evaluated Outcome %",
-            data: liveHabitData,
-            backgroundColor: liveHabitColors,
-            borderWidth: 0,
-            borderRadius: 8
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: { backgroundColor: "rgba(15, 23, 42, 0.98)", titleFont: { size: 14 }, bodyFont: { size: 13 }, padding: 14 }
-          },
-          scales: {
-            x: { grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 } } },
-            y: { min: 0, max: 100, grid: { color: "rgba(255, 255, 255, 0.08)" }, ticks: { color: "#CBD5E1", font: { size: 13 }, callback: (v) => `${v}%` } }
-          }
-        }
-      });
-    }
-
-    fsModal.style.setProperty("display", "flex", "important");
-    fsModal.classList.add("active");
-  };
-
-  // Fullscreen Open Triggers
-  document.getElementById("btn-fullscreen-progression")?.addEventListener("click", () => window.openFullscreenChart("progression"));
-  document.getElementById("btn-fullscreen-distribution")?.addEventListener("click", () => window.openFullscreenChart("distribution"));
-  document.getElementById("btn-fullscreen-mastery")?.addEventListener("click", () => window.openFullscreenChart("mastery"));
-  document.getElementById("btn-fullscreen-habits")?.addEventListener("click", () => window.openFullscreenChart("habits"));
-
-  // Fullscreen Download PNG
-  if (btnFsDownloadPng) {
-    btnFsDownloadPng.addEventListener("click", () => {
-      if (!fsCanvas) return;
-      const imgURI = fsCanvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.download = `edumetrics_fullscreen_chart_${Date.now()}.png`;
-      link.href = imgURI;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      showToast("High-resolution chart saved as PNG!", "success");
-    });
-  }
-
-  // Fullscreen Modal Closers
-  const closeFsModal = () => {
-    if (fsModal) {
-      fsModal.classList.remove("active");
-      fsModal.style.setProperty("display", "none", "important");
-    }
-  };
-
-  if (btnCloseFsModal) btnCloseFsModal.onclick = closeFsModal;
-  if (btnCloseFsModalBtn) btnCloseFsModalBtn.onclick = closeFsModal;
-  if (fsModal) {
-    fsModal.onclick = (e) => {
-      if (e.target === fsModal) closeFsModal();
-    };
-  }
-
+  // ESC Key Global Dismissal
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      closeFsModal();
-      closeDetailModal();
-      closeTrajModal();
-      closeEditModal();
+      window.closeAllAnalyticsModals();
     }
   });
 
   // --------------------------------------------------------------------------
-  // 22. INITIAL BOOT & LOAD
+  // 18. INITIAL BOOT & LOAD
   // --------------------------------------------------------------------------
   await loadHistory();
 });
