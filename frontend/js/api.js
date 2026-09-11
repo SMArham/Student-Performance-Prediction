@@ -247,15 +247,40 @@ class APIClient {
           };
 
           window.authClient.client.from("academic_records").upsert(cleanRecord, { onConflict: "id" })
-            .then(() => console.log("[Supabase] Academic record saved successfully."))
+            .then(({ error }) => {
+              if (error) {
+                console.warn("[Supabase] Full academic_records upsert notice:", error.message);
+                // Fallback to core columns confirmed on the database table
+                const coreRecord = {
+                  id: recId,
+                  user_id: userId,
+                  stage: stage,
+                  term_name: cleanRecord.term_name,
+                  gpa: cleanRecord.gpa,
+                  cgpa: cleanRecord.cgpa,
+                  subjects: cleanRecord.subjects,
+                  created_at: cleanRecord.created_at
+                };
+                return window.authClient.client.from("academic_records").upsert(coreRecord, { onConflict: "id" });
+              } else {
+                console.log("[Supabase] Academic record saved successfully.");
+              }
+            })
+            .then((fallbackRes) => {
+              if (fallbackRes && fallbackRes.error) {
+                console.warn("[Supabase] Academic record fallback notice:", fallbackRes.error.message);
+              } else if (fallbackRes) {
+                console.log("[Supabase] Academic record persisted via adaptive schema fallback.");
+              }
+            })
             .catch(e => console.warn("[Supabase] Academic records cloud sync notice:", e.message));
 
           // Also persist individual subjects into academic_subjects table if present
+          // NOTE: Do NOT send percentage column, PostgreSQL computes it automatically as a generated column!
           if (Array.isArray(termPayload.subjects) && termPayload.subjects.length > 0) {
             const subjectRows = termPayload.subjects.map((sub, sIdx) => {
-              const obtained = parseFloat(sub.marks || sub.obtained_marks || 80);
-              const total = parseFloat(sub.total || sub.total_marks || 100);
-              const pct = total > 0 ? (obtained / total) * 100 : 80;
+              const obtained = parseFloat(sub.marks !== undefined ? sub.marks : (sub.obtained_marks !== undefined ? sub.obtained_marks : 80));
+              const total = parseFloat(sub.total !== undefined ? sub.total : (sub.total_marks !== undefined ? sub.total_marks : 100));
               return {
                 id: `sub_${userId}_${(termPayload.term_name || 'term').replace(/\s+/g, '_').toLowerCase()}_${sIdx}`,
                 user_id: userId,
@@ -265,12 +290,17 @@ class APIClient {
                 assessment_period: termPayload.term_name || "Current Term",
                 obtained_marks: obtained,
                 total_marks: total,
-                percentage: parseFloat(pct.toFixed(1)),
                 created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
               };
             });
             window.authClient.client.from("academic_subjects").upsert(subjectRows, { onConflict: "id" })
-              .then(() => console.log("[Supabase] Course subjects saved to academic_subjects."))
+              .then(({ error }) => {
+                if (error) {
+                  console.warn("[Supabase] Subjects sync notice:", error.message);
+                } else {
+                  console.log("[Supabase] Course subjects saved to academic_subjects successfully.");
+                }
+              })
               .catch(e => console.warn("[Supabase] Subjects sync notice:", e.message));
           }
         }

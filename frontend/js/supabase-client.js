@@ -829,13 +829,25 @@ class SupabaseAuthClient {
                   created_at: term.created_at || new Date().toISOString()
                 };
 
-                await this.client.from("academic_records").upsert(cleanRecord, { onConflict: "id" });
+                const { error: recErr } = await this.client.from("academic_records").upsert(cleanRecord, { onConflict: "id" });
+                if (recErr) {
+                  const coreRecord = {
+                    id: recId,
+                    user_id: userId,
+                    stage: cleanRecord.stage,
+                    term_name: cleanRecord.term_name,
+                    gpa: cleanRecord.gpa,
+                    cgpa: cleanRecord.cgpa,
+                    subjects: cleanRecord.subjects,
+                    created_at: cleanRecord.created_at
+                  };
+                  await this.client.from("academic_records").upsert(coreRecord, { onConflict: "id" });
+                }
 
                 if (Array.isArray(term.subjects) && term.subjects.length > 0) {
                   const subjectRows = term.subjects.map((sub, sIdx) => {
-                    const obtained = parseFloat(sub.marks || sub.obtained_marks || 80);
-                    const total = parseFloat(sub.total || sub.total_marks || 100);
-                    const pct = total > 0 ? (obtained / total) * 100 : 80;
+                    const obtained = parseFloat(sub.marks !== undefined ? sub.marks : (sub.obtained_marks !== undefined ? sub.obtained_marks : 80));
+                    const total = parseFloat(sub.total !== undefined ? sub.total : (sub.total_marks !== undefined ? sub.total_marks : 100));
                     return {
                       id: `sub_${userId}_${(term.term_name || "term").replace(/\s+/g, "_").toLowerCase()}_${sIdx}`,
                       user_id: userId,
@@ -845,7 +857,6 @@ class SupabaseAuthClient {
                       assessment_period: term.term_name || "Current Term",
                       obtained_marks: obtained,
                       total_marks: total,
-                      percentage: parseFloat(pct.toFixed(1)),
                       created_at: term.created_at || new Date().toISOString()
                     };
                   });

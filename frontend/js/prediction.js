@@ -4379,7 +4379,16 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // 4. Also notify backend API history endpoint if active
+      // 4. Auto-persist logged semesters & coursework to academic_records & academic_subjects
+      if (Array.isArray(loggedTerms) && loggedTerms.length > 0 && window.apiClient && typeof window.apiClient.createAcademicRecord === "function") {
+        for (const term of loggedTerms) {
+          window.apiClient.createAcademicRecord(term).catch((err) => {
+            console.warn("[Academic Record] Term sync error on prediction run:", err);
+          });
+        }
+      }
+
+      // 5. Also notify backend API history endpoint if active
       if (window.apiClient && typeof window.apiClient.savePrediction === "function") {
         window.apiClient.savePrediction(historyItem).catch(() => {});
       }
