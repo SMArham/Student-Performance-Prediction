@@ -204,17 +204,52 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // 1. Cumulative & Term Standing
       if (kpiCgpa) {
-        if (latest.stage === "university") {
-          kpiCgpa.innerText = p.Previous_CGPA ? `${p.Previous_CGPA} CGPA` : (latest.score?.includes("CGPA") ? latest.score : `${latest.score} CGPA`);
+        if (latest.stage === "university" || isUni) {
+          let cgpaNum = null;
+          if (p.Previous_CGPA !== undefined && p.Previous_CGPA !== null && !isNaN(parseFloat(p.Previous_CGPA))) {
+            cgpaNum = parseFloat(p.Previous_CGPA);
+          } else if (latest.projected_cumulative_cgpa !== undefined && !isNaN(parseFloat(latest.projected_cumulative_cgpa))) {
+            cgpaNum = parseFloat(latest.projected_cumulative_cgpa);
+          } else if (p.cgpa !== undefined && !isNaN(parseFloat(p.cgpa))) {
+            cgpaNum = parseFloat(p.cgpa);
+          } else if (parseFloat(latest.score) <= 4.0) {
+            cgpaNum = parseFloat(latest.score);
+          }
+          if (cgpaNum === null || isNaN(cgpaNum)) cgpaNum = 2.70;
+          if (cgpaNum > 4.0) cgpaNum = +(cgpaNum / 25.0).toFixed(2);
+          kpiCgpa.innerText = `${cgpaNum.toFixed(2)} CGPA`;
         } else if (latest.stage === "intermediate") {
-          kpiCgpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
+          kpiCgpa.innerText = p.SSC_Total_Marks ? `${p.SSC_Total_Marks}/1100 (SSC)` : (latest.score?.includes("%") ? latest.score : `${latest.score}%`);
         } else {
           kpiCgpa.innerText = latest.score?.includes("%") ? latest.score : `${latest.score}%`;
         }
       }
+
       if (kpiSemGpa) {
-        if (latest.stage === "university") {
-          kpiSemGpa.innerText = latest.score?.includes("CGPA") ? latest.score : `${latest.score} CGPA`;
+        if (latest.stage === "university" || isUni) {
+          // Current / Latest completed semester GPA (NOT attendance!)
+          let termGpa = null;
+          if (Array.isArray(p.logged_terms) && p.logged_terms.length > 0) {
+            const lastTerm = p.logged_terms[p.logged_terms.length - 1];
+            if (lastTerm && lastTerm.gpa !== undefined && !isNaN(parseFloat(lastTerm.gpa))) {
+              termGpa = parseFloat(lastTerm.gpa);
+            }
+          }
+          if (termGpa === null && p.latest_semester_gpa !== undefined && !isNaN(parseFloat(p.latest_semester_gpa))) {
+            termGpa = parseFloat(p.latest_semester_gpa);
+          }
+          if (termGpa === null && p.Term_GPA !== undefined && !isNaN(parseFloat(p.Term_GPA))) {
+            termGpa = parseFloat(p.Term_GPA);
+          }
+          if (termGpa === null && p.Previous_CGPA !== undefined && !isNaN(parseFloat(p.Previous_CGPA))) {
+            termGpa = parseFloat(p.Previous_CGPA);
+          }
+          if (termGpa === null && parseFloat(latest.score) <= 4.0) {
+            termGpa = parseFloat(latest.score);
+          }
+          if (termGpa === null || isNaN(termGpa)) termGpa = 2.70;
+          if (termGpa > 4.0) termGpa = +(termGpa / 25.0).toFixed(2);
+          kpiSemGpa.innerText = `${termGpa.toFixed(2)} GPA`;
         } else if (latest.stage === "intermediate") {
           kpiSemGpa.innerText = p.HSSC_I_Marks ? `${p.HSSC_I_Marks}/550 (HSSC-I)` : "500/550";
         } else if (latest.stage === "secondary") {
@@ -226,20 +261,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // 2. Attendance & Study Time
       if (kpiAttendance) {
-        let att = p.Attendance_Pct ?? p.Attendance_Rate ?? p.attendance_rate ?? p.attendance ?? p.att ?? p.f_sec_att ?? p.f_prim_att ?? p.f_uni_att ?? p.f_inter_att ?? p.f_matric_att;
+        let att = p.Attendance_Pct ?? p.Attendance_Rate ?? p.attendance_rate ?? p.attendance ?? p.att ?? 85;
         if (att === undefined || att === null || isNaN(att) || att === 0) {
-          att = 92;
+          att = 85;
         }
-        kpiAttendance.innerText = `${att}%`;
+        kpiAttendance.innerText = `${Math.round(att)}%`;
       }
       if (kpiStudyHours) {
         const sh = p.Study_Hours_Per_Day ?? p.Study_Hours ?? p.study_hours ?? 4.5;
-        kpiStudyHours.innerText = `${sh} hrs`;
+        kpiStudyHours.innerText = `${parseFloat(sh).toFixed(1)} hrs`;
       }
 
-      // 3. Latest Forecast & Badge
+      // 3. Latest AI Forecast & Badge
       if (kpiPredictedGpa) {
-        kpiPredictedGpa.innerText = latest.score || (isUni ? "3.80 CGPA" : "90.0%");
+        if (latest.stage === "university" || isUni) {
+          let predGpa = null;
+          if (p.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(p.forecasted_semester_gpa))) {
+            predGpa = parseFloat(p.forecasted_semester_gpa);
+          } else if (latest.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(latest.forecasted_semester_gpa))) {
+            predGpa = parseFloat(latest.forecasted_semester_gpa);
+          } else if (parseFloat(latest.score) <= 4.0) {
+            predGpa = parseFloat(latest.score);
+          } else if (!isNaN(parseFloat(latest.score))) {
+            predGpa = +(parseFloat(latest.score) / 25.0).toFixed(2);
+          }
+          if (predGpa === null || isNaN(predGpa)) predGpa = 3.65;
+          kpiPredictedGpa.innerText = `${predGpa.toFixed(2)} CGPA`;
+        } else {
+          kpiPredictedGpa.innerText = latest.score || "90.0%";
+        }
       }
       if (kpiStatusBadge) {
         kpiStatusBadge.innerText = latest.status_badge || "Exemplary";

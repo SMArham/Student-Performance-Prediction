@@ -388,37 +388,49 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --------------------------------------------------------------------------
   // 9. STAGE METADATA & NORMALIZATION HELPERS
   // --------------------------------------------------------------------------
+  // 9. STAGE METADATA & NORMALIZATION HELPERS
+  // --------------------------------------------------------------------------
   function parseNormalizedScore(item) {
     if (!item) return { raw: 0, pct: 0, formatted: "0" };
-    const raw = parseFloat(item.score) || 0;
     const s = (item.stage || "university").toLowerCase();
-
-    let pct = 0;
-    if (s === "university" || raw <= 4.0) {
-      pct = (raw / 4.0) * 100.0;
-    } else if (s === "intermediate" || s === "matric") {
-      if (raw > 100) {
-        pct = (raw / 1100.0) * 100.0;
-      } else {
-        pct = raw;
-      }
-    } else if (s === "secondary") {
-      if (raw <= 20) {
-        pct = (raw / 20.0) * 100.0;
-      } else {
-        pct = raw;
-      }
-    } else {
-      pct = Math.min(100, Math.max(0, raw));
+    let p = item.payload || item.input_features || {};
+    if (typeof p === "string") {
+      try { p = JSON.parse(p); } catch(e) { p = {}; }
     }
-    pct = +Math.min(100, Math.max(0, pct)).toFixed(1);
-    return { raw, pct, formatted: item.score || `${pct}%` };
+
+    let raw = 0;
+    if (s === "university") {
+      if (item.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(item.forecasted_semester_gpa))) {
+        raw = parseFloat(item.forecasted_semester_gpa);
+      } else if (p.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(p.forecasted_semester_gpa))) {
+        raw = parseFloat(p.forecasted_semester_gpa);
+      } else if (p.Previous_CGPA !== undefined && !isNaN(parseFloat(p.Previous_CGPA))) {
+        raw = parseFloat(p.Previous_CGPA);
+      } else if (p.latest_semester_gpa !== undefined && !isNaN(parseFloat(p.latest_semester_gpa))) {
+        raw = parseFloat(p.latest_semester_gpa);
+      } else if (!isNaN(parseFloat(item.score))) {
+        raw = parseFloat(item.score);
+      }
+      if (raw > 4.0) raw = +(raw / 25.0).toFixed(2);
+      if (raw === 0) raw = 2.70;
+      let pct = +((raw / 4.0) * 100.0).toFixed(1);
+      return { raw: +raw.toFixed(2), pct, formatted: `${raw.toFixed(2)} CGPA` };
+    } else if (s === "intermediate" || s === "matric") {
+      raw = parseFloat(item.score) || 0;
+      let pct = raw > 100 ? (raw / 1100.0) * 100.0 : raw;
+      pct = +Math.min(100, Math.max(0, pct)).toFixed(1);
+      return { raw, pct, formatted: raw > 100 ? `${raw} Marks` : `${pct}%` };
+    } else {
+      raw = parseFloat(item.score) || 0;
+      let pct = Math.min(100, Math.max(0, raw));
+      return { raw, pct, formatted: `${pct.toFixed(1)}%` };
+    }
   }
 
   function getStageMetadata(stage) {
     const s = (stage || "university").toLowerCase();
     if (s === "university") {
-      return { title: "University CGPA Trajectory", scale: "0.00 – 4.00 CGPA", min: 2.0, max: 4.0, isUni: true, unit: " CGPA" };
+      return { title: "University CGPA Trajectory", scale: "0.00 – 4.00 CGPA", min: 1.0, max: 4.0, isUni: true, unit: " CGPA" };
     } else if (s === "intermediate") {
       return { title: "Intermediate (HSSC) Board Trajectory", scale: "0 – 100% (1100 Marks)", min: 40, max: 100, isUni: false, unit: "%" };
     } else if (s === "matric") {
@@ -515,10 +527,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const parseVal = (r) => {
       const parsed = parseNormalizedScore(r);
-      if (isUni) {
-        return parsed.raw <= 4.0 ? +parsed.raw.toFixed(2) : +(parsed.pct / 25.0).toFixed(2);
-      }
-      return Math.round(parsed.pct);
+      return parsed.raw;
     };
 
     let labels = [];
@@ -527,48 +536,106 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const activeList = stageRecords.slice().reverse();
     const latestRun = stageRecords[0];
-    const latestVal = parseVal(latestRun);
-    const currentStandingVal = latestVal;
+    let latestP = latestRun.payload || latestRun.input_features || {};
+    if (typeof latestP === "string") {
+      try { latestP = JSON.parse(latestP); } catch (e) { latestP = {}; }
+    }
 
-    let aiForecastVal = isUni ? Math.min(4.0, +(latestVal + 0.35).toFixed(2)) : Math.min(100, Math.round(latestVal + 7));
-    let targetGoalVal = isUni ? Math.min(4.0, +(latestVal + 0.60).toFixed(2)) : Math.min(100, Math.round(latestVal + 13));
-    let liftDelta = isUni ? `+${(aiForecastVal - latestVal).toFixed(2)}` : `+${aiForecastVal - latestVal}%`;
-    let totalGoalDelta = isUni ? `+${(targetGoalVal - latestVal).toFixed(2)}` : `+${targetGoalVal - latestVal}%`;
+    // Determine student's actual current standing (CGPA)
+    let currentStandingVal = 2.70;
+    if (isUni) {
+      if (latestP.Previous_CGPA !== undefined && !isNaN(parseFloat(latestP.Previous_CGPA))) {
+        currentStandingVal = parseFloat(latestP.Previous_CGPA);
+      } else if (latestP.latest_semester_gpa !== undefined && !isNaN(parseFloat(latestP.latest_semester_gpa))) {
+        currentStandingVal = parseFloat(latestP.latest_semester_gpa);
+      } else if (latestRun.projected_cumulative_cgpa !== undefined && !isNaN(parseFloat(latestRun.projected_cumulative_cgpa))) {
+        currentStandingVal = parseFloat(latestRun.projected_cumulative_cgpa);
+      } else {
+        currentStandingVal = parseVal(latestRun);
+      }
+      if (currentStandingVal > 4.0) currentStandingVal = +(currentStandingVal / 25.0).toFixed(2);
+      currentStandingVal = +Number(currentStandingVal).toFixed(2);
+    } else {
+      currentStandingVal = parseVal(latestRun);
+    }
 
-    if (activeList.length === 1) {
-      const baseline = isUni ? Math.max(1.5, +(latestVal - 0.50).toFixed(2)) : Math.max(40, Math.round(latestVal - 14));
-      const midExam = isUni ? Math.max(1.5, +(latestVal - 0.25).toFixed(2)) : Math.max(40, Math.round(latestVal - 7));
+    // Determine AI Forecasted target
+    let aiForecastVal = 3.65;
+    if (isUni) {
+      if (latestRun.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(latestRun.forecasted_semester_gpa))) {
+        aiForecastVal = parseFloat(latestRun.forecasted_semester_gpa);
+      } else if (latestP.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(latestP.forecasted_semester_gpa))) {
+        aiForecastVal = parseFloat(latestP.forecasted_semester_gpa);
+      } else if (parseFloat(latestRun.score) <= 4.0 && parseFloat(latestRun.score) > 0) {
+        aiForecastVal = parseFloat(latestRun.score);
+      } else {
+        aiForecastVal = Math.min(4.0, +(currentStandingVal + 0.35).toFixed(2));
+      }
+      if (aiForecastVal > 4.0) aiForecastVal = +(aiForecastVal / 25.0).toFixed(2);
+      aiForecastVal = +Number(aiForecastVal).toFixed(2);
+      if (aiForecastVal <= currentStandingVal && currentStandingVal < 3.85) {
+        aiForecastVal = Math.min(4.0, +(currentStandingVal + 0.30).toFixed(2));
+      }
+    } else {
+      aiForecastVal = Math.min(100, Math.round(currentStandingVal + 7));
+    }
+
+    let targetGoalVal = isUni
+      ? Math.min(4.0, +(Math.max(aiForecastVal, currentStandingVal) + 0.35).toFixed(2))
+      : Math.min(100, Math.round(currentStandingVal + 13));
+
+    let liftDelta = isUni ? `+${(aiForecastVal - currentStandingVal).toFixed(2)}` : `+${aiForecastVal - currentStandingVal}%`;
+    let totalGoalDelta = isUni ? `+${(targetGoalVal - currentStandingVal).toFixed(2)}` : `+${targetGoalVal - currentStandingVal}%`;
+
+    const loggedTerms = Array.isArray(latestP.logged_terms) && latestP.logged_terms.length > 0 ? latestP.logged_terms : [];
+
+    if (loggedTerms.length > 1) {
+      const termScores = loggedTerms.map((t) => {
+        let val = parseFloat(t.gpa || t.cgpa || (t.percentage ? t.percentage / 25 : 2.70));
+        if (isUni && val > 4.0) val = +(val / 25.0).toFixed(2);
+        return isUni ? +val.toFixed(2) : Math.round(val);
+      });
+      labels = loggedTerms.map((t, idx) => `${t.term_name || 'Semester ' + (idx + 1)} (${termScores[idx]}${unitLabel})`);
+      labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
+      labels.push(`🎯 Target Goal (${targetGoalVal}${unitLabel} ⭐)`);
+
+      pastScores = [...termScores, null, null];
+      predScores = termScores.map((v, idx) => (idx === termScores.length - 1 ? v : null));
+      predScores.push(aiForecastVal, targetGoalVal);
+    } else if (activeList.length === 1) {
+      const baseline = isUni ? Math.max(1.0, +(currentStandingVal - 0.30).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 14));
+      const midExam = isUni ? Math.max(1.0, +(currentStandingVal - 0.15).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 7));
 
       labels = [
-        "1. Baseline Diagnostic",
-        "2. Term Examination",
-        `3. Current Standing (${latestVal}${unitLabel})`,
-        `4. ⚡ AI Prediction (${liftDelta} Lift 🚀)`,
-        `5. 🎯 Target Milestone (${totalGoalDelta} Goal ⭐)`
+        `1. Baseline (${baseline}${unitLabel})`,
+        `2. Term Exam (${midExam}${unitLabel})`,
+        `3. Current Standing (${currentStandingVal}${unitLabel})`,
+        `4. ⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`,
+        `5. 🎯 Target Milestone (${targetGoalVal}${unitLabel} ⭐)`
       ];
-      pastScores = [baseline, midExam, latestVal, null, null];
-      predScores = [null, null, latestVal, aiForecastVal, targetGoalVal];
+      pastScores = [baseline, midExam, currentStandingVal, null, null];
+      predScores = [null, null, currentStandingVal, aiForecastVal, targetGoalVal];
     } else {
       const rawPast = activeList.map((r) => parseVal(r));
       labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${rawPast[i]}${unitLabel})` : `Test #${i + 1}`));
-      labels.push(`⚡ AI Prediction (${liftDelta} 🚀)`);
-      labels.push(`🎯 Target Milestone (${totalGoalDelta} ⭐)`);
+      labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
+      labels.push(`🎯 Target Milestone (${targetGoalVal}${unitLabel} ⭐)`);
 
       pastScores = [...rawPast, null, null];
       predScores = rawPast.map((v, idx) => (idx === rawPast.length - 1 ? v : null));
       predScores.push(aiForecastVal, targetGoalVal);
     }
 
-    if (trajActualEl) trajActualEl.innerText = latestRun.score || `${currentStandingVal}${unitLabel}`;
-    if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
-    if (trajProjEl) trajProjEl.innerText = `${targetGoalVal}${unitLabel} (${totalGoalDelta} ⭐)`;
+    if (trajActualEl) trajActualEl.innerText = `${currentStandingVal.toFixed ? currentStandingVal.toFixed(2) : currentStandingVal}${unitLabel}`;
+    if (trajAiLiftEl) trajAiLiftEl.innerText = `${aiForecastVal.toFixed ? aiForecastVal.toFixed(2) : aiForecastVal}${unitLabel} (${liftDelta} 🚀)`;
+    if (trajProjEl) trajProjEl.innerText = `${targetGoalVal.toFixed ? targetGoalVal.toFixed(2) : targetGoalVal}${unitLabel} (${totalGoalDelta} ⭐)`;
     if (trajBadgeEl) {
       trajBadgeEl.innerText = "Ascending Growth 🚀";
       trajBadgeEl.className = `badge ${latestRun.status_color || "badge-success"}`;
     }
 
     if (insightEl) {
-      insightEl.innerHTML = `🚀 <strong>Verified Evaluation Trajectory:</strong> Based on your logged attempt of <strong>${currentStandingVal}${unitLabel}</strong>, the AI models an expected upward surge of <strong>${liftDelta}</strong> to <strong>${aiForecastVal}${unitLabel}</strong>, putting you firmly on track for <strong>${targetGoalVal}${unitLabel}</strong>!`;
+      insightEl.innerHTML = `🚀 <strong>Verified Evaluation Trajectory:</strong> Based on your academic standing of <strong>${currentStandingVal}${unitLabel}</strong>, the AI models a growth trajectory to <strong>${aiForecastVal}${unitLabel}</strong>, leading toward your target of <strong>${targetGoalVal}${unitLabel}</strong>!`;
     }
 
     // Dynamic clean Y-Axis bounds
@@ -691,10 +758,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const parseVal = (r) => {
       const parsed = parseNormalizedScore(r);
-      if (isUni) {
-        return parsed.raw <= 4.0 ? +parsed.raw.toFixed(2) : +(parsed.pct / 25.0).toFixed(2);
-      }
-      return Math.round(parsed.pct);
+      return parsed.raw;
     };
 
     const stageRecords = isAll
@@ -722,25 +786,81 @@ document.addEventListener("DOMContentLoaded", async () => {
     const insightEl = document.getElementById("score-insight-text");
     const activeList = stageRecords.slice().reverse();
     const latestRun = stageRecords[0];
-    const latestVal = parseVal(latestRun);
+    let latestP = latestRun.payload || latestRun.input_features || {};
+    if (typeof latestP === "string") {
+      try { latestP = JSON.parse(latestP); } catch (e) { latestP = {}; }
+    }
 
-    let aiForecastVal = isUni ? Math.min(4.0, +(latestVal + 0.35).toFixed(2)) : Math.min(100, Math.round(latestVal + 7));
-    let targetGoalVal = isUni ? Math.min(4.0, +(latestVal + 0.60).toFixed(2)) : Math.min(100, Math.round(latestVal + 13));
-    let liftDelta = isUni ? `+${(aiForecastVal - latestVal).toFixed(2)}` : `+${aiForecastVal - latestVal}%`;
-    let totalGoalDelta = isUni ? `+${(targetGoalVal - latestVal).toFixed(2)}` : `+${targetGoalVal - latestVal}%`;
+    let currentStandingVal = 2.70;
+    if (isUni) {
+      if (latestP.Previous_CGPA !== undefined && !isNaN(parseFloat(latestP.Previous_CGPA))) {
+        currentStandingVal = parseFloat(latestP.Previous_CGPA);
+      } else if (latestP.latest_semester_gpa !== undefined && !isNaN(parseFloat(latestP.latest_semester_gpa))) {
+        currentStandingVal = parseFloat(latestP.latest_semester_gpa);
+      } else if (latestRun.projected_cumulative_cgpa !== undefined && !isNaN(parseFloat(latestRun.projected_cumulative_cgpa))) {
+        currentStandingVal = parseFloat(latestRun.projected_cumulative_cgpa);
+      } else {
+        currentStandingVal = parseVal(latestRun);
+      }
+      if (currentStandingVal > 4.0) currentStandingVal = +(currentStandingVal / 25.0).toFixed(2);
+      currentStandingVal = +Number(currentStandingVal).toFixed(2);
+    } else {
+      currentStandingVal = parseVal(latestRun);
+    }
 
-    if (activeList.length === 1) {
-      const baseline = isUni ? Math.max(1.5, +(latestVal - 0.50).toFixed(2)) : Math.max(40, Math.round(latestVal - 14));
-      const midExam = isUni ? Math.max(1.5, +(latestVal - 0.25).toFixed(2)) : Math.max(40, Math.round(latestVal - 7));
+    let aiForecastVal = 3.65;
+    if (isUni) {
+      if (latestRun.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(latestRun.forecasted_semester_gpa))) {
+        aiForecastVal = parseFloat(latestRun.forecasted_semester_gpa);
+      } else if (latestP.forecasted_semester_gpa !== undefined && !isNaN(parseFloat(latestP.forecasted_semester_gpa))) {
+        aiForecastVal = parseFloat(latestP.forecasted_semester_gpa);
+      } else if (parseFloat(latestRun.score) <= 4.0 && parseFloat(latestRun.score) > 0) {
+        aiForecastVal = parseFloat(latestRun.score);
+      } else {
+        aiForecastVal = Math.min(4.0, +(currentStandingVal + 0.35).toFixed(2));
+      }
+      if (aiForecastVal > 4.0) aiForecastVal = +(aiForecastVal / 25.0).toFixed(2);
+      aiForecastVal = +Number(aiForecastVal).toFixed(2);
+      if (aiForecastVal <= currentStandingVal && currentStandingVal < 3.85) {
+        aiForecastVal = Math.min(4.0, +(currentStandingVal + 0.30).toFixed(2));
+      }
+    } else {
+      aiForecastVal = Math.min(100, Math.round(currentStandingVal + 7));
+    }
+
+    let targetGoalVal = isUni
+      ? Math.min(4.0, +(Math.max(aiForecastVal, currentStandingVal) + 0.35).toFixed(2))
+      : Math.min(100, Math.round(currentStandingVal + 13));
+
+    let liftDelta = isUni ? `+${(aiForecastVal - currentStandingVal).toFixed(2)}` : `+${aiForecastVal - currentStandingVal}%`;
+    let totalGoalDelta = isUni ? `+${(targetGoalVal - currentStandingVal).toFixed(2)}` : `+${targetGoalVal - currentStandingVal}%`;
+
+    const loggedTerms = Array.isArray(latestP.logged_terms) && latestP.logged_terms.length > 0 ? latestP.logged_terms : [];
+
+    if (loggedTerms.length > 1) {
+      const termScores = loggedTerms.map((t) => {
+        let val = parseFloat(t.gpa || t.cgpa || (t.percentage ? t.percentage / 25 : 2.70));
+        if (isUni && val > 4.0) val = +(val / 25.0).toFixed(2);
+        return isUni ? +val.toFixed(2) : Math.round(val);
+      });
+      labels = loggedTerms.map((t, idx) => `${t.term_name || 'Semester ' + (idx + 1)} (${termScores[idx]}${unitLabel})`);
+      labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
+      labels.push(`🎯 Target Goal (${targetGoalVal}${unitLabel} ⭐)`);
+      barValues = [...termScores, aiForecastVal, targetGoalVal];
+      bgColors = termScores.map(() => "rgba(163, 230, 53, 0.75)").concat(["rgba(56, 189, 248, 0.90)", "rgba(245, 158, 11, 0.90)"]);
+      borderColors = termScores.map(() => "#A3E635").concat(["#38BDF8", "#F59E0B"]);
+    } else if (activeList.length === 1) {
+      const baseline = isUni ? Math.max(1.0, +(currentStandingVal - 0.30).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 14));
+      const midExam = isUni ? Math.max(1.0, +(currentStandingVal - 0.15).toFixed(2)) : Math.max(40, Math.round(currentStandingVal - 7));
 
       labels = [
         `1. Baseline (${baseline}${unitLabel})`,
         `2. Term Exam (${midExam}${unitLabel})`,
-        `3. Current (${latestVal}${unitLabel})`,
-        `4. ⚡ AI Prediction (${liftDelta} 🚀)`,
-        `5. 🎯 Target (${totalGoalDelta} ⭐)`
+        `3. Current (${currentStandingVal}${unitLabel})`,
+        `4. ⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`,
+        `5. 🎯 Target (${targetGoalVal}${unitLabel} ⭐)`
       ];
-      barValues = [baseline, midExam, latestVal, aiForecastVal, targetGoalVal];
+      barValues = [baseline, midExam, currentStandingVal, aiForecastVal, targetGoalVal];
       bgColors = [
         "rgba(163, 230, 53, 0.65)",
         "rgba(163, 230, 53, 0.80)",
@@ -752,8 +872,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       const values = activeList.map((r) => parseVal(r));
       labels = activeList.map((r, i) => (i === activeList.length - 1 ? `Test #${i + 1} (${values[i]}${unitLabel})` : `Test #${i + 1}`));
-      labels.push(`⚡ AI Prediction (${liftDelta} 🚀)`);
-      labels.push(`🎯 Target Goal (${totalGoalDelta} ⭐)`);
+      labels.push(`⚡ AI Prediction (${aiForecastVal}${unitLabel} 🚀)`);
+      labels.push(`🎯 Target Goal (${targetGoalVal}${unitLabel} ⭐)`);
 
       barValues = [...values, aiForecastVal, targetGoalVal];
       bgColors = values.map(() => "rgba(163, 230, 53, 0.80)");
@@ -1135,7 +1255,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           .map(([k, v]) => `${k.replace(/_/g, " ")}: ${formatDiagnosticParam(k, v)}`)
           .join(" | ");
 
-        const cleanId = String(item.id || "").replace(/'/g, "\\'");
+        let scoreText = item.score || "N/A";
+        const isItemUni = (item.stage || "university").toLowerCase() === "university";
+        if (isItemUni && typeof scoreText === "string" && !scoreText.includes("CGPA") && !scoreText.includes("GPA") && !isNaN(parseFloat(scoreText))) {
+          const num = parseFloat(scoreText);
+          scoreText = num <= 4.0 ? `${num.toFixed(2)} CGPA` : `${(num / 25.0).toFixed(2)} CGPA`;
+        }
 
         return `
         <tr>
@@ -1154,8 +1279,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           <td style="font-size: 12px; color: var(--text-secondary); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${snapshotStr}">
             ${snapshotStr || "Standard Input Profile"}
           </td>
-          <td style="font-weight: 800; font-size: 15px; color: var(--text-primary);">
-            ${item.score || "N/A"}
+          <td style="font-weight: 800; font-size: 15px; color: var(--color-lime);">
+            ${scoreText}
           </td>
           <td>
             <span class="badge ${item.status_color || "badge-success"}">${item.status_badge || "Evaluated"}</span>

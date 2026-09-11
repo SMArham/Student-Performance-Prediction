@@ -1497,28 +1497,57 @@ document.addEventListener("DOMContentLoaded", () => {
     let projectedCumulativeCgpa = 3.60;
 
     if (stage === "university") {
-      const baseCgpa = payload.Previous_CGPA || 3.50;
+      const baseCgpa = parseFloat(payload.Previous_CGPA || 3.50);
       const latestSemGpa = (payload.logged_terms && payload.logged_terms.length > 0)
-        ? (payload.logged_terms[payload.logged_terms.length - 1].gpa || baseCgpa)
+        ? (parseFloat(payload.logged_terms[payload.logged_terms.length - 1].gpa) || baseCgpa)
         : baseCgpa;
       
-      const studyBoost = ((payload.study_hours || 4.5) - 4.0) * 0.05;
-      const attBoost = ((payload.Attendance_Pct || 85.0) - 80.0) * 0.005;
-      const midBoost = (((payload.Midterm_Exam_Avg || 80.0) - 75.0) / 100.0) * 0.25;
-      const backlogPenalty = (payload.Backlogs_Failed_Courses || 0) * 0.12;
+      const studyBoost = ((parseFloat(payload.study_hours || 4.5)) - 4.0) * 0.05;
+      const attBoost = ((parseFloat(payload.Attendance_Pct || 85.0)) - 80.0) * 0.005;
+      const midBoost = (((parseFloat(payload.Midterm_Exam_Avg || 80.0)) - 75.0) / 100.0) * 0.25;
+      const backlogPenalty = (parseInt(payload.Backlogs_Failed_Courses || 0)) * 0.12;
 
       forecastedSemGpa = +(Math.min(4.0, Math.max(1.0, latestSemGpa + studyBoost + attBoost + midBoost - backlogPenalty))).toFixed(2);
       const nTerms = (payload.logged_terms && payload.logged_terms.length > 0) ? payload.logged_terms.length : 1;
       projectedCumulativeCgpa = +(((baseCgpa * nTerms) + forecastedSemGpa) / (nTerms + 1)).toFixed(2);
 
       score = forecastedSemGpa;
-      formatted_score = `${forecastedSemGpa.toFixed(2)} Next Sem GPA`;
+      formatted_score = `${forecastedSemGpa.toFixed(2)} CGPA`;
       min_ci = Math.max(0.0, +(forecastedSemGpa - 0.18).toFixed(2));
       max_ci = Math.min(4.0, +(forecastedSemGpa + 0.16).toFixed(2));
       grade = forecastedSemGpa >= 3.7 ? "Grade A+ (Exemplary)" : forecastedSemGpa >= 3.3 ? "Grade A (Very Good)" : forecastedSemGpa >= 3.0 ? "Grade B+ (Good)" : forecastedSemGpa >= 2.5 ? "Grade B (Satisfactory)" : forecastedSemGpa >= 2.0 ? "Grade C (Passing)" : "Grade F (Probation)";
       risk_level = forecastedSemGpa >= 3.0 ? "LOW" : forecastedSemGpa >= 2.3 ? "MEDIUM" : "HIGH";
       status_badge = forecastedSemGpa >= 3.6 ? "Exemplary" : forecastedSemGpa >= 3.0 ? "On Track" : forecastedSemGpa >= 2.3 ? "At Risk" : "Critical Intervention Needed";
       status_color = forecastedSemGpa >= 3.6 ? "badge-success" : forecastedSemGpa >= 3.0 ? "badge-primary" : forecastedSemGpa >= 2.3 ? "badge-warning" : "badge-danger";
+
+      return {
+        stage: "university",
+        score: forecastedSemGpa,
+        predicted_score: forecastedSemGpa,
+        forecasted_semester_gpa: forecastedSemGpa,
+        projected_cumulative_cgpa: projectedCumulativeCgpa,
+        formatted_score: `${forecastedSemGpa.toFixed(2)} CGPA`,
+        predicted_grade: grade,
+        grade,
+        risk_level,
+        status_badge,
+        status_color,
+        confidence_interval_low: min_ci,
+        confidence_interval_high: max_ci,
+        confidence_interval: { lower: min_ci, upper: max_ci },
+        feature_contributions: {
+          top_positive_factors: [
+            `Current Academic Baseline: ${baseCgpa.toFixed(2)} Cumulative CGPA across ${nTerms} Semesters`,
+            `Classroom Attendance: ${payload.Attendance_Pct || 85}% recorded presence`,
+            `Daily Independent Study: ${payload.study_hours || 4.5} hrs/day routine`
+          ],
+          growth_areas: [
+            `Focus on continuous coursework and quizzes in core degree subjects`,
+            `Maintain weekly review blocks before midterms and finals`
+          ]
+        },
+        recommendation: `Model forecasts a ${forecastedSemGpa.toFixed(2)} Semester GPA for your upcoming term, projecting your cumulative standing to ${projectedCumulativeCgpa.toFixed(2)} CGPA.`
+      };
     } else if (stage === "intermediate") {
       const targetLevel = payload.target_level || "hssc1";
       const ssc1 = parseFloat(payload.SSC_I_Marks || 470);
