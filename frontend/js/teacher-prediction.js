@@ -58,14 +58,25 @@ document.addEventListener("DOMContentLoaded", () => {
   function getTeacherIdentity() {
     const u = window.authClient ? window.authClient.getUser() : null;
     const meta = u?.user_metadata || {};
-    const uid = u?.id || (u?.email ? `tch_${u.email.replace(/[^a-zA-Z0-9]/g, "_")}` : "teacher_guest");
+    const email = (u?.email || "").toLowerCase().trim();
+
+    let uid = null;
+    if (u?.id && u.id !== "TCH-01" && u.id !== "TCH-2026-001") {
+      uid = u.id;
+    } else if (email) {
+      uid = `tch_${email.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    } else {
+      uid = "teacher_isolated_guest";
+    }
+
     let code = meta.id_code || meta.student_id;
     if (!code || code === "TCH-01" || code === "TCH-2026-001") {
-      code = uid ? `TCH-${uid.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase()}` : "TCH-01";
+      code = email ? `TCH-${(email.replace(/[^a-zA-Z0-9]/g, "").slice(-4) || "01").toUpperCase()}` : (uid ? `TCH-${uid.slice(-4).toUpperCase()}` : "TCH-01");
     }
+
     return {
       id: uid,
-      email: u?.email || "",
+      email: email,
       code: code,
       name: meta.full_name || "Instructor",
       storageKey: `edumetrics_teacher_${uid}`

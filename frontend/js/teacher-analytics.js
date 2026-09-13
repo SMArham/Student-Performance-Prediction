@@ -29,17 +29,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   function getTeacherIdentity() {
     const u = window.authClient ? window.authClient.getUser() : null;
     const meta = u?.user_metadata || {};
-    const uid = u?.id || (u?.email ? `tch_${u.email.replace(/[^a-zA-Z0-9]/g, "_")}` : null);
-    let code = meta.id_code || meta.student_id;
-    if (!code || code === "TCH-01") {
-      code = uid ? `TCH-${uid.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase()}` : "TCH-01";
+    const email = (u?.email || "").toLowerCase().trim();
+    const isRealUuid = u?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u.id);
+
+    // Primary unique tenant ID: Real UUID or unique email. NEVER generic "TCH-01"!
+    let uid = isRealUuid ? u.id : (email || null);
+    if (!uid) {
+      if (u?.id && u.id !== "TCH-01" && u.id !== "TCH-2026-001" && !u.id.startsWith("TCH-")) {
+        uid = u.id;
+      } else if (email) {
+        uid = `tch_${email.replace(/[^a-zA-Z0-9]/g, "_")}`;
+      } else {
+        uid = "teacher_isolated_guest";
+      }
     }
+
+    let code = meta.id_code || meta.student_id;
+    if (!code || code === "TCH-01" || code === "TCH-2026-001") {
+      code = email ? `TCH-${(email.replace(/[^a-zA-Z0-9]/g, "").slice(-4) || "01").toUpperCase()}` : (uid ? `TCH-${uid.slice(-4).toUpperCase()}` : "TCH-01");
+    }
+
     return {
       id: uid,
-      email: u?.email || "",
+      email: email,
       code: code,
       name: meta.full_name || "Instructor Portal",
-      storageKey: uid ? `edumetrics_teacher_${uid}` : "edumetrics_teacher_guest"
+      storageKey: `edumetrics_teacher_${uid}`
     };
   }
 
@@ -150,6 +165,33 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // 0. Auto-purge legacy test student 111 / arham from localStorage
+    try {
+      ["edumetrics_teacher_TCH-01", "edumetrics_teacher_default", "edumetrics_teacher_guest", "edumetrics_teacher_teacher_isolated_guest"].forEach((k) => {
+        const val = localStorage.getItem(k);
+        if (val && (val.includes('"111"') || val.includes('"arham"') || val.includes("3.52"))) {
+          localStorage.removeItem(k);
+        }
+      });
+      if (teacher.storageKey) {
+        const myVal = localStorage.getItem(teacher.storageKey);
+        if (myVal && (myVal.includes('"111"') || myVal.includes('"arham"'))) {
+          try {
+            let list = JSON.parse(myVal);
+            if (Array.isArray(list)) {
+              list = list.filter((item) => {
+                const sid = String(item.student_id || item.id || "");
+                const sname = String(item.student_name || "").toLowerCase().trim();
+                return sid !== "111" && sname !== "arham" && sid !== "STU-111";
+              });
+              if (list.length === 0) localStorage.removeItem(teacher.storageKey);
+              else localStorage.setItem(teacher.storageKey, JSON.stringify(list));
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+
     // Check tombstones for this teacher
     const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id}`;
     let tombstones = [];
@@ -173,7 +215,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const candidateKeys = [
         teacher.storageKey,
         `edumetrics_teacher_${teacher.id}`
-      ];
+      ].filter(k => !k.includes("TCH-01") && !k.includes("default"));
 
       const uniqueKeys = Array.from(new Set(candidateKeys));
       for (const k of uniqueKeys) {
@@ -298,8 +340,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     [...remoteEvals, ...localEvals].forEach((s) => {
       if (s && s.student_id) {
         const sId = String(s.student_id);
-        if (tombstones.includes(sId) || tombstones.includes(`STU-${sId}`)) {
-          return; // Exclude deleted student
+        const sName = String(s.student_name || "").toLowerCase().trim();
+        if (tombstones.includes(sId) || tombstones.includes(`STU-${sId}`) || sId === "111" || sId === "STU-111" || sName === "arham") {
+          return; // Exclude deleted student or legacy un-isolated student 111 / arham
         }
         const sTime = s.timestamp || s.created_at || new Date().toISOString();
         if (!combinedMap.has(sId) || new Date(sTime) > new Date(combinedMap.get(sId).timestamp)) {

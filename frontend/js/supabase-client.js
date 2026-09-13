@@ -518,10 +518,11 @@ class SupabaseAuthClient {
       }
     }
 
-    // 5. Build authenticated session: Database profile ID is the single source of truth
+    // 5. Build authenticated session: Real Auth UUID or unique email is primary user ID
     const userShort = (cloudUser?.id || existingAccount?.id || cleanEmail || "").replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase() || "01";
     const defaultRoleCode = registeredRole === "teacher" ? `TCH-${userShort}` : "STU-01";
-    const resolvedId = cloudProfile?.id || existingAccount?.id || defaultRoleCode;
+    const resolvedBadge = (cloudProfile?.id && cloudProfile.id !== "TCH-01") ? cloudProfile.id : (existingAccount?.id && existingAccount.id !== "TCH-01" ? existingAccount.id : defaultRoleCode);
+    const effectiveUserId = (cloudUser && cloudUser.id) ? cloudUser.id : (cleanEmail || resolvedBadge);
 
     const combinedMeta = {
       ...(existingAccount?.user_metadata || {}),
@@ -535,13 +536,13 @@ class SupabaseAuthClient {
         department: cloudProfile.department_or_program,
         program: cloudProfile.department_or_program
       } : {}),
-      student_id: resolvedId,
-      id_code: resolvedId,
+      student_id: resolvedBadge,
+      id_code: resolvedBadge,
       role: registeredRole
     };
 
     const loggedUser = {
-      id: resolvedId,
+      id: effectiveUserId,
       email: cleanEmail,
       user_metadata: combinedMeta
     };
@@ -744,9 +745,17 @@ class SupabaseAuthClient {
     const userStr = localStorage.getItem("sp_auth_user");
     if (token && userStr) {
       try {
+        const u = JSON.parse(userStr);
+        // Self-heal: If user.id was previously cached as "TCH-01" or generic, repair it with their unique email
+        if (u && (u.id === "TCH-01" || u.id === "TCH-2026-001")) {
+          if (u.email) {
+            u.id = u.email.toLowerCase().trim();
+            localStorage.setItem("sp_auth_user", JSON.stringify(u));
+          }
+        }
         return {
           access_token: token,
-          user: JSON.parse(userStr)
+          user: u
         };
       } catch (e) {
         return null;

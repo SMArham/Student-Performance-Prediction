@@ -70,17 +70,32 @@ document.addEventListener("DOMContentLoaded", () => {
   function getTeacherIdentity() {
     const u = window.authClient ? window.authClient.getUser() : null;
     const meta = u?.user_metadata || {};
-    const uid = u?.id || (u?.email ? `tch_${u.email.replace(/[^a-zA-Z0-9]/g, "_")}` : null);
-    let code = meta.id_code || meta.student_id;
-    if (!code || code === "TCH-01") {
-      code = uid ? `TCH-${uid.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase()}` : "TCH-01";
+    const email = (u?.email || "").toLowerCase().trim();
+    const isRealUuid = u?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u.id);
+
+    // Primary unique tenant ID: Real UUID or unique email. NEVER generic "TCH-01"!
+    let uid = isRealUuid ? u.id : (email || null);
+    if (!uid) {
+      if (u?.id && u.id !== "TCH-01" && u.id !== "TCH-2026-001" && !u.id.startsWith("TCH-")) {
+        uid = u.id;
+      } else if (email) {
+        uid = `tch_${email.replace(/[^a-zA-Z0-9]/g, "_")}`;
+      } else {
+        uid = "teacher_isolated_guest";
+      }
     }
+
+    let code = meta.id_code || meta.student_id;
+    if (!code || code === "TCH-01" || code === "TCH-2026-001") {
+      code = email ? `TCH-${(email.replace(/[^a-zA-Z0-9]/g, "").slice(-4) || "01").toUpperCase()}` : (uid ? `TCH-${uid.slice(-4).toUpperCase()}` : "TCH-01");
+    }
+
     return {
       id: uid,
-      email: u?.email || "",
+      email: email,
       code: code,
       name: meta.full_name || "Instructor",
-      storageKey: uid ? `edumetrics_teacher_${uid}` : "edumetrics_teacher_guest"
+      storageKey: `edumetrics_teacher_${uid}`
     };
   }
 
@@ -93,6 +108,45 @@ document.addEventListener("DOMContentLoaded", () => {
       filteredStudentsList = [];
       applyFilters();
       return;
+    }
+
+    // 0. Self-healing purge: Remove legacy test student 111 / arham from all unisolated storage keys
+    try {
+      ["edumetrics_teacher_TCH-01", "edumetrics_teacher_default", "edumetrics_teacher_guest", "edumetrics_teacher_teacher_isolated_guest"].forEach((k) => {
+        const val = localStorage.getItem(k);
+        if (val && (val.includes('"111"') || val.includes('"arham"') || val.includes("3.52"))) {
+          localStorage.removeItem(k);
+        }
+      });
+      if (teacher.storageKey) {
+        const myVal = localStorage.getItem(teacher.storageKey);
+        if (myVal && (myVal.includes('"111"') || myVal.includes('"arham"'))) {
+          try {
+            let list = JSON.parse(myVal);
+            if (Array.isArray(list)) {
+              list = list.filter((item) => {
+                const sid = String(item.student_id || item.id || "");
+                const sname = String(item.student_name || "").toLowerCase().trim();
+                return sid !== "111" && sname !== "arham" && sid !== "STU-111";
+              });
+              if (list.length === 0) localStorage.removeItem(teacher.storageKey);
+              else localStorage.setItem(teacher.storageKey, JSON.stringify(list));
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+
+    // Cloud auto-purge of legacy unisolated test row
+    if (window.authClient && window.authClient.client) {
+      try {
+        window.authClient.client
+          .from("teacher_class_roster")
+          .delete()
+          .or("student_id_code.eq.111,student_name.eq.arham,id.eq.STU-111")
+          .then(() => {})
+          .catch(() => {});
+      } catch (e) {}
     }
 
     // Check tombstones for this teacher
@@ -117,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const candidateKeys = [teacher.storageKey];
       if (teacher.id) candidateKeys.push(`edumetrics_teacher_${teacher.id}`);
 
-      const uniqueCandidateKeys = Array.from(new Set(candidateKeys));
+      const uniqueCandidateKeys = Array.from(new Set(candidateKeys)).filter(k => !k.includes("TCH-01") && !k.includes("default"));
       for (const k of uniqueCandidateKeys) {
         const localStr = localStorage.getItem(k);
         if (localStr) {
@@ -237,10 +291,10 @@ document.addEventListener("DOMContentLoaded", () => {
     rawList.forEach((item) => {
       const payload = item.payload || {};
       const sId = String(item.student_id || payload.student_id || payload.student_id_code || item.roll_no || item.id || "STU-001");
-      if (tombstones.includes(sId) || tombstones.includes(`STU-${sId}`)) {
-        return; // Exclude deleted student
-      }
       const sName = item.student_name || payload.student_name || payload.name || "Student";
+      if (tombstones.includes(sId) || tombstones.includes(`STU-${sId}`) || sId === "111" || sId === "STU-111" || sName.toLowerCase().trim() === "arham") {
+        return; // Exclude deleted and legacy test student
+      }
       const sStage = (item.stage || payload.stage || "university").toLowerCase();
       const score = item.predicted_score ?? item.score ?? payload.predicted_score ?? 3.5;
       const grade = item.predicted_grade || item.grade || "Grade A";
