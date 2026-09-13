@@ -293,7 +293,12 @@ class SupabaseAuthClient {
           }
         });
       }
-      autoId = `${prefix}${String(maxNum + 1).padStart(2, "0")}`;
+      if (role === "teacher" && maxNum === 0) {
+        const hashNum = (Math.abs(cleanEmail.split("").reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 0)) % 900) + 100;
+        autoId = `TCH-${hashNum}`;
+      } else {
+        autoId = `${prefix}${String(maxNum + 1).padStart(2, "0")}`;
+      }
     }
 
     const userObj = {
@@ -457,7 +462,8 @@ class SupabaseAuthClient {
             const meta = cloudUser.user_metadata || {};
             const localNow = getLocalTimestamp();
             const uRole = meta.role || requiredRole || "teacher";
-            const autoId = meta.student_id || meta.id_code || (uRole === "teacher" ? "TCH-01" : "STU-01");
+            const userShort = (cloudUser.id || cleanEmail || "").replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase() || "01";
+            const autoId = meta.student_id || meta.id_code || (uRole === "teacher" ? `TCH-${userShort}` : "STU-01");
             const validStage = (uRole === "teacher" || !meta.stage || meta.stage === "all") ? "university" : meta.stage;
             const { data: syncedProf } = await this.client.from("profiles").upsert({
               id: autoId,
@@ -513,7 +519,9 @@ class SupabaseAuthClient {
     }
 
     // 5. Build authenticated session: Database profile ID is the single source of truth
-    const resolvedId = cloudProfile?.id || existingAccount?.id || (registeredRole === "teacher" ? "TCH-01" : "STU-01");
+    const userShort = (cloudUser?.id || existingAccount?.id || cleanEmail || "").replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase() || "01";
+    const defaultRoleCode = registeredRole === "teacher" ? `TCH-${userShort}` : "STU-01";
+    const resolvedId = cloudProfile?.id || existingAccount?.id || defaultRoleCode;
 
     const combinedMeta = {
       ...(existingAccount?.user_metadata || {}),

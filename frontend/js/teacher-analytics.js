@@ -29,13 +29,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   function getTeacherIdentity() {
     const u = window.authClient ? window.authClient.getUser() : null;
     const meta = u?.user_metadata || {};
-    const code = meta.id_code || meta.student_id || (u?.id && u.id.startsWith("TCH-") ? u.id : "TCH-01");
-    const uid = u?.id || code || "TCH-01";
+    const uid = u?.id || (u?.email ? `tch_${u.email.replace(/[^a-zA-Z0-9]/g, "_")}` : null);
+    let code = meta.id_code || meta.student_id;
+    if (!code || code === "TCH-01") {
+      code = uid ? `TCH-${uid.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase()}` : "TCH-01";
+    }
     return {
       id: uid,
+      email: u?.email || "",
       code: code,
       name: meta.full_name || "Instructor Portal",
-      storageKey: code ? `edumetrics_teacher_${code}` : "edumetrics_teacher_default"
+      storageKey: uid ? `edumetrics_teacher_${uid}` : "edumetrics_teacher_guest"
     };
   }
 
@@ -137,12 +141,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return Math.min(100, Math.max(0, raw));
   }
 
-  // 3. Load All Cohort Evaluations for Logged-In Instructor
   async function loadCohortData() {
     const teacher = getTeacherIdentity();
 
+    if (!teacher.id) {
+      cohortStudents = [];
+      updateAnalyticsView();
+      return;
+    }
+
     // Check tombstones for this teacher
-    const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id || teacher.code || "default"}`;
+    const tombstoneKey = `sp_deleted_teacher_student_ids_${teacher.id}`;
     let tombstones = [];
     try {
       tombstones = JSON.parse(localStorage.getItem(tombstoneKey) || "[]");
@@ -159,13 +168,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     let localEvals = [];
 
-    // Read from candidate teacher keys
+    // Read strictly from this teacher's isolated storage key
     try {
       const candidateKeys = [
         teacher.storageKey,
-        `edumetrics_teacher_${teacher.code}`,
-        `edumetrics_teacher_${teacher.id}`,
-        "edumetrics_teacher_default"
+        `edumetrics_teacher_${teacher.id}`
       ];
 
       const uniqueKeys = Array.from(new Set(candidateKeys));
@@ -175,29 +182,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           try {
             const parsed = JSON.parse(stored) || [];
             if (Array.isArray(parsed)) {
-              let changed = false;
-              parsed.forEach((s) => {
-                if (!s) return;
-                const pred = Number(s.predicted_score) || 3.52;
-                const isUni = (s.stage || "").toLowerCase() === "university" || (!s.stage && pred <= 4.0);
-
-                // Sanitize standing_score if missing or inappropriately matching predicted_score
-                if (s.standing_score === undefined || s.standing_score === null || Number(s.standing_score) === pred) {
-                  if (s.previous_cgpa !== undefined && Number(s.previous_cgpa) !== pred && !isNaN(Number(s.previous_cgpa))) {
-                    s.standing_score = Number(s.previous_cgpa);
-                  } else if (isUni) {
-                    s.standing_score = 3.25;
-                    s.previous_cgpa = 3.25;
-                  } else {
-                    s.standing_score = s.coursework_pct || Math.max(30, Math.round(pred - 6));
-                  }
-                  s.current_standing = s.standing_score;
-                  changed = true;
-                }
-              });
-              if (changed) {
-                try { localStorage.setItem(k, JSON.stringify(parsed)); } catch(e) {}
-              }
               localEvals.push(...parsed);
             }
           } catch (e) {}
@@ -210,22 +194,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     let remoteEvals = [];
 
     // Direct live Supabase Cloud Database Tables Query (prediction_history & teacher_class_roster)
-    if (window.authClient && window.authClient.client) {
+    if (window.authClient && window.authClient.client && teacher.id) {
       try {
-        const { data, error } = await window.authClient.client
+        let q = window.authClient.client
           .from("prediction_history")
           .select("*")
-          .order("created_at", { ascending: false })
-          .limit(100);
+          .order("created_at", { ascending: false });
+
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacher.id);
+        if (isUuid) {
+          q = q.eq("user_id", teacher.id);
+        }
+
+        const { data, error } = await q.limit(100);
 
         if (!error && Array.isArray(data)) {
           data.forEach((item) => {
             const p = item.input_features || item.payload || {};
             const matchesTeacher =
-              (p.teacher_id && (p.teacher_id === teacher.id || p.teacher_id === teacher.code)) ||
-              (p.teacher_code && (p.teacher_code === teacher.id || p.teacher_code === teacher.code)) ||
-              (item.user_id && (item.user_id === teacher.id || item.user_id === teacher.code)) ||
-              (p.role === "teacher" || p.evaluator_role === "teacher");
+              (item.user_id && item.user_id === teacher.id) ||
+              (p.teacher_id && p.teacher_id === teacher.id) ||
+              (teacher.email && (p.teacher_email === teacher.email || item.email === teacher.email));
 
             if (matchesTeacher) {
               const sId = p.student_id || item.student_id || "STU-" + String(item.id).slice(0, 4);
@@ -264,13 +253,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           .from("teacher_class_roster")
           .select("*")
           .order("created_at", { ascending: false })
+          .eq("teacher_id", teacher.id)
           .limit(100);
 
         if (!rosterErr && Array.isArray(rosterData)) {
           rosterData.forEach((r) => {
-            const matchesTeacher =
-              (teacher.id && r.teacher_id === teacher.id) ||
-              (teacher.code && r.teacher_id === teacher.code);
+            const matchesTeacher = r.teacher_id === teacher.id || (teacher.email && r.teacher_email === teacher.email);
 
             if (matchesTeacher) {
               const sId = r.student_id_code || r.roll_no || r.id;

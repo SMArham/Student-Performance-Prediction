@@ -54,14 +54,31 @@ document.addEventListener("DOMContentLoaded", () => {
     if (errorBanner) errorBanner.classList.remove("active");
   }
 
+  // Teacher Identity Single Source of Truth
+  function getTeacherIdentity() {
+    const u = window.authClient ? window.authClient.getUser() : null;
+    const meta = u?.user_metadata || {};
+    const uid = u?.id || (u?.email ? `tch_${u.email.replace(/[^a-zA-Z0-9]/g, "_")}` : "teacher_guest");
+    let code = meta.id_code || meta.student_id;
+    if (!code || code === "TCH-01" || code === "TCH-2026-001") {
+      code = uid ? `TCH-${uid.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase()}` : "TCH-01";
+    }
+    return {
+      id: uid,
+      email: u?.email || "",
+      code: code,
+      name: meta.full_name || "Instructor",
+      storageKey: `edumetrics_teacher_${uid}`
+    };
+  }
+
   // Sync Teacher Profile Identity
   function syncTeacherProfile() {
+    const teacher = getTeacherIdentity();
     const teacherNameEl = document.getElementById("teacher-name");
     const teacherIdCodeEl = document.getElementById("teacher-id-code");
-    const name = userMeta.full_name || "Instructor";
-    const idCode = userMeta.student_id || userMeta.id_code || "TCH-2026-001";
-    if (teacherNameEl) teacherNameEl.innerText = name;
-    if (teacherIdCodeEl) teacherIdCodeEl.innerText = idCode;
+    if (teacherNameEl) teacherNameEl.innerText = teacher.name;
+    if (teacherIdCodeEl) teacherIdCodeEl.innerText = teacher.code;
   }
   syncTeacherProfile();
 
@@ -787,6 +804,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // ====================================================================
         // DATABASE PERSISTENCE & ZERO DATA REDUNDANCY (UPSERT)
         // ====================================================================
+        const currentTeacher = getTeacherIdentity();
         const evaluatedRecord = {
           student_id: studentId,
           student_name: studentName,
@@ -810,46 +828,34 @@ document.addEventListener("DOMContentLoaded", () => {
           rating: rating,
           notes: notes,
           strategy: strategy,
-          teacher_id: userMeta.id || currentUser?.id || "teacher_default",
-          teacher_code: userMeta.id_code || userMeta.student_id || "TCH-2026-001",
-          teacher_name: userMeta.full_name || "Instructor",
+          teacher_id: currentTeacher.id,
+          teacher_email: currentTeacher.email,
+          teacher_code: currentTeacher.code,
+          teacher_name: currentTeacher.name,
           timestamp: new Date().toISOString()
         };
 
         // Clear tombstone for this student if previously deleted
         try {
-          const teacherCode = userMeta.id_code || userMeta.student_id || "TCH-01";
-          const teacherUniqueId = currentUser?.id || teacherCode;
-          const candidateTombstoneKeys = [
-            `sp_deleted_teacher_student_ids_${teacherUniqueId}`,
-            `sp_deleted_teacher_student_ids_${teacherCode}`,
-            `sp_deleted_teacher_student_ids_default`
-          ];
-          Array.from(new Set(candidateTombstoneKeys)).forEach((tk) => {
-            let tList = JSON.parse(localStorage.getItem(tk) || "[]");
-            if (Array.isArray(tList) && tList.length > 0) {
-              tList = tList.filter((x) => x !== "*" && x !== String(studentId) && x !== `STU-${studentId}`);
-              localStorage.setItem(tk, JSON.stringify(tList));
-            }
-          });
+          const tk = `sp_deleted_teacher_student_ids_${currentTeacher.id}`;
+          let tList = JSON.parse(localStorage.getItem(tk) || "[]");
+          if (Array.isArray(tList) && tList.length > 0) {
+            tList = tList.filter((x) => x !== "*" && x !== String(studentId) && x !== `STU-${studentId}`);
+            localStorage.setItem(tk, JSON.stringify(tList));
+          }
         } catch (tErr) {}
 
-        // 1. LocalStorage De-duplicated Upsert by student_id across candidate teacher keys
+        // 1. LocalStorage De-duplicated Upsert by student_id under this teacher's isolated storageKey
         try {
-          const teacherCode = userMeta.id_code || userMeta.student_id || "TCH-01";
-          const keys = [`edumetrics_teacher_${teacherCode}`];
-          if (currentUser?.id) keys.push(`edumetrics_teacher_${currentUser.id}`);
-
-          keys.forEach((k) => {
-            let teacherEvals = [];
-            const existing = localStorage.getItem(k);
-            if (existing) {
-              try { teacherEvals = JSON.parse(existing) || []; } catch(e) {}
-            }
-            teacherEvals = teacherEvals.filter((item) => item.student_id !== studentId);
-            teacherEvals.unshift(evaluatedRecord);
-            localStorage.setItem(k, JSON.stringify(teacherEvals));
-          });
+          const k = currentTeacher.storageKey;
+          let teacherEvals = [];
+          const existing = localStorage.getItem(k);
+          if (existing) {
+            try { teacherEvals = JSON.parse(existing) || []; } catch(e) {}
+          }
+          teacherEvals = teacherEvals.filter((item) => item.student_id !== studentId);
+          teacherEvals.unshift(evaluatedRecord);
+          localStorage.setItem(k, JSON.stringify(teacherEvals));
         } catch (storageErr) {
           console.warn("LocalStorage save error:", storageErr);
         }
@@ -857,13 +863,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // 2. Save into Supabase prediction_history & teacher_class_roster (Direct Cloud Table + API)
         try {
           if (window.authClient && window.authClient.client) {
-            const session = window.authClient.getSession();
-            const teacherId = session?.user?.id;
-            const isUuid = teacherId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacherId);
+            const isUuid = currentTeacher.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentTeacher.id);
 
             const predPayload = {
               id: `pred-${Date.now().toString().slice(-6)}`,
               stage: stage,
+              user_id: isUuid ? currentTeacher.id : undefined,
               input_features: evaluatedRecord,
               predicted_score: typeof predictedScore === "number" ? predictedScore : 3.5,
               predicted_grade: predictedGrade,
@@ -877,22 +882,24 @@ document.addEventListener("DOMContentLoaded", () => {
               console.warn("[Supabase] Teacher history insert notice:", e.message);
             });
 
-            // Also upsert directly into teacher_class_roster table with exact Supabase table schema
-            const teacherUniqueId = (session && session.user && session.user.id) ? session.user.id : (userMeta.id_code || userMeta.student_id || "TCH-01");
+            // Also upsert directly into teacher_class_roster table with scoped row id
             const isLowRisk = (statusBadge || "").toLowerCase().includes("exemplary") || (statusBadge || "").toLowerCase().includes("honors") || (statusBadge || "").toLowerCase().includes("track");
             const isMedRisk = (statusBadge || "").toLowerCase().includes("moderate") || (statusBadge || "").toLowerCase().includes("attention");
             const riskStr = isLowRisk ? "Low Risk" : (isMedRisk ? "Medium Risk" : "High Risk");
             const avgNum = typeof predictedScore === "number" ? (stage === "university" ? (predictedScore / 4.0) * 100 : predictedScore) : 80.0;
 
             const rosterRow = {
-              id: `STU-${studentId || Math.floor(100 + Math.random() * 900)}`,
-              teacher_id: teacherUniqueId,
+              id: `${currentTeacher.id}_${studentId || Math.floor(100 + Math.random() * 900)}`,
+              teacher_id: currentTeacher.id,
+              teacher_email: currentTeacher.email,
               student_name: studentName,
               student_id_code: studentId || `STU-${Math.floor(100 + Math.random() * 900)}`,
               stage: stage,
               attendance_pct: parseFloat(attendance) || 85.0,
               avg_marks: parseFloat(avgNum.toFixed(1)),
               standing_score: stage === "university" ? prevCgpa : courseworkPct,
+              predicted_score: typeof predictedScore === "number" ? predictedScore : 3.5,
+              predicted_grade: predictedGrade,
               study_hours: parseFloat(evaluatedRecord.study_hours || 12.0),
               risk_level: riskStr,
               created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()
