@@ -2707,9 +2707,6 @@ document.addEventListener("DOMContentLoaded", () => {
               <button type="button" class="btn btn-secondary btn-sm" onclick="window.editSemester('${(t.id || t.term_name || '').replace(/'/g, "\\'")}')" style="padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--color-lime); border: 1px solid rgba(168,240,75,0.45); background: rgba(168,240,75,0.08); border-radius: 6px; cursor: pointer;">
                 ✏️ Edit
               </button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="window.deleteSemester('${(t.id || t.term_name || '').replace(/'/g, "\\'")}')" style="padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--color-red); border: 1px solid rgba(248,113,113,0.45); background: rgba(248,113,113,0.08); border-radius: 6px; cursor: pointer;">
-                🗑️ Delete
-              </button>
             </div>
           </div>
           <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;">
