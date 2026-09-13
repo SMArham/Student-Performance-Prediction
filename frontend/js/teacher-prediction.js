@@ -95,8 +95,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <input type="text" id="t_uni_major" class="form-input" placeholder="e.g. Computer Science & AI">
           </div>
           <div class="form-group">
-            <label class="form-label" for="t_uni_prev_cgpa">Prior Baseline CGPA (0.0 - 4.0)</label>
-            <input type="number" step="0.01" min="0" max="4.0" id="t_uni_prev_cgpa" class="form-input" placeholder="e.g. 3.45">
+            <label class="form-label" for="t_uni_prev_cgpa">Prior Baseline CGPA (0.0 - 4.0) <span style="color:var(--accent-rose)">*</span></label>
+            <input type="number" step="0.01" min="0" max="4.0" id="t_uni_prev_cgpa" class="form-input" placeholder="e.g. 3.25" value="3.25" required>
           </div>
           <div class="form-group">
             <label class="form-label" for="t_uni_credits">Semester Credit Hours</label>
@@ -589,10 +589,19 @@ document.addEventListener("DOMContentLoaded", () => {
           coursework_pct: courseworkPct
         };
 
+        let prevCgpa = 3.25;
+
         if (stage === "university") {
           const sem = parseInt(document.getElementById("t_uni_semester")?.value || "4");
           const major = document.getElementById("t_uni_major")?.value.trim() || "Computer Science";
-          const prevCgpa = parseFloat(document.getElementById("t_uni_prev_cgpa")?.value || gpaScale.toFixed(2));
+          const prevInputVal = document.getElementById("t_uni_prev_cgpa")?.value;
+          if (prevInputVal && !isNaN(parseFloat(prevInputVal))) {
+            prevCgpa = parseFloat(prevInputVal);
+          } else if (gpaScale > 0) {
+            prevCgpa = parseFloat((gpaScale * 0.90).toFixed(2));
+          } else {
+            prevCgpa = 3.25;
+          }
           const credits = parseInt(document.getElementById("t_uni_credits")?.value || "16");
 
           Object.assign(payload, {
@@ -788,6 +797,11 @@ document.addEventListener("DOMContentLoaded", () => {
           status_color: statusColor,
           attendance_pct: attendance,
           courses: teacherSubjectsStore,
+          coursework_pct: courseworkPct,
+          standing_score: stage === "university" ? prevCgpa : courseworkPct,
+          current_standing: stage === "university" ? prevCgpa : courseworkPct,
+          previous_cgpa: stage === "university" ? prevCgpa : undefined,
+          gpa_scale: gpaScale,
           attentive: attentive,
           comm_skill: commSkill,
           behavior: behavior,
@@ -878,6 +892,7 @@ document.addEventListener("DOMContentLoaded", () => {
               stage: stage,
               attendance_pct: parseFloat(attendance) || 85.0,
               avg_marks: parseFloat(avgNum.toFixed(1)),
+              standing_score: stage === "university" ? prevCgpa : courseworkPct,
               study_hours: parseFloat(evaluatedRecord.study_hours || 12.0),
               risk_level: riskStr,
               created_at: window.getLocalTimestamp ? window.getLocalTimestamp() : new Date().toISOString()

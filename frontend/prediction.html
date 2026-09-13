@@ -5,16 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student Performance Prediction — Forecast Engine</title>
   
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- Design System CSS -->
-  <link rel="stylesheet" href="css/variables.css?v=3.6.0">
-  <link rel="stylesheet" href="css/layout.css?v=3.6.0">
-  <link rel="stylesheet" href="css/components.css?v=3.6.0">
-  <link rel="stylesheet" href="css/dashboard.css?v=3.6.0">
-  <link rel="stylesheet" href="css/prediction.css?v=3.6.0">
-  <link rel="stylesheet" href="css/tour.css?v=3.6.0">
+  <link rel="stylesheet" href="css/variables.css?v=5.0.0">
+  <link rel="stylesheet" href="css/layout.css?v=5.0.0">
+  <link rel="stylesheet" href="css/components.css?v=5.0.0">
+  <link rel="stylesheet" href="css/dashboard.css?v=5.0.0">
+  <link rel="stylesheet" href="css/prediction.css?v=5.0.0">
+  <link rel="stylesheet" href="css/tour.css?v=5.0.0">
   
   <!-- Google Fonts: Barlow Condensed & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,9 +37,8 @@
       }
       var m = document.getElementById("modal-add-term");
       if (m) {
-        m.style.display = "flex";
-        m.classList.add("active");
-        m.scrollTop = 0;
+        m.classList.remove("active");
+        m.style.display = "none";
       }
     };
     window.closeInlineSemesterEditor = function(e) {
@@ -672,7 +675,7 @@
   <!-- ======================================================================
        MODAL: ADD SEMESTER & COMPLETED COURSES (SUPABASE BACKED)
        ====================================================================== -->
-  <div class="modal-backdrop" id="modal-add-term">
+  <div class="modal-backdrop" id="modal-add-term" style="display: none !important;">
     <div class="modal-dialog" style="max-width: 660px;">
       <div class="modal-header" style="padding: 0 0 10px 0; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
         <h2 class="modal-title" id="term-modal-title" style="font-size: 17px; font-weight: 800; letter-spacing: 0.02em; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -767,9 +770,9 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Application Logic Scripts -->
-  <script src="js/supabase-client.js?v=3.6.0"></script>
-  <script src="js/api.js?v=3.6.0"></script>
-  <script src="js/prediction.js?v=3.6.0"></script>
-  <script src="js/tour.js?v=3.6.0"></script>
+  <script src="js/supabase-client.js?v=5.0.0"></script>
+  <script src="js/api.js?v=5.0.0"></script>
+  <script src="js/prediction.js?v=5.0.0"></script>
+  <script src="js/tour.js?v=5.0.0"></script>
 </body>
 </html>

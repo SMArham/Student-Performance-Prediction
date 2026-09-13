@@ -2586,6 +2586,9 @@ document.addEventListener("DOMContentLoaded", () => {
           <div style="font-size: 24px; margin-bottom: 6px;">${emptyIcon}</div>
           <div style="font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 4px;">${emptyTitle}</div>
           <div style="font-size: 12px; margin-bottom: 14px;">${emptyHelp}</div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="window.openAddSemesterModal && window.openAddSemesterModal(event)" style="font-size: 12px; padding: 6px 18px; font-weight: 700; cursor: pointer;">
+            ${btnAddSemesterText ? btnAddSemesterText.innerText : "+ Add Record"}
+          </button>
         </div>
       `;
       return;
@@ -3549,11 +3552,11 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn("[openAddSemesterModal] Inline editor prep notice:", err);
     }
 
-    // 3. Fallback Modal Sync
+    // 3. Strictly keep bottom modal closed (inline editor is used exclusively)
     const m = document.getElementById("modal-add-term");
     if (m) {
-      m.style.display = "flex";
-      m.classList.add("active");
+      m.classList.remove("active");
+      m.style.display = "none";
     }
   };
 
